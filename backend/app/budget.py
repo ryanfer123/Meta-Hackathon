@@ -2,6 +2,8 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
+import httpx
+
 from app.config import Settings
 
 
@@ -22,6 +24,33 @@ class Budget:
             )
 
     def reserve(self, run: str, kind: str, max_cost: float) -> None:
+        if self.settings.cloud_jobs:
+            token = self.settings.supabase_access_token.get_secret_value()
+            key = self.settings.server_budget_key.get_secret_value()
+            if not token or not key:
+                raise BudgetExceeded("Hosted budget authorization is not configured")
+            try:
+                response = httpx.post(
+                    self.settings.supabase_url.rstrip("/") + "/rest/v1/rpc/reserve_model_budget",
+                    headers={
+                        "apikey": self.settings.supabase_publishable_key,
+                        "Authorization": "Bearer " + token,
+                    },
+                    json={
+                        "server_key": key,
+                        "run_id": run,
+                        "call_kind": kind,
+                        "reserved_usd": max_cost,
+                    },
+                    timeout=15,
+                )
+            except httpx.HTTPError as exc:
+                raise BudgetExceeded(
+                    "Hosted budget could not be reached; no model request sent"
+                ) from exc
+            if not response.is_success:
+                raise BudgetExceeded("Hosted request budget denied; no model request sent")
+            return
         day = datetime.now(UTC).date().isoformat()
         if max_cost < 0:
             raise ValueError("negative cost reservation")

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowUpRight, CheckCircle2, Download, ShieldCheck } from 'lucide-react';
-import { download, verifyChain } from './api';
+import { download, verifyChain, exportReport } from './api';
 import { isAlert, label, timecode, type ChainEntry, type Run } from './types';
 export function Audit({ run }: { run: Run }) {
   const [root, setRoot] = useState(run.chain_root),
@@ -101,6 +101,16 @@ export function Audit({ run }: { run: Run }) {
             className="button primary"
             target="_blank"
             rel="noopener noreferrer"
+            onClick={
+              synthetic
+                ? undefined
+                : (e) => {
+                    e.preventDefault();
+                    void exportReport(run.id).catch(() =>
+                      setResult('Report download failed. Sign in again or retry.'),
+                    );
+                  }
+            }
             href={
               synthetic
                 ? `${import.meta.env.BASE_URL}samples/${run.id.replace('sample-', '')}.html`

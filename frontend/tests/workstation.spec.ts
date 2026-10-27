@@ -1,4 +1,7 @@
+import { mockAccount } from './account';
 import { test, expect, type Page } from '@playwright/test';
+
+test.beforeEach(async ({ page }) => mockAccount(page));
 
 test('skip replay, inspect predicate and verify audit', async ({ page }) => {
   const errors: string[] = [];
@@ -93,7 +96,7 @@ async function navigateView(page: Page, name: string) {
   const button = page
     .getByRole('navigation', { name: 'Workspace' })
     .getByRole('button', { name, exact: true });
-  await page.locator('.workspace-topbar').waitFor({state:'visible'});
+  await page.locator('.workspace-topbar').waitFor({ state: 'visible' });
   if (await page.getByRole('button', { name: 'Open navigation' }).isVisible())
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await button.click();

@@ -61,7 +61,11 @@ def test_recorded_run_orchestration_shadows_every_completion(tmp_path, monkeypat
 
     monkeypatch.setattr(service.MetaClient, "structured", no_spark)
     settings = Settings(
-        _env_file=None, data_dir=tmp_path, replay_mode=False, model_api_key="mock-only"
+        _env_file=None,
+        data_dir=tmp_path,
+        replay_mode=False,
+        model_api_key="mock-only",
+        glimmer_base_url="http://mock-glimmer.invalid",
     )
     process_run(settings, job, sample_protocol(), False)
     run = json.loads((folder / "run.json").read_text())

@@ -141,7 +141,9 @@ def process_run(settings: Settings, job: str, protocol: Protocol, color_fallback
         evidence = evidence_overlays(frames, paths, folder)
         review_full: list[Path] = []
         verifier = Verifier(
-            glimmer.opinion, lambda prompt, images: client.structured(prompt, Opinion, review_full)
+            glimmer.opinion,
+            lambda prompt, images: client.structured(prompt, Opinion, review_full),
+            api_only=not bool(settings.glimmer_base_url),
         )
         events = []
         for event in supervisor.events:

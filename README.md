@@ -20,13 +20,13 @@ cd ..
 uv run uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 ```
 
-Open `http://127.0.0.1:8000`. For frontend development use `npm run dev` in `frontend`; it proxies `/api` and `/ws` to port 8000. For static-only replay, `npm run dev` works without Python once bundled samples exist.
+Open `http://127.0.0.1:8000`. For frontend development use `npm run dev` in `frontend`; it proxies `/api` and `/ws` to port 8000. For static replay, `npm run dev` works without Python once bundled samples and Supabase client configuration exist. Sign-in is mandatory; there is no guest bypass.
 
 Try **Skipped cap**, seek to the event markers, inspect a step's predicate, switch to **Clean procedure**, then **Audit → Verify chain**. Learn exposes the sample protocol and pending validation checks. Nothing is represented as a real model call.
 
 ## Private cloud workspace
 
-The homepage opens a guest replay with no account. Sign in to save/reopen/delete run snapshots and upload source recordings to a private library. Supabase provides email/password Auth, Postgres, and private Storage. Recording uploads are staged source material; uploading alone does not run model inference.
+The homepage is public. Entering the workstation requires a confirmed Supabase account, including replay, Learn, Audit and the run library. Sign in to save/reopen/delete run snapshots and upload source recordings to a private library. Supabase provides email/password Auth, Postgres, and private Storage. Recording uploads are staged source material; choose Use in Learn to load them into the compilation, held-out or novice workflow. Analysis jobs and their private output archives persist in Supabase.
 
 For a local cloud-enabled frontend, copy `frontend/.env.example` to `frontend/.env.local` and set `VITE_SUPABASE_URL` plus `VITE_SUPABASE_PUBLISHABLE_KEY`. Only the public client key belongs here. Never put a service role or model key in a `VITE_` variable. Set `VITE_STATIC_REPLAY=true` when serving a static replay without Python. These variables are compiled at build time.
 
@@ -42,7 +42,7 @@ Copy `.env.example` to `.env` and set `REPLAY_MODE=false`, `MODEL_API_KEY`, and 
 4. Export the HTML report, chain and root. Keep the root separately.
 5. Follow [recording and frozen evaluation instructions](docs/RECORDING.md). Real results belong in [eval/results.md](eval/results.md).
 
-The observer currently uses SAM image keyframes at 2 fps, requires distinct object prompts, and refuses ambiguous identity assignments. Count/absence require explicit complete coverage and may remain unknown in live input. Default budgets deliberately reject excessive calls; long recordings with many objects may need a measured budget increase. Live API hosting is intended for a trusted local/private instance; the public site runs static replay only.
+The observer currently uses SAM image keyframes at 2 fps, requires distinct object prompts, and refuses ambiguous identity assignments. Count/absence require explicit complete coverage and may remain unknown in live input. Default budgets deliberately reject excessive calls; long recordings with many objects may need a measured budget increase. The separate API service requires a verified Supabase bearer token and owner-scoped job access. Set `VITE_API_BASE_URL` to its origin. Tokens are sent in headers, never media URLs. `AUTH_REQUIRED=false` is only for private local development/tests and must not be used on a public service.
 
 ## Models propose. Pixels ground. Code decides.
 
@@ -50,8 +50,9 @@ The observer currently uses SAM image keyframes at 2 fps, requires distinct obje
 |---|---|---|
 | Muse Spark 1.3 | Propose/repair strict Protocol JSON; advisory escalation | Live text/two-image Opinion JSON spike passed; full protocol live validation pending |
 | SAM 3.1 | Text-prompt masks via Responses, official Python parser | Live image response parsed; 2 ambiguous candidates; video tracking pending |
-| Muse Voice Transcribe | Narration turn timestamps via `/asr/transcribe` | Documented adapter; live pending |
-| Muse Glimmer 30B | Advisory verification + shadow review on every completed step | Routing tested; GPU/vision pending |
+| Muse Voice Transcribe | Narration turn timestamps via `/asr/transcribe` | Timestamped Voice response verified on a synthetic spoken test clip; real expert audio pending |
+| Muse Spark advisory | API-only review and shadow opinion on every completed step | Rules remain authoritative; routing tested |
+| Muse Glimmer 30B (optional) | Alternative open-weight advisory tier | Not deployed; not required by the API-only configuration |
 | Python predicates/state machine | All completion/deviation decisions | Synthetic and unit checks |
 
 [SAM API](https://dev.meta.ai/docs/sam/overview), [Voice API](https://dev.meta.ai/docs/speech-to-text), and [Glimmer serving](https://dev.meta.ai/docs/muse-glimmer/deploy) were checked on Oct 27, 2026. The BF16 Glimmer path needs about 72 GB serving VRAM; `scripts/modal_glimmer.py` targets A100-80GB and is prepared, not deployed. Modal counts as cloud egress. No air-gap claim is made.
@@ -91,3 +92,9 @@ SAM and Spark send frames to Meta; remote Glimmer sends them to its host. Logs c
 Created during the event; see [NEW_WORK](docs/NEW_WORK.md). Indie Developer / Push the Frontier. [Submission preparation](docs/SUBMISSION.md) lists the remaining evidence gates. The concept is designed to support an inspectable demo; a win cannot be inferred from a project brief.
 
 MIT-licensed project source; dependencies and model weights retain their own licenses.
+
+## Hosted processing safety
+
+`Dockerfile.api` builds Python only; no model key is a frontend build input. The processing service uses a server-side Meta key, the signed-in user's JWT for owner-scoped storage, and a separate server-only key authorizing durable budget reservations. It does not use a Supabase service-role key. Database reservations serialize concurrent calls with conservative limits of $2 per job and $5 per UTC day, 60 Spark calls/day and 800 SAM calls/job. These are estimates, not a billing guarantee; provider billing controls remain separate. Unknown/denied budget authorization fails before contacting Meta.
+
+Completed job archives survive worker restarts. A restart during processing fails the interrupted job explicitly rather than silently restarting paid work. The free worker has cold starts and resource limits; it is a hackathon preview, not a production queue. Keep recordings short, at most 50 MB, and retain source copies.

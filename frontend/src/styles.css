@@ -373,3 +373,97 @@ svg {
     transform: none !important;
   }
 }
+
+.auth-page {
+  min-height: 100dvh;
+  background: var(--sand);
+  color: var(--blue);
+}
+.auth-page > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32px 5.5%;
+}
+.auth-page > header > a:last-child {
+  font-size: 16px;
+  font-weight: 500;
+}
+.auth-page > main {
+  max-width: 1260px;
+  padding: 40px 40px 70px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: 1fr 460px;
+  gap: 90px;
+  align-items: start;
+}
+.auth-story h2 {
+  font-size: clamp(44px, 5vw, 72px);
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+  margin: 15px 0 24px;
+}
+.auth-story > p {
+  font-size: 21px;
+  line-height: 1.45;
+  max-width: 460px;
+}
+.auth-story img {
+  width: 310px;
+  height: 270px;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 50% 50% 0 0;
+  margin-top: 25px;
+}
+.auth-card {
+  background: #fff;
+  color: var(--ink);
+  padding: 38px;
+  border-radius: 10px;
+}
+.auth-card h1 {
+  font-size: 32px;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  margin: 0 0 20px;
+}
+.auth-card .dialog-description {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.auth-card .auth-switch,
+.auth-card .guest-link {
+  font-size: 15px;
+}
+@media (max-width: 850px) {
+  .auth-page > main {
+    grid-template-columns: 1fr;
+    max-width: 560px;
+    gap: 30px;
+    padding: 25px 22px 50px;
+  }
+  .auth-story h2 {
+    font-size: 44px;
+    margin-top: 0;
+  }
+  .auth-story > p {
+    font-size: 18px;
+  }
+  .auth-story img {
+    display: none;
+  }
+  .auth-card {
+    padding: 28px;
+  }
+  .auth-page > header {
+    padding: 25px 22px;
+  }
+  .auth-page .brand {
+    font-size: 25px;
+  }
+  .auth-page > header > a:last-child {
+    font-size: 14px;
+  }
+}

@@ -1,6 +1,7 @@
+import { supabase } from './lib/supabase';
 import type { ChainEntry, Health, Run } from './types';
 export async function json<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+  const response = await apiFetch(url, init);
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
     try {
@@ -13,7 +14,7 @@ export async function json<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 export const getHealth = () =>
-  import.meta.env.VITE_STATIC_REPLAY === 'true'
+  import.meta.env.VITE_STATIC_REPLAY === 'true' && !import.meta.env.VITE_API_BASE_URL
     ? Promise.resolve({ replay_mode: true, live_configured: false, glimmer_configured: false })
     : json<Health>('/api/health').catch(() => ({
         replay_mode: true,
@@ -62,4 +63,26 @@ export async function verifyChain(chain: ChainEntry[], expectedRoot: string): Pr
     previous = hash;
   }
   return previous === expectedRoot;
+}
+
+export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  if (!path.startsWith('/api/')) return fetch(path, init);
+  const {
+    data: { session },
+  } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+  if (!session) throw new Error('Sign in to access your workspace.');
+  const headers = new Headers(init?.headers);
+  headers.set('Authorization', `Bearer ${session.access_token}`);
+  const base = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+  return fetch(base + path, { ...init, headers, cache: 'no-store', credentials: 'omit' });
+}
+export async function privateMedia(path: string): Promise<string> {
+  const response = await apiFetch(path);
+  if (!response.ok) throw new Error('The private recording could not be loaded.');
+  return URL.createObjectURL(await response.blob());
+}
+export async function exportReport(runId: string) {
+  const response = await apiFetch(`/api/runs/${runId}/report`);
+  if (!response.ok) throw new Error('The private report could not be loaded.');
+  download(`${runId}-report.html`, await response.text(), 'text/html');
 }

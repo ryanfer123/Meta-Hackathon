@@ -20,7 +20,7 @@ from pydantic import SecretStr, ValidationError
 
 
 def cfg(tmp_path, **kw):
-    return Settings(_env_file=None, data_dir=tmp_path, **kw)
+    return Settings(_env_file=None, data_dir=tmp_path, auth_required=False, **kw)
 
 
 def test_config_safe_defaults(tmp_path):

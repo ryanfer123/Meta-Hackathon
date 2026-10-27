@@ -1,8 +1,19 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { AccountProvider, useAccount } from './hooks/AccountContext';
+import { AuthDialog } from './components/AuthDialog';
+import { Brand } from './components/Brand';
 import { HomePage } from './pages/HomePage';
 const Workspace = lazy(() => import('./pages/Workspace'));
 
 export function App() {
+  return (
+    <AccountProvider>
+      <Routes />
+    </AccountProvider>
+  );
+}
+function Routes() {
+  const { session, loading } = useAccount();
   const [hash, setHash] = useState(location.hash);
   useEffect(() => {
     const update = () => {
@@ -16,6 +27,47 @@ export function App() {
     location.hash = `/workspace?${new URLSearchParams({ sample: scenario, view })}`;
   }
   const workspace = hash.startsWith('#/workspace') || hash.includes('access_token=');
+  if (workspace && loading)
+    return (
+      <div className="app-loading" role="status">
+        Checking your session…
+      </div>
+    );
+  if (workspace && !session)
+    return (
+      <div className="auth-page">
+        <header>
+          <a href="#" aria-label="Apprentice home">
+            <Brand />
+          </a>
+          <a href="#">Back to home</a>
+        </header>
+        <main>
+          <div className="auth-story">
+            <h2>
+              Good work.
+              <br />
+              Kept together.
+            </h2>
+            <p>
+              Sign in to review procedures, save evidence, and keep your recordings in your own
+              workspace.
+            </p>
+            <img
+              src={`${import.meta.env.BASE_URL}images/procedure-studio.webp`}
+              alt="Illustrative colored-water procedure setup"
+            />
+          </div>
+          <AuthDialog
+            inline
+            onClose={() => {
+              location.hash = '';
+            }}
+            onAuthenticated={() => {}}
+          />
+        </main>
+      </div>
+    );
   return workspace ? (
     <Suspense
       fallback={

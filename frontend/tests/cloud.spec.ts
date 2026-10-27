@@ -10,6 +10,8 @@ test('account saves, reopens and deletes a run; private upload is retained', asy
     aud: 'authenticated',
     role: 'authenticated',
     email: 'ui@example.invalid',
+    email_confirmed_at: '2026-10-27T00:00:00Z',
+    is_anonymous: false,
     app_metadata: {},
     user_metadata: {},
     created_at: '2026-10-27T00:00:00Z',
@@ -38,6 +40,7 @@ test('account saves, reopens and deletes a run; private upload is retained', asy
       saved = false;
       return reply(null);
     }
+    if (url.pathname.endsWith('/analysis_jobs')) return reply([]);
     if (url.pathname.endsWith('/run_records'))
       return reply(
         url.searchParams.get('select') === 'payload'
@@ -72,17 +75,16 @@ test('account saves, reopens and deletes a run; private upload is retained', asy
   });
   await page.goto('/#/workspace');
   const save = page.getByRole('button', { name: 'Save run', exact: true });
-  await expect(save).toBeEnabled();
-  await save.click();
+  await expect(page.getByRole('heading', { name: 'Your private workspace' })).toBeVisible();
   await page.getByLabel('Email', { exact: true }).fill(user.email);
   await page.getByLabel('Password', { exact: true }).fill('mock-password');
-  const signin = page.getByRole('dialog').getByRole('button', { name: 'Sign in', exact: true });
+  const signin = page.getByRole('button', { name: 'Sign in', exact: true });
   test.skip(
     !(await signin.isEnabled()),
     'Cloud client not configured in this standalone installation',
   );
   await signin.click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(save).toBeEnabled();
   await save.click();
   await expect(page.locator('.toast')).toContainText('Run saved');
   await view(page, 'Run library');

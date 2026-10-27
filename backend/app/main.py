@@ -1,7 +1,11 @@
 import json
 import re
+import shutil
 import uuid
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
+from threading import Lock
 from typing import Annotated, Any
 
 from fastapi import (
@@ -10,15 +14,19 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Request,
     UploadFile,
     WebSocket,
     WebSocketDisconnect,
 )
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import TypeAdapter, ValidationError
+from pydantic import SecretStr, TypeAdapter, ValidationError
 
 from app.audit.chain import verify_entries
+from app.auth import authenticate
+from app.cloud import CloudJobs
 from app.config import Settings
 from app.learn.validate import StepRange
 from app.replay_cache import atomic_json
@@ -31,10 +39,166 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     config = settings or Settings()
     app = FastAPI(title="Apprentice", version="0.1.0")
 
-    def job_folder(job: str) -> Path:
+    @app.middleware("http")
+    async def require_account(request: Request, call_next: Any) -> Any:
+        if (
+            request.url.path.startswith("/api/")
+            and request.url.path != "/api/health"
+            and request.method != "OPTIONS"
+        ):
+            if request.method == "POST" and request.headers.get("content-type", "").startswith(
+                "multipart/form-data"
+            ):
+                size = request.headers.get("content-length")
+                if size is None:
+                    return JSONResponse({"detail": "Upload size is required"}, status_code=411)
+                if (
+                    not size.isdigit()
+                    or int(size) > config.max_upload_mb * 1024 * 1024 + 1024 * 1024
+                ):
+                    return JSONResponse(
+                        {"detail": "Upload exceeds configured limit"}, status_code=413
+                    )
+            try:
+                request.state.owner = await authenticate(
+                    config, request.headers.get("authorization", "")
+                )
+            except HTTPException as exc:
+                return JSONResponse(
+                    {"detail": exc.detail},
+                    status_code=exc.status_code,
+                    headers={"Cache-Control": "no-store"},
+                )
+        response = await call_next(request)
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
+
+    active_jobs: set[str] = set()
+    active_lock = Lock()
+
+    def cloud(request: Request) -> CloudJobs:
+        return CloudJobs(
+            config,
+            request.headers.get("authorization", "").removeprefix("Bearer "),
+            request.state.owner,
+        )
+
+    def job_settings(request: Request) -> Settings:
+        return config.model_copy(
+            update={
+                "supabase_access_token": SecretStr(
+                    request.headers.get("authorization", "").removeprefix("Bearer ")
+                )
+            }
+        )
+
+    def execute_job(
+        request: Request, job: str, kind: str, operation: Callable[..., None], *args: Any
+    ) -> None:
+        settings = job_settings(request)
+        try:
+            operation(settings, job, *args)
+            if config.cloud_jobs:
+                db = cloud(request)
+                try:
+                    db.archive(job, config.data_dir / "jobs" / job, kind)
+                except Exception:
+                    db.fail(
+                        job,
+                        "Processing finished, but private persistence failed. Do not start duplicate work.",
+                    )
+                finally:
+                    db.close()
+        finally:
+            with active_lock:
+                active_jobs.discard(job)
+
+    def begin_job(request: Request, job: str, kind: str, existing: bool = False) -> None:
+        if config.cloud_jobs:
+            db = cloud(request)
+            try:
+                db.begin(job, kind, existing)
+            except RuntimeError as exc:
+                if not existing:
+                    shutil.rmtree(config.data_dir / "jobs" / job, ignore_errors=True)
+                raise HTTPException(409, str(exc)) from exc
+            finally:
+                db.close()
+        with active_lock:
+            active_jobs.add(job)
+
+    async def save_job_upload(
+        request: Request,
+        job: str,
+        kind: str,
+        file: UploadFile,
+        target: Path,
+        existing: bool = False,
+    ) -> None:
+        begin_job(request, job, kind, existing)
+        try:
+            await save(file, target)
+        except Exception:
+            if config.cloud_jobs:
+                db = cloud(request)
+                try:
+                    db.fail(job, "Upload failed. Choose a valid recording and retry.")
+                finally:
+                    db.close()
+            with active_lock:
+                active_jobs.discard(job)
+            if not existing:
+                shutil.rmtree(target.parent, ignore_errors=True)
+            raise
+
+    def cloud_status(request: Request, job: str) -> Any:
+        db = cloud(request)
+        try:
+            row = db.get(job)
+            if not row:
+                raise HTTPException(404, "Unknown job")
+            created = datetime.fromisoformat(row["created_at"].replace("Z", "+00:00"))
+            with active_lock:
+                active = job in active_jobs
+            if (
+                row["status"] == "processing"
+                and not active
+                and (datetime.now(UTC) - created).total_seconds() > 60
+            ):
+                db.fail(
+                    job,
+                    "The worker restarted before this job finished. Re-upload the recording to retry.",
+                )
+                return {
+                    "id": job,
+                    "status": "error",
+                    "error": "The worker restarted before this job finished. Re-upload the recording to retry.",
+                }
+            return row["result"]
+        finally:
+            db.close()
+
+    def job_folder(job: str, request: Request | None = None, create: bool = False) -> Path:
         if not re.fullmatch(r"[a-f0-9]{32}|sample-[a-z-]+", job):
             raise HTTPException(404, "Unknown job")
-        return config.data_dir / "jobs" / job
+        folder = config.data_dir / "jobs" / job
+        if request is not None and config.auth_required and not job.startswith("sample-"):
+            owner_file = folder / "owner.txt"
+            if create:
+                folder.mkdir(parents=True, exist_ok=False)
+                owner_file.write_text(request.state.owner)
+            elif not owner_file.exists() and config.cloud_jobs:
+                db = cloud(request)
+                try:
+                    if not db.restore(job, folder):
+                        raise HTTPException(404, "Job artifact is not ready")
+                finally:
+                    db.close()
+            elif not owner_file.exists() or owner_file.read_text() != request.state.owner:
+                raise HTTPException(404, "Unknown job")
+        return folder
 
     def read(path: Path) -> Any:
         if not path.exists():
@@ -48,6 +212,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(409, str(exc)) from exc
 
     async def save(file: UploadFile, target: Path) -> None:
+        if file.content_type not in {"video/mp4", "video/quicktime", "application/octet-stream"}:
+            raise HTTPException(415, "Choose an MP4 or MOV recording")
         target.parent.mkdir(parents=True, exist_ok=True)
         total = 0
         try:
@@ -57,6 +223,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     if total > config.max_upload_mb * 1024 * 1024:
                         raise HTTPException(413, "Recording exceeds configured upload limit")
                     out.write(chunk)
+            if total == 0:
+                raise HTTPException(422, "Recording is empty")
         except Exception:
             target.unlink(missing_ok=True)
             raise
@@ -65,6 +233,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def health() -> dict[str, object]:
         return {
             "status": "ok",
+            "auth_required": config.auth_required,
+            "cloud_jobs": config.cloud_jobs,
             "replay_mode": config.replay_mode,
             "live_configured": bool(config.model_api_key.get_secret_value())
             and not config.replay_mode,
@@ -90,6 +260,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/api/protocols", status_code=202)
     async def learn(
         tasks: BackgroundTasks,
+        request: Request,
         video: Annotated[UploadFile, File()],
         narration: Annotated[str, Form()] = "[]",
     ) -> dict[str, str]:
@@ -99,66 +270,74 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except ValidationError as exc:
             raise HTTPException(422, "Invalid timestamped narration JSON") from exc
         job = uuid.uuid4().hex
-        folder = job_folder(job)
-        await save(video, folder / "original.mp4")
+        folder = job_folder(job, request, create=True)
+        await save_job_upload(request, job, "learn", video, folder / "original.mp4")
         atomic_json(folder / "status.json", {"id": job, "status": "processing"})
-        tasks.add_task(process_learn, config, job, turns)
+        tasks.add_task(execute_job, request, job, "learn", process_learn, turns)
         return {"protocol_id": job, "status": "processing"}
 
     @app.get("/api/protocols/{job}")
-    def get_protocol(job: str) -> Any:
-        return read(job_folder(job) / "status.json")
+    def get_protocol(job: str, request: Request) -> Any:
+        if config.cloud_jobs:
+            return cloud_status(request, job)
+        return read(job_folder(job, request) / "status.json")
 
     @app.post("/api/protocols/{job}/validate", status_code=202)
     async def validate(
         job: str,
+        request: Request,
         tasks: BackgroundTasks,
         heldout: Annotated[UploadFile, File()],
         ranges: Annotated[str, Form()],
         repair: Annotated[bool, Form()] = False,
     ) -> dict[str, str]:
         live()
-        folder = job_folder(job)
+        folder = job_folder(job, request)
         read(folder / "protocol.json")
         try:
             parsed = TypeAdapter(dict[str, StepRange]).validate_json(ranges)
         except ValidationError as exc:
             raise HTTPException(422, "Invalid step ranges") from exc
-        await save(heldout, folder / "heldout.mp4")
+        await save_job_upload(request, job, "learn", heldout, folder / "heldout.mp4", existing=True)
         atomic_json(folder / "status.json", {"id": job, "status": "validating"})
-        tasks.add_task(process_validation, config, job, parsed, repair)
+        tasks.add_task(execute_job, request, job, "learn", process_validation, parsed, repair)
         return {"protocol_id": job, "status": "validating"}
 
     @app.post("/api/runs", status_code=202)
     async def start_run(
         tasks: BackgroundTasks,
+        request: Request,
         video: Annotated[UploadFile, File()],
         protocol_id: Annotated[str, Form()],
         color_fallback: Annotated[bool, Form()] = False,
     ) -> dict[str, str]:
         live()
-        protocol = Protocol.model_validate(read(job_folder(protocol_id) / "protocol.json"))
+        protocol = Protocol.model_validate(read(job_folder(protocol_id, request) / "protocol.json"))
         job = uuid.uuid4().hex
-        folder = job_folder(job)
-        await save(video, folder / "original.mp4")
+        folder = job_folder(job, request, create=True)
+        await save_job_upload(request, job, "run", video, folder / "original.mp4")
         atomic_json(folder / "run.json", {"id": job, "status": "processing"})
-        tasks.add_task(process_run, config, job, protocol, color_fallback)
+        tasks.add_task(execute_job, request, job, "run", process_run, protocol, color_fallback)
         return {"run_id": job, "status": "processing"}
 
     @app.get("/api/runs/{job}")
-    def get_run(job: str) -> Any:
-        return read(job_folder(job) / "run.json")
+    def get_run(job: str, request: Request) -> Any:
+        if config.cloud_jobs:
+            return cloud_status(request, job)
+        return read(job_folder(job, request) / "run.json")
 
     @app.get("/api/runs/{job}/report", response_class=HTMLResponse)
-    def report(job: str) -> str:
-        path = job_folder(job) / "report.html"
+    def report(job: str, request: Request) -> str:
+        path = job_folder(job, request) / "report.html"
         if not path.exists():
             raise HTTPException(404, "Report not ready")
         return path.read_text()
 
     @app.post("/api/runs/{job}/verify")
-    def verify(job: str, trusted_root: Annotated[str | None, Form()] = None) -> dict[str, object]:
-        chain = read(job_folder(job) / "chain.json")
+    def verify(
+        job: str, request: Request, trusted_root: Annotated[str | None, Form()] = None
+    ) -> dict[str, object]:
+        chain = read(job_folder(job, request) / "chain.json")
         return {
             "valid": verify_entries(chain, trusted_root),
             "trusted_root_supplied": trusted_root is not None,
@@ -166,10 +345,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         }
 
     @app.get("/api/media/{job}/{name}")
-    def media(job: str, name: str) -> FileResponse:
+    def media(job: str, name: str, request: Request) -> FileResponse:
         if not re.fullmatch(r"original\.mp4|evidence_frame_[0-9_.]+\.jpg", name):
             raise HTTPException(404, "Unknown media")
-        path = job_folder(job) / name
+        path = job_folder(job, request) / name
         if not path.exists():
             raise HTTPException(404, "Media not found")
         return FileResponse(path)
@@ -178,6 +357,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def stream(ws: WebSocket, job: str) -> None:
         import asyncio
 
+        try:
+            owner = await authenticate(config, ws.headers.get("authorization", ""))
+            folder = job_folder(job)
+            if config.auth_required and (
+                not (folder / "owner.txt").exists() or (folder / "owner.txt").read_text() != owner
+            ):
+                await ws.close(code=1008)
+                return
+        except HTTPException:
+            await ws.close(code=1008)
+            return
         await ws.accept()
         try:
             path = job_folder(job) / "run.json"
@@ -200,6 +390,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
     if dist.exists():
         app.mount("/", StaticFiles(directory=dist, html=True), name="frontend")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.cors_origins,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
+
     return app
 
 

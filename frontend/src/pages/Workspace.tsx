@@ -16,8 +16,9 @@ import {
 import { Brand } from '../components/Brand';
 import { AuthDialog } from '../components/AuthDialog';
 import { Dialog } from '../components/Dialog';
-import { useAccount } from '../hooks/useAccount';
+import { useAccount } from '../hooks/AccountContext';
 import { cloudConfigured } from '../lib/supabase';
+import type { AnalysisJob } from '../lib/workspace';
 import { saveRun } from '../lib/workspace';
 import { getHealth, loadSample } from '../api';
 import { Learn } from '../Learn';
@@ -57,6 +58,11 @@ export default function Workspace() {
     [saving, setSaving] = useState(false),
     [toast, setToast] = useState(''),
     [refreshKey, setRefreshKey] = useState(0);
+  const [source, setSource] = useState<{
+      file: File;
+      kind: 'expert' | 'held_out' | 'novice';
+    } | null>(null),
+    [learnJob, setLearnJob] = useState<AnalysisJob | null>(null);
   const { session, signOut } = useAccount();
   useEffect(() => {
     void getHealth().then(setHealth);
@@ -282,6 +288,19 @@ export default function Workspace() {
                 goView('Supervise');
               }}
               refreshKey={refreshKey}
+              onUse={(file, kind) => {
+                setSource({ file, kind });
+                goView('Learn');
+              }}
+              onResume={(job) => {
+                if (job.kind === 'run') {
+                  setRun(job.result as unknown as Run);
+                  goView('Supervise');
+                } else {
+                  setLearnJob(job);
+                  goView('Learn');
+                }
+              }}
             />
           ) : loading || !run ? (
             <div className="loading" role="status">
@@ -295,17 +314,21 @@ export default function Workspace() {
               ) : view === 'Audit' ? (
                 <Audit key={run.id} run={run} />
               ) : null}
-              <div hidden={view !== 'Learn'}>
-                <Learn
-                  run={run}
-                  health={health}
-                  onRun={(r) => {
-                    setRun(r);
-                    goView('Supervise');
-                  }}
-                />
-              </div>
             </>
+          )}
+          {run && !loading && (
+            <div hidden={view !== 'Learn'}>
+              <Learn
+                run={run}
+                health={health}
+                source={source}
+                initialJob={learnJob}
+                onRun={(r) => {
+                  setRun(r);
+                  goView('Supervise');
+                }}
+              />
+            </div>
           )}
         </main>
         <footer className="workspace-footer">

@@ -9,13 +9,71 @@ Ask = Callable[[str, list[Path]], Opinion]
 
 
 class Verifier:
-    def __init__(self, glimmer: Ask, spark: Ask) -> None:
+    def __init__(self, glimmer: Ask, spark: Ask, api_only: bool = False) -> None:
         self.glimmer, self.spark = glimmer, spark
+        self.api_only = api_only
         self.shadow: list[dict[str, object]] = []
 
     def review(
         self, event: Event, prompt: str, frames: list[Path], shadow: bool = False
     ) -> list[Event]:
+        if self.api_only:
+            try:
+                api_answer = self.spark(
+                    prompt + " Advisory only. Never override deterministic rules.", frames
+                )
+                if shadow:
+                    self.shadow.append(
+                        {
+                            "step_id": event.step_id,
+                            "tier": "spark",
+                            "available": True,
+                            "agree": api_answer.completed,
+                            "opinion": api_answer.model_dump(),
+                        }
+                    )
+                    if api_answer.completed:
+                        return []
+                    return [
+                        event.model_copy(
+                            update={
+                                "kind": "shadow_disagreement",
+                                "tier": "spark",
+                                "detail": api_answer.reason,
+                                "confidence": api_answer.confidence,
+                            }
+                        )
+                    ]
+                return [
+                    event.model_copy(
+                        update={
+                            "kind": "uncertain",
+                            "tier": "spark",
+                            "detail": "Advisory only; rule evidence still required. "
+                            + api_answer.reason,
+                            "confidence": api_answer.confidence,
+                        }
+                    )
+                ]
+            except (RuntimeError, OSError, ValueError, httpx.HTTPError):
+                if shadow:
+                    self.shadow.append(
+                        {
+                            "step_id": event.step_id,
+                            "tier": "spark",
+                            "available": False,
+                            "reason": "Model review unavailable",
+                        }
+                    )
+                return [
+                    event.model_copy(
+                        update={
+                            "kind": "uncertain",
+                            "tier": "spark",
+                            "detail": "Model review unavailable; human review required.",
+                        }
+                    )
+                ]
         events: list[Event] = []
         answer: Opinion | None = None
         tier: Tier = "glimmer"

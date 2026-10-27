@@ -78,16 +78,14 @@ export async function uploadRecording(file: File, kind: Recording['kind'], userI
     .from('recordings')
     .upload(path, file, { contentType: mime, upsert: false });
   if (uploadError) throw uploadError;
-  const { error } = await db
-    .from('recordings')
-    .insert({
-      owner_id: userId,
-      name: file.name.slice(0, 240),
-      object_path: path,
-      kind,
-      size_bytes: file.size,
-      mime_type: mime,
-    });
+  const { error } = await db.from('recordings').insert({
+    owner_id: userId,
+    name: file.name.slice(0, 240),
+    object_path: path,
+    kind,
+    size_bytes: file.size,
+    mime_type: mime,
+  });
   if (error) {
     await db.storage.from('recordings').remove([path]);
     throw error;
@@ -106,4 +104,29 @@ export async function deleteRecording(recording: Recording) {
   if (fileError) throw fileError;
   const { error } = await db.from('recordings').delete().eq('id', recording.id);
   if (error) throw error;
+}
+
+export interface AnalysisJob {
+  id: string;
+  kind: 'learn' | 'run';
+  status: 'processing' | 'ready' | 'error';
+  result: Record<string, unknown>;
+  created_at: string;
+}
+export async function listAnalysisJobs(): Promise<AnalysisJob[]> {
+  const { data, error } = await client()
+    .from('analysis_jobs')
+    .select('id,kind,status,result,created_at')
+    .order('created_at', { ascending: false })
+    .limit(30);
+  if (error) throw error;
+  return data;
+}
+export async function recordingFile(recording: Recording): Promise<File> {
+  const url = await recordingUrl(recording.object_path);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('The private recording could not be opened. Retry.');
+  return new File([await response.blob()], recording.name, {
+    type: recording.name.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4',
+  });
 }

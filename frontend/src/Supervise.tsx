@@ -11,6 +11,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
+import { privateMedia } from './api';
 import { Scene } from './Scene';
 import { isAlert, label, timecode, type Event, type Run } from './types';
 export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
@@ -22,6 +23,29 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
   const video = useRef<HTMLVideoElement>(null),
     lastAlert = useRef('');
   const synthetic = run.provenance === 'synthetic';
+  const [mediaUrl, setMediaUrl] = useState(''),
+    [mediaError, setMediaError] = useState('');
+  useEffect(() => {
+    if (synthetic) return;
+    let active = true,
+      url = '';
+    setMediaUrl('');
+    setMediaError('');
+    void privateMedia(`/api/media/${run.id}/original.mp4`)
+      .then((value) => {
+        url = value;
+        if (active) setMediaUrl(value);
+        else URL.revokeObjectURL(value);
+      })
+      .catch(() => {
+        if (active)
+          setMediaError('Private recording unavailable. Reopen the run or sign in again.');
+      });
+    return () => {
+      active = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [run.id, synthetic]);
   useEffect(() => {
     setTime(0);
     setPlaying(false);
@@ -120,9 +144,10 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
             <Scene frame={frame} masks={masks} />
           ) : (
             <div className="video-layer">
+              {mediaError && <p role="alert">{mediaError}</p>}
               <video
                 ref={video}
-                src={`/api/media/${run.id}/original.mp4`}
+                src={mediaUrl || undefined}
                 onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
                 onEnded={() => setPlaying(false)}
               />

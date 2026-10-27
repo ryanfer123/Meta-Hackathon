@@ -12,6 +12,9 @@ import {
   deleteRecording,
   deleteSavedRun,
   listRecordings,
+  listAnalysisJobs,
+  recordingFile,
+  type AnalysisJob,
   listRuns,
   openSavedRun,
   recordingUrl,
@@ -27,8 +30,11 @@ interface Props {
   onSignIn: () => void;
   onOpen: (run: Run) => void;
   refreshKey: number;
+  onUse: (file: File, kind: Recording['kind']) => void;
+  onResume: (job: AnalysisJob) => void;
 }
-export function RunLibrary({ userId, onSignIn, onOpen, refreshKey }: Props) {
+export function RunLibrary({ userId, onSignIn, onOpen, refreshKey, onUse, onResume }: Props) {
+  const [jobs, setJobs] = useState<AnalysisJob[]>([]);
   const [runs, setRuns] = useState<SavedRun[]>([]),
     [recordings, setRecordings] = useState<Recording[]>([]),
     [busy, setBusy] = useState(false),
@@ -50,10 +56,11 @@ export function RunLibrary({ userId, onSignIn, onOpen, refreshKey }: Props) {
     let active = true;
     setBusy(true);
     setError('');
-    void Promise.all([listRuns(), listRecordings()])
-      .then(([r, f]) => {
+    void Promise.all([listRuns(), listRecordings(), listAnalysisJobs()])
+      .then(([r, f, j]) => {
         if (active) {
           setRuns(r);
+          setJobs(j);
           setRecordings(f);
         }
       })
@@ -101,6 +108,34 @@ export function RunLibrary({ userId, onSignIn, onOpen, refreshKey }: Props) {
         </div>
       ) : (
         <>
+          {!!jobs.length && (
+            <section className="library-section">
+              <div className="section-heading">
+                <h2>Analysis jobs</h2>
+                <button className="text-button" onClick={() => setVersion((v) => v + 1)}>
+                  Refresh jobs
+                </button>
+              </div>
+              {jobs.map((job) => (
+                <article className="saved-run" key={job.id}>
+                  <div>
+                    <strong>{job.kind === 'learn' ? 'Expert protocol' : 'Procedure review'}</strong>
+                    <p>
+                      {job.status} · {new Date(job.created_at).toLocaleString()}
+                    </p>
+                    {job.status === 'error' && (
+                      <p>{String(job.result.error ?? 'Processing failed')}</p>
+                    )}
+                  </div>
+                  {job.status === 'ready' && (
+                    <button className="button" onClick={() => onResume(job)}>
+                      Open result <ArrowRight size={15} />
+                    </button>
+                  )}
+                </article>
+              ))}
+            </section>
+          )}
           <section className="library-section">
             <div className="section-heading">
               <h2>
@@ -217,6 +252,13 @@ export function RunLibrary({ userId, onSignIn, onOpen, refreshKey }: Props) {
                     Uploaded, analysis pending
                   </p>
                 </div>
+                <button
+                  className="button"
+                  disabled={busy}
+                  onClick={() => void task(async () => onUse(await recordingFile(r), r.kind))}
+                >
+                  Use in Learn
+                </button>
                 <button
                   className="button"
                   disabled={busy}

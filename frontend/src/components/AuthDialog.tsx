@@ -3,7 +3,16 @@ import { Mail, LockKeyhole } from 'lucide-react';
 import { Dialog } from './Dialog';
 import { supabase } from '../lib/supabase';
 
-export function AuthDialog({ onClose }: { onClose: () => void }) {
+export function AuthDialog({
+  onClose,
+  onAuthenticated,
+  inline = false,
+}: {
+  onClose: () => void;
+  onAuthenticated?: () => void;
+  inline?: boolean;
+}) {
+  const success = onAuthenticated ?? onClose;
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState(''),
     [password, setPassword] = useState('');
@@ -20,7 +29,7 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
       if (mode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        onClose();
+        success();
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -28,7 +37,7 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
           options: { emailRedirectTo: `${location.origin}/#/workspace` },
         });
         if (error) throw error;
-        if (data.session) onClose();
+        if (data.session) success();
         else setMessage('Check your email to confirm your account, then sign in here.');
       }
     } catch (e) {
@@ -37,14 +46,12 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
       setBusy(false);
     }
   }
-  return (
-    <Dialog
-      title={mode === 'signin' ? 'Your private workspace' : 'Create your workspace'}
-      onClose={onClose}
-    >
+  const title = mode === 'signin' ? 'Your private workspace' : 'Create your workspace';
+  const content = (
+    <>
       <p className="dialog-description">
-        Save runs, keep protocols, and store your recordings privately. The sample replay is always
-        available without an account.
+        Sign in to review procedures, save runs, and store recordings. An account is required to
+        enter the workstation.
       </p>
       <form className="auth-form" onSubmit={(e) => void submit(e)}>
         <label htmlFor="account-email">Email</label>
@@ -100,8 +107,18 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
         {mode === 'signin' ? 'New here? Create an account' : 'Already have an account? Sign in'}
       </button>
       <button className="text-button guest-link" onClick={onClose}>
-        Continue with the sample replay
+        Back to the homepage
       </button>
+    </>
+  );
+  return inline ? (
+    <section className="auth-card">
+      <h1>{title}</h1>
+      {content}
+    </section>
+  ) : (
+    <Dialog title={title} onClose={onClose}>
+      {content}
     </Dialog>
   );
 }

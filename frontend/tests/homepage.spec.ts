@@ -1,8 +1,10 @@
+import { mockAccount } from './account';
 import { test, expect } from '@playwright/test';
 
 test('homepage compares real fixture results and opens the selected run', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  await mockAccount(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Good work. Worth repeating.' })).toBeVisible();
   await expect(page.locator('.comparison-step')).toHaveCount(4);
@@ -21,6 +23,7 @@ test('homepage compares real fixture results and opens the selected run', async 
 });
 
 test('homepage images load and layout fits at this viewport', async ({ page }) => {
+  await mockAccount(page);
   await page.goto('/');
   for (const image of await page.locator('img').all()) {
     await image.evaluate((el) => el.scrollIntoView({ block: 'center' }));
@@ -33,9 +36,7 @@ test('homepage images load and layout fits at this viewport', async ({ page }) =
   await expect(page.locator('#narration')).toBeVisible();
 });
 
-test('guest save opens account dialog, validates errors and returns to replay', async ({
-  page,
-}) => {
+test('workspace requires sign-in and invalid credentials do not grant access', async ({ page }) => {
   await page.route('**/auth/v1/token*', (route) =>
     route.fulfill({
       status: 400,
@@ -44,18 +45,13 @@ test('guest save opens account dialog, validates errors and returns to replay', 
     }),
   );
   await page.goto('/#/workspace');
-  await expect(page.getByRole('button', { name: 'Save run', exact: true })).toBeEnabled();
-  await page.getByRole('button', { name: 'Save run', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('Your private workspace');
+  await expect(page.getByRole('heading', { name: 'Your private workspace' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toHaveCount(0);
   await page.getByLabel('Email', { exact: true }).fill('demo@example.invalid');
   await page.getByLabel('Password', { exact: true }).fill('test-password');
-  // With no cloud environment configured, account submission is intentionally disabled.
-  const submit = page.getByRole('dialog').getByRole('button', { name: 'Sign in', exact: true });
-  if (await submit.isEnabled()) {
-    await submit.click();
-    await expect(page.getByRole('alert')).toContainText('Invalid login credentials');
-  } else await expect(page.getByRole('dialog')).toContainText('not configured');
-  await page.getByRole('button', { name: 'Continue with the sample replay' }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Invalid login credentials');
+  await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Back to the homepage' }).click();
+  await expect(page.getByRole('heading', { name: 'Good work. Worth repeating.' })).toBeVisible();
 });

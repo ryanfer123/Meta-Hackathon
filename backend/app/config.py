@@ -7,6 +7,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     replay_mode: bool = True
+    auth_required: bool = True
+    supabase_url: str = ""
+    supabase_publishable_key: str = ""
+    supabase_access_token: SecretStr = SecretStr("")
+    server_budget_key: SecretStr = SecretStr("")
+    cloud_jobs: bool = False
+    cors_origins: list[str] = ["https://apprentice-meta.onrender.com"]
     model_api_key: SecretStr = SecretStr("")
     glimmer_base_url: str = ""
     glimmer_api_key: SecretStr = SecretStr("")

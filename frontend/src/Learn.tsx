@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowUpRight, CheckCircle2, Clock3, FileVideo, Upload } from 'lucide-react';
 import { download, json } from './api';
+import type { AnalysisJob } from './lib/workspace';
 import type { Health, Protocol, Run, Validation } from './types';
 const checks: [string, string, string][] = [
   ['discriminative', 'Discriminative', 'False before, true after'],
@@ -27,10 +28,14 @@ export function Learn({
   run,
   health,
   onRun,
+  source,
+  initialJob,
 }: {
   run: Run;
   health: Health;
   onRun: (run: Run) => void;
+  source?: { file: File; kind: 'expert' | 'held_out' | 'novice' } | null;
+  initialJob?: AnalysisJob | null;
 }) {
   const [expert, setExpert] = useState<File | null>(null),
     [heldout, setHeldout] = useState<File | null>(null),
@@ -43,6 +48,20 @@ export function Learn({
     [busy, setBusy] = useState(''),
     [error, setError] = useState(''),
     [repair, setRepair] = useState(false);
+  useEffect(() => {
+    if (source) {
+      if (source.kind === 'expert') setExpert(source.file);
+      else if (source.kind === 'held_out') setHeldout(source.file);
+      else setNovice(source.file);
+    }
+  }, [source]);
+  useEffect(() => {
+    if (initialJob?.result.protocol) {
+      setId(initialJob.id);
+      setProtocol(initialJob.result.protocol as Protocol);
+      setValidation(initialJob.result.validation as Validation | undefined);
+    }
+  }, [initialJob]);
   const live = health.live_configured;
   async function task(name: string, fn: () => Promise<void>) {
     setBusy(name);
@@ -118,7 +137,7 @@ export function Learn({
           <div className="notice">
             <Clock3 size={18} />
             <p>
-              Live compilation is waiting for your Meta API setup and recordings. Explore the sample
+              The analysis service is not connected on this installation. Explore the sample
               protocol on the right. It is a handwritten engineering fixture.
             </p>
           </div>
