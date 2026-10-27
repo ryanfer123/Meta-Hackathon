@@ -22,6 +22,8 @@ class Supervisor:
     """Replayable rule engine. Advisory model opinions never mutate this object."""
 
     def __init__(self, protocol: Protocol, smoothing: int = 3) -> None:
+        if not 1 <= smoothing <= 10:
+            raise ValueError("smoothing must be between 1 and 10 frames")
         self.protocol = protocol
         self.smoothing = smoothing
         self.states = {s.id: StepState() for s in protocol.steps}

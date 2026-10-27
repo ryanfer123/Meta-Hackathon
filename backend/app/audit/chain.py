@@ -35,6 +35,11 @@ def verify_entries(
     for entry in entries:
         try:
             payload = {k: entry[k] for k in ("event", "evidence_sha256", "prev_hash")}
+            if (
+                "canonical_entry" in entry
+                and entry["canonical_entry"] != canonical(payload).decode()
+            ):
+                return False
             if payload["prev_hash"] != previous or digest(payload) != entry["hash"]:
                 return False
             if evidence is not None and payload["evidence_sha256"] is not None:

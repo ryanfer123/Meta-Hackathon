@@ -106,10 +106,18 @@ def validate_protocol(
         "held_out": bool(expert_b) and clean(protocol, expert_b),
         "counterfactual": bool(eligible) and all(bool(c["flagged"]) for c in eligible),
     }
+    trace: dict[str, list[dict[str, object]]] = {}
+    for step in protocol.steps:
+        trace[step.id] = []
+        for i in range(0, len(expert_a), max(1, len(expert_a) // 12)):
+            frame = expert_a[i]
+            values = [evaluate(p, expert_a[: i + 1], frame.t) for p in step.post]
+            trace[step.id].append({"t": frame.t, "post": values})
     protocol.verified = all(checks.values())
     return {
         "checks": checks,
         "steps": discriminative,
+        "predicate_trace": trace,
         "counterfactuals": controls,
         "verified": protocol.verified,
         "repair_rounds": 0,

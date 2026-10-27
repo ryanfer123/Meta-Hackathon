@@ -43,6 +43,10 @@ test('learn exposes pending evidence and mobile has no page overflow',async({pag
  await page.goto('/');await page.getByRole('button',{name:'Upload a recording',exact:true}).click();
  await expect(page.getByRole('button',{name:'Compile protocol',exact:true})).toBeDisabled();
  await expect(page.locator('.validation-checks .pending')).toHaveCount(4);
+ await page.locator('#narration').fill('[{"start":0,"end":2,"text":"Retained narration"}]');
+ await page.getByRole('button',{name:'Supervise',exact:true}).click();
+ await page.getByRole('button',{name:'Learn',exact:true}).click();
+ await expect(page.locator('#narration')).toHaveValue('[{"start":0,"end":2,"text":"Retained narration"}]');
  await expect(page.getByText('Sample protocol · synthetic fixture · not learned from video.')).toBeVisible();
  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);expect(overflow).toBeFalsy();
  await page.getByRole('button',{name:'Scope & provenance',exact:true}).click();

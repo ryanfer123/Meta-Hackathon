@@ -1,11 +1,11 @@
 import type { Frame } from './types';
 const colors: Record<string, string> = { tube_1: '#64b5f6', tube_2: '#ee7777', tube_3: '#f0d367', tube_4: '#74c99a', cap_1: '#64b5f6', label_1: '#e4e8dc', dropper: '#c6d3dc', hand: '#b8a291', holder: '#7f9690' };
 export function Scene({ frame, masks }: { frame: Frame; masks: boolean }) {
-  return <svg className="scene" viewBox="0 0 640 360" role="img" aria-label="Simulated top-down tabletop scene, with object positions from synthetic masks">
+  return <svg className="scene" viewBox="0 45 640 315" role="img" aria-label="Simulated top-down tabletop scene, with object positions from synthetic masks">
     <defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#526057" strokeWidth=".4" opacity=".3"/></pattern><linearGradient id="bench" x2="1" y2="1"><stop stopColor="#2b3430"/><stop offset="1" stopColor="#202824"/></linearGradient></defs>
     <rect x="8" y="8" width="624" height="344" rx="13" fill="url(#bench)" stroke="#586359"/>
     <rect x="8" y="8" width="624" height="344" rx="13" fill="url(#grid)"/>
-    <text x="29" y="33" fill="#8c9c90" fontSize="9" letterSpacing="2">COLORED-WATER HANDLING / TOP VIEW</text>
+    <text x="29" y="63" fill="#8c9c90" fontSize="9" letterSpacing="2">COLORED-WATER HANDLING / TOP VIEW</text>
     <rect x="104" y="147" width="320" height="131" rx="10" fill="#111a16" opacity=".5"/>
     <rect x="101" y="145" width="320" height="126" rx="9" fill="#677269" stroke="#89948b" strokeWidth="2"/>
     <rect x="109" y="153" width="304" height="108" rx="6" fill="#36443b"/>

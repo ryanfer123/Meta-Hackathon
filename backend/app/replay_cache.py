@@ -34,7 +34,12 @@ class ReplayCache:
 
     def get(self, namespace: str, key: str) -> Any:
         path = self.root / namespace / f"{key}.json"
-        return json.loads(path.read_text()) if path.exists() else None
+        if not path.exists():
+            return None
+        entry = json.loads(path.read_text())
+        if entry.get("sha256") != digest(entry.get("payload")):
+            raise ValueError("Cache payload digest mismatch")
+        return entry
 
     def put(self, namespace: str, key: str, payload: Any, provenance: str) -> None:
         atomic_json(

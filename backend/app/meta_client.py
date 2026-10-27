@@ -1,5 +1,6 @@
 import base64
 import json
+import mimetypes
 import time
 from pathlib import Path
 from typing import Any, TypeVar
@@ -16,7 +17,10 @@ T = TypeVar("T", bound=BaseModel)
 
 
 def image_url(path: Path) -> str:
-    return "data:image/jpeg;base64," + base64.b64encode(path.read_bytes()).decode()
+    mime = mimetypes.guess_type(path.name)[0] or "image/jpeg"
+    if mime not in {"image/jpeg", "image/png", "image/webp"}:
+        raise ValueError("Use a JPEG, PNG or WebP image")
+    return "data:" + mime + ";base64," + base64.b64encode(path.read_bytes()).decode()
 
 
 def response_text(raw: dict[str, Any]) -> str:
@@ -89,7 +93,11 @@ class MetaClient:
     @staticmethod
     def estimate(kind: str, usage: dict[str, Any]) -> float | None:
         if kind == "sam":
-            return 0.0025  # image-only adapter; video requests need video_frames_processed
+            return (
+                float(usage["video_frames_processed"]) * 0.0002
+                if "video_frames_processed" in usage
+                else 0.0025
+            )
         if kind == "spark" and "input_tokens" in usage and "output_tokens" in usage:
             return float(usage["input_tokens"]) * 1.25e-6 + float(usage["output_tokens"]) * 4.25e-6
         return None

@@ -53,7 +53,7 @@ def sample_protocol() -> Protocol:
         {
             "id": "cap",
             "title": "Cap tube 1",
-            "narration_hint": "Bring the blue cap into contact with tube 1.",
+            "narration_hint": "Bring the blue cap to tube 1.",
             "action": [{"op": "touching", "a": "hand", "b": "cap_1"}],
             "post": [{"op": "touching", "a": "cap_1", "b": "tube_1", "max_gap_px": 4}],
             "max_dwell_s": 7,

@@ -210,3 +210,13 @@ def test_mutation_rebases_time():
     out = mutate(frames, {"s": StepRange(start=4, end=6)}, "s")
     assert len(out) == len(frames) - 5
     assert [f.t for f in out] == [i / 2 for i in range(len(out))]
+
+
+def test_irregular_masks_use_real_pixel_distance():
+    import cv2
+
+    a = np.zeros((64, 64), dtype=np.uint8)
+    b = np.zeros((64, 64), dtype=np.uint8)
+    cv2.circle(a, (15, 20), 5, 1, -1)
+    cv2.circle(b, (27, 20), 5, 1, -1)
+    assert distance(a.astype(bool), b.astype(bool)) == pytest.approx(2)

@@ -197,7 +197,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             except RuntimeError:
                 pass
 
-    dist = Path(__file__).resolve().parents[2] / ".." / "frontend" / "dist"
+    dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
     if dist.exists():
         app.mount("/", StaticFiles(directory=dist, html=True), name="frontend")
     return app

@@ -31,9 +31,10 @@ class Verifier:
                     }
                 )
         except (RuntimeError, OSError, ValueError, httpx.HTTPError) as exc:
-            self.shadow.append(
-                {"step_id": event.step_id, "available": False, "reason": type(exc).__name__}
-            )
+            if shadow:
+                self.shadow.append(
+                    {"step_id": event.step_id, "available": False, "reason": type(exc).__name__}
+                )
         if shadow and answer and not answer.completed:
             events.append(
                 event.model_copy(

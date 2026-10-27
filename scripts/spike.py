@@ -58,14 +58,14 @@ def main() -> None:
             ]
         if args.video:
             sampled = sample(args.video, settings.data_dir / "runs" / job / "frames")
-            observations["sam_frame_sequence_matches"] = [
-                len(
-                    decode(
-                        client.segment(p, args.prompt, job, i + 1), image.shape[1], image.shape[0]
-                    )
-                )
-                for i, (_, p) in enumerate(sampled[:3])
-            ]
+            sequence_matches = []
+            for i, (_, path) in enumerate(sampled[:3]):
+                frame = cv2.imread(str(path))
+                if frame is None:
+                    raise ValueError("Cannot read sampled spike frame")
+                wire = client.segment(path, args.prompt, job, i + 1)
+                sequence_matches.append(len(decode(wire, frame.shape[1], frame.shape[0])))
+            observations["sam_frame_sequence_matches"] = sequence_matches
             # Native video shape verified in Meta's segmenting docs. Keep clips short for this spike.
             if args.video.stat().st_size > 10 * 1024 * 1024:
                 raise ValueError("Native video spike limited to 10 MB; use a short clip")

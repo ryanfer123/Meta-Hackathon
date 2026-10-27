@@ -204,3 +204,38 @@ def test_sample_provenance_no_fabricated_metrics():
     assert r["metrics"]["model_calls"] == 0
     assert r["metrics"]["latency_ms"] is None
     assert not r["protocol"]["verified"]
+
+
+def test_cache_detects_payload_edit(tmp_path):
+    cache = ReplayCache(tmp_path)
+    cache.put("sam", "key", {"mask": "original"}, "live-meta-sam-3.1")
+    path = tmp_path / "sam/key.json"
+    value = json.loads(path.read_text())
+    value["payload"]["mask"] = "changed"
+    path.write_text(json.dumps(value))
+    with pytest.raises(ValueError):
+        cache.get("sam", "key")
+
+
+def test_validation_refuses_identical_expert_takes(tmp_path):
+    from app.samples import sample_protocol
+    from app.service import process_validation
+
+    folder = tmp_path / "jobs/same"
+    folder.mkdir(parents=True)
+    (folder / "original.mp4").write_bytes(b"identical-recording")
+    (folder / "heldout.mp4").write_bytes(b"identical-recording")
+    (folder / "protocol.json").write_text(sample_protocol().model_dump_json(by_alias=True))
+    process_validation(cfg(tmp_path), "same", {}, False)
+    status = json.loads((folder / "status.json").read_text())
+    assert status["status"] == "error"
+    assert "must differ" in status["error"]
+
+
+def test_sam_video_cost_uses_processed_frame_usage():
+    assert MetaClient.estimate("sam", {"video_frames_processed": 50}) == 0.01
+
+
+def test_model_opinion_rejects_coerced_strings():
+    with pytest.raises(ValidationError):
+        Opinion.model_validate_json('{"completed":"true","confidence":"0.9","reason":"coercion"}')

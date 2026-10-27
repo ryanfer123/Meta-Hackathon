@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -114,6 +115,7 @@ def call_metrics(settings: Settings, job: str, shadow: list[dict[str, object]]) 
     available = [s for s in shadow if s.get("available")]
     return {
         "model_calls": len(calls),
+        "tier_distribution": dict(Counter(c["tier"] for c in calls)),
         "calls": calls,
         "cloud_frames": cloud,
         "local_frames": local,
@@ -136,8 +138,10 @@ def process_run(settings: Settings, job: str, protocol: Protocol, color_fallback
         frames = track(client, protocol, paths, file_hash(video), color_fallback)
         supervisor = replay(protocol, frames)
         glimmer = GlimmerClient(settings, job)
+        evidence = evidence_overlays(frames, paths, folder)
+        review_full: list[Path] = []
         verifier = Verifier(
-            glimmer.opinion, lambda prompt, images: client.structured(prompt, Opinion, images)
+            glimmer.opinion, lambda prompt, images: client.structured(prompt, Opinion, review_full)
         )
         events = []
         for event in supervisor.events:
@@ -145,6 +149,36 @@ def process_run(settings: Settings, job: str, protocol: Protocol, color_fallback
             if event.kind not in ("step_completed", "uncertain"):
                 continue
             nearby = [p for t, p in paths if event.t - 1 <= t <= event.t][-3:]
+            review_full = [folder / ("evidence_" + p.name) for p in nearby]
+            review_crops: list[Path] = []
+            step = next((s for s in protocol.steps if s.id == event.step_id), None)
+            names = {
+                str(getattr(p, key))
+                for p in (step.action + step.post if step else [])
+                for key in ("a", "b", "obj")
+                if hasattr(p, key)
+            } - {"hand"}
+            for raw_path, outlined in zip(nearby, review_full, strict=True):
+                state = next(f for f in frames if f.evidence_frame == str(raw_path))
+                boxes = [
+                    cv2.boundingRect(d.mask.astype("uint8"))
+                    for name, d in state.objects.items()
+                    if name in names and d is not None and d.mask is not None and d.mask.any()
+                ]
+                image = cv2.imread(str(outlined))
+                if image is None:
+                    raise ValueError("Cannot read verifier evidence")
+                if boxes:
+                    x0, y0 = (
+                        max(0, min(x for x, _, _, _ in boxes) - 64),
+                        max(0, min(y for _, y, _, _ in boxes) - 64),
+                    )
+                    x1 = min(state.width, max(x + w for x, _, w, _ in boxes) + 64)
+                    y1 = min(state.height, max(y + h for _, y, _, h in boxes) + 64)
+                    image = image[y0:y1, x0:x1]
+                crop = folder / ("review_" + str(event.step_id) + "_" + raw_path.name)
+                cv2.imwrite(str(crop), image)
+                review_crops.append(crop)
             prompt = (
                 "Review only observable completion. "
                 + protocol.model_dump_json()
@@ -152,9 +186,8 @@ def process_run(settings: Settings, job: str, protocol: Protocol, color_fallback
                 + event.model_dump_json()
             )
             events.extend(
-                verifier.review(event, prompt, nearby, shadow=event.kind == "step_completed")
+                verifier.review(event, prompt, review_crops, shadow=event.kind == "step_completed")
             )
-        evidence = evidence_overlays(frames, paths, folder)
         run: dict[str, Any] = {
             "id": job,
             "name": "Uploaded recording",
@@ -184,11 +217,15 @@ def process_validation(
     client = MetaClient(settings, job + "-validation")
     try:
         protocol = Protocol.model_validate_json((folder / "protocol.json").read_text())
+        a_hash, b_hash = file_hash(folder / "original.mp4"), file_hash(folder / "heldout.mp4")
+        if a_hash == b_hash:
+            raise ValueError("Held-out recording must differ from the compile recording")
         a_paths = sample(folder / "original.mp4", folder / "frames")
         b_paths = sample(folder / "heldout.mp4", folder / "heldout-frames")
         a = track(client, protocol, a_paths, file_hash(folder / "original.mp4"))
         b = track(client, protocol, b_paths, file_hash(folder / "heldout.mp4"))
         result = validate_protocol(protocol, a, b, ranges)
+        history = [{"round": 0, "checks": result["checks"], "verified": result["verified"]}]
         for round_idx in range(1, 4):
             if result["verified"] or not repair:
                 break
@@ -200,6 +237,12 @@ def process_validation(
             protocol = Protocol.model_validate(protocol.model_dump(by_alias=True))
             result = validate_protocol(protocol, a, b, ranges)
             result["repair_rounds"] = round_idx
+            history.append(
+                {"round": round_idx, "checks": result["checks"], "verified": result["verified"]}
+            )
+        result["repair_history"] = history
+        result["compile_video_sha256"] = a_hash
+        result["held_out_video_sha256"] = b_hash
         atomic_json(folder / "self_check.json", result)
         atomic_json(folder / "protocol.json", protocol.model_dump(by_alias=True))
         atomic_json(
