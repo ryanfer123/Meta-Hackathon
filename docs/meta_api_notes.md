@@ -1,6 +1,6 @@
 # Meta API findings - 2026-10-27
 
-Documentation verified; live observations pending. User will supply keys later. No account, billing, regional access, spend notification or paid endpoint has been tested.
+Documentation verified and initial authenticated Spark/SAM image calls succeeded from the local backend on Oct 27. The key is stored only in ignored local configuration. Billing dashboard, regional availability beyond this account, spend notifications, Voice, SAM video and Glimmer remain unverified.
 
 - Base URL https://api.meta.ai/v1; Spark `muse-spark-1.3` via OpenAI-compatible requests. Image count limits require a live spike.
 - SAM `sam-3.1` uses Responses with image/video inputs, not a guessed `/segment` endpoint. Output is special-token text, not JSON masks. Use the official parser. Stable IDs hold within a video response; missing frames/occlusion require care. Keyframe image calls cannot guarantee identity of identical objects.
@@ -10,3 +10,17 @@ Documentation verified; live observations pending. User will supply keys later. 
 - Costs must be measured from actual usage; estimates are not bills. Spike records latency/usage when explicitly run. No live numbers are published yet.
 
 Sources: [Overview](https://dev.meta.ai/docs), [SAM](https://dev.meta.ai/docs/sam/overview), [SAM grammar](https://dev.meta.ai/docs/sam/reading-segmentation), [parser](https://dev.meta.ai/docs/sam/client-libraries), [Voice](https://dev.meta.ai/docs/speech-to-text), [Glimmer](https://dev.meta.ai/docs/muse-glimmer/deploy), [pricing](https://dev.meta.ai/docs/pricing-rate-limits).
+
+## Initial live adapter spike
+
+Local evidence: `data/runs/spike-1793122266/observations.json` and `calls.jsonl` (ignored, no credentials logged). Input was the public generated tabletop illustration, not an expert/novice recording.
+
+| Check | Observation | One-call latency | Usage / estimate |
+|---|---|---|---|
+| Spark structured text | Opinion JSON validated | 5,530 ms | 134 input / 657 output tokens; estimated $0.002960 |
+| Spark image input | Two copies of the illustration accepted; Opinion JSON validated | 4,506 ms | 4,187 input / 513 output tokens; estimated $0.007414 |
+| SAM image prompt | Response parsed into two candidate masks for blue cap | 2,370 ms | 1 image; estimated $0.002500 |
+
+These are single adapter checks, not median/p95 latency, physical accuracy or a measured API image-count limit. The two SAM candidates are ambiguous; the production observer must retain unknown identity rather than silently selecting one. Total estimated spike cost: $0.012874, not a provider billing receipt. No Voice/audio/video input was supplied. Glimmer endpoint remains unconfigured.
+
+An earlier connection probe authenticated successfully but its 128-token output budget was consumed by reasoning (`status=incomplete`, no answer). The subsequent normal adapter spike returned complete schema-valid outputs.

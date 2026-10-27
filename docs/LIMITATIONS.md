@@ -1,7 +1,7 @@
 # Limitations and evidence boundaries
 
 - The six public examples are synthetic masks and a manually authored protocol. They establish engineering behavior only. No real-video model accuracy, latency, egress percentage, shadow agreement or successful deployment of Glimmer is claimed.
-- Meta account access and physical recordings will be supplied later. Live adapters are validated with mocked transport and the installed SAM parser, not with paid production responses.
+- Meta account access was verified by live Spark text/two-image and SAM image calls using a generated illustration. SAM returned two candidates, not a verified object identity. Physical recordings, Voice/video calls and end-to-end live protocol validation remain pending; mocked transports still cover other adapter paths.
 - Single camera, fixed tabletop, one protocol per job; 2 fps, at most 180 sampled frames (90 seconds). Fast actions between samples can be missed. Webcam streaming is not implemented.
 - Geometry can establish visible contact or placement. It cannot prove liquid transfer, concentration, volume, mixing, sterility, correct cap tightness or hidden actions. This is a non-medical demonstration, not a lab safety system.
 - Bbox containment is a coarse geometric approximation; touching thresholds depend on camera resolution. Model confidence is not calibrated. Occluded or ambiguous instances remain unknown.

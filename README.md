@@ -4,7 +4,7 @@
 
 [Live replay](https://apprentice-meta.onrender.com) · [Deployment status](docs/DEPLOYMENT.md) · [Judge review](docs/JUDGE_REVIEW.md) · [Architecture](docs/ARCHITECTURE.md) · [Limitations](docs/LIMITATIONS.md)
 
-**Current evidence:** the public replay uses six original synthetic scenes and a handwritten protocol. It exercises the real Python rule engine, playback, deviations and audit chain. Meta inference, learning from real recordings, Glimmer deployment, real accuracy and model latency remain unverified until API configuration and recordings are supplied. This is not yet a competition-ready scientific result.
+**Current evidence:** the public replay uses six original synthetic scenes and a handwritten protocol. It exercises the real Python rule engine, playback, deviations and audit chain. Initial live Spark text/image and SAM image adapter checks passed on an illustrative image. Learning from real recordings, Glimmer deployment, real accuracy and end-to-end model latency remain unverified until recordings and remaining services are supplied. This is not yet a competition-ready scientific result.
 
 ## Run locally
 
@@ -48,8 +48,8 @@ The observer currently uses SAM image keyframes at 2 fps, requires distinct obje
 
 | Component | Role | Current validation |
 |---|---|---|
-| Muse Spark 1.3 | Propose/repair strict Protocol JSON; advisory escalation | Mocked transport; live pending |
-| SAM 3.1 | Text-prompt masks via Responses, official Python parser | Installed parser + malformed/empty fixtures; live pending |
+| Muse Spark 1.3 | Propose/repair strict Protocol JSON; advisory escalation | Live text/two-image Opinion JSON spike passed; full protocol live validation pending |
+| SAM 3.1 | Text-prompt masks via Responses, official Python parser | Live image response parsed; 2 ambiguous candidates; video tracking pending |
 | Muse Voice Transcribe | Narration turn timestamps via `/asr/transcribe` | Documented adapter; live pending |
 | Muse Glimmer 30B | Advisory verification + shadow review on every completed step | Routing tested; GPU/vision pending |
 | Python predicates/state machine | All completion/deviation decisions | Synthetic and unit checks |
