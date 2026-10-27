@@ -1,0 +1,25 @@
+[project]
+name = "apprentice-protocol"
+version = "0.1.0"
+description = "Evidence-first physical procedure verification"
+requires-python = ">=3.11,<3.15"
+dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "pydantic>=2.9,<3", "pydantic-settings>=2.5,<3", "numpy>=2,<3", "opencv-python-headless>=4.10,<5", "httpx>=0.27,<1", "openai>=1.60,<3", "python-multipart>=0.0.18", "meta-sam-parser>=0.0.6"]
+[dependency-groups]
+dev = ["pytest>=8,<10", "ruff>=0.9", "mypy>=1.14", "pytest-cov>=6"]
+[tool.pytest.ini_options]
+pythonpath = ["backend", "."]
+testpaths = ["backend/tests"]
+markers = ["live: opt-in paid network checks"]
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+[tool.mypy]
+python_version = "3.11"
+strict = true
+mypy_path = "backend"
+[[tool.mypy.overrides]]
+module = ["cv2", "meta_sam_parser.*"]
+ignore_missing_imports = true
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP"]

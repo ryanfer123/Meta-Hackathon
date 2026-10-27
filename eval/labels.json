@@ -1,0 +1,1 @@
+{"status":"pending-real-recordings","tolerance_s":2,"runs":[],"example_run":{"id":"test-01","split":"test","source":"real","video":"runs/test/test-01.mp4","prediction":"runs/test/test-01.prediction.json","events":[{"kind":"skipped","step_id":"cap","t":17.0}]}}
