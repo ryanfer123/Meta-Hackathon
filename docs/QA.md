@@ -7,6 +7,8 @@
 - Live Supabase SQL tests passed: authenticated owner access, peer isolation, spoof rejection, update/delete restrictions, private storage policy, anonymous denial, required snapshot fields, atomic failed-save rollback, save and paired deletion. Both test transactions were fully rolled back. Security advisor returned no findings after all three migrations.
 - Browser account/save/open/delete/upload tests mock cloud HTTP; they do not establish real email delivery. Production Site URL and redirect allowlist were verified in the signed-in Supabase dashboard after reload. Real mailbox confirmation and real Meta inference remain pending.
 
+Current source `762f432fe12513f8daef8b08e8d3bbc96806482d` passed both GitHub CI jobs: https://github.com/ryanfer123/Meta-Hackathon/actions/runs/40546782597. Render deployment `dep-dbgdi9oae00c73d0piog` is live. The connected browser loaded the new homepage, checked all image/sample responses (200), sought to the skipped cap in the hosted workstation, and opened its working account form. No document overflow was observed. All 24 Playwright checks also passed against the deployed Render site; account/database/storage HTTP remains mocked in the cloud UI tests.
+
 ## Previous release evidence (historical)
 
 

@@ -2,7 +2,7 @@
 
 Live replay: https://apprentice-meta.onrender.com
 
-Render reports deployment `dep-dbgcuji9lscs739n0s80` live for source commit `4a0d842515f1fc1edd93df7b5c7d036749672cde`. The public site serves six synthetic examples. No model key, inference server or GPU is present in this deployment. Supabase separately provides authenticated persistence and private recording storage.
+Render reports deployment `dep-dbgdi9oae00c73d0piog` live for source commit `762f432fe12513f8daef8b08e8d3bbc96806482d`. The public site serves six synthetic examples. No model key, inference server or GPU is present in this deployment. Supabase separately provides authenticated persistence and private recording storage.
 
 Configuration:
 - Service: `apprentice-meta` (`srv-dbgcuj29lscs739n0qrg`)
@@ -22,3 +22,5 @@ The Dockerfile can serve the full UI and FastAPI together on port 8000 for a pri
 Render build variables include `VITE_STATIC_REPLAY=true`, `VITE_SUPABASE_URL` and the project publishable key. These are public client configuration; service role/model keys are absent. Values were merged into the existing service environment. Database project `ntuuztideqsdvuiiohlh` is active in ap-south-1 with three applied migrations. Auth Site URL and redirect allowlist use the production Render origin. See [Supabase setup](../supabase/README.md).
 
 The homepage is `/`, the guest workstation is `/#/workspace`, and Learn/Audit/library are workspace views. Static samples continue to work without sign-in. Uploaded files remain private and staged until a separately configured inference service processes them.
+
+The homepage, all four image assets, and clean/skipped sample files returned HTTP 200 in the connected browser. The hosted skipped-cap seek and guest account dialog were exercised. GitHub backend and frontend jobs passed for this source: https://github.com/ryanfer123/Meta-Hackathon/actions/runs/40546782597.
