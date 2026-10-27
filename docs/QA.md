@@ -6,8 +6,10 @@
 - The production FastAPI static mount serves the built UI, bundled sample and health endpoint; all three were checked with TestClient after a production build.
 - Ruff checks/format and strict mypy pass on the application; React/TypeScript production build passes.
 - Playwright: 16 desktop/mobile checks pass. Paths cover all six scenarios, actual playback progress, seeking, step predicates, preserved uncertainty, pending validation, chain verification and wrong-root rejection, report access, downloads and page overflow.
-- GitHub Linux backend checks passed on the first publication. Initial frontend CI exposed overlapping timeline markers; the corrected revision groups nearby events. CI on the final revision must be checked independently.
+- GitHub Linux backend checks passed on the first publication. Initial frontend CI exposed overlapping timeline markers; the corrected revision groups nearby events. GitHub Checks run #2 passed for source commit `4a0d842515f1fc1edd93df7b5c7d036749672cde`: https://github.com/ryanfer123/Meta-Hackathon/actions/runs/40533926377.
 - GitHub Pages failed to create the site with `Resource not accessible by integration`; this is a deployment permission failure. The workflow is now opt-in until repository Pages is enabled.
+
+Fresh public clone verification passed: locked Python install, replay API without keys, locked npm install, and production frontend build.
 
 ## Browser and visual verification
 
@@ -35,6 +37,10 @@ Intentional differences: a scenario selector and provenance explanations are req
 
 Above-the-fold copy diff: main headline, subtitle, navigation and action labels match. Added workspace/scenario/overlay labels are functional controls. No accuracy, latency or fabricated inference claim is present. The implementation was visually verified against the reference for these surfaces and intentional differences; no remaining clipping or overlapping control was observed.
 
+## Hosted verification
+
+Render deployment `dep-dbgcuji9lscs739n0s80` is live at https://apprentice-meta.onrender.com for source commit `4a0d842515f1fc1edd93df7b5c7d036749672cde`. In the connected Chrome browser, the hosted app rendered, skipped-cap seeking updated the correct step and alert, all six sample JSON files returned HTTP 200 with synthetic provenance, the audit verified its chain, and the standalone HTML report returned HTTP 200. Document overflow was false. Initial CDN asset propagation briefly returned 404s; reloading after propagation loaded the normal URLs successfully. The static site intentionally has no live API.
+
 ## Remaining evidence
 
-Real model calls, GPU serving, expert recordings, held-out/counterfactual success on real data, frozen-test results, public deployment and the final filmed demo require their own verification. Synthetic and mocked checks cannot establish those outcomes.
+Real model calls, GPU serving, expert recordings, held-out/counterfactual success on real data, frozen-test results and the final filmed demo require their own verification. Synthetic and mocked checks cannot establish those outcomes.

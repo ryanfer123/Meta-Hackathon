@@ -19,7 +19,7 @@ Do not substitute synthetic replay for measured real-video results. Replay can e
 - [ ] Expert A/B + counterfactual validation actually pass.
 - [ ] >=6 dev and >=6 frozen test runs independently labelled and evaluated.
 - [ ] Real cached outputs packaged as a consented replay, without credentials/private footage.
-- [ ] Public demo and repository accessible in a fresh browser.
+- [x] Public synthetic replay and repository accessible in a fresh browser: https://apprentice-meta.onrender.com. Real recorded replay remains pending.
 - [ ] Three-minute real-product video accessible without login.
 - [ ] All collaborators/assets credited; model licenses checked.
 - [ ] Platform submission sent and rechecked; X post only when owner explicitly authorizes publishing it.

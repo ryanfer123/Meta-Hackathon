@@ -2,7 +2,7 @@
 
 **Every step. Accounted for.** A browser workstation that turns expert demonstrations into inspectable physical procedures, then checks later recordings with temporal geometry.
 
-[Deployment status](docs/DEPLOYMENT.md) · [Judge review](docs/JUDGE_REVIEW.md) · [Architecture](docs/ARCHITECTURE.md) · [Limitations](docs/LIMITATIONS.md)
+[Live replay](https://apprentice-meta.onrender.com) · [Deployment status](docs/DEPLOYMENT.md) · [Judge review](docs/JUDGE_REVIEW.md) · [Architecture](docs/ARCHITECTURE.md) · [Limitations](docs/LIMITATIONS.md)
 
 **Current evidence:** the public replay uses six original synthetic scenes and a handwritten protocol. It exercises the real Python rule engine, playback, deviations and audit chain. Meta inference, learning from real recordings, Glimmer deployment, real accuracy and model latency remain unverified until API configuration and recordings are supplied. This is not yet a competition-ready scientific result.
 
