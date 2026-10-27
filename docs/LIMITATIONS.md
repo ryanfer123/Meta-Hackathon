@@ -12,6 +12,10 @@
 - Rules do not accept model-only completion. Human review is needed for unknown evidence; a confident LLM opinion cannot fill missing pixels.
 - Glimmer's Modal deployment is prepared and unexecuted. The GPU image, weight access, cold start, vision and latency still need live verification. Modal is cloud infrastructure, not on-device inference.
 - Request and estimated-cost reservations are application guards, not a guarantee against provider charges. Set provider-side controls separately. SAM default call caps may reject long multi-object recordings; increase them deliberately after measuring cost.
-- Local files and SQLite target a trusted single-instance deployment. No authentication, multi-tenant isolation, durable distributed queue or production upload gateway is included. Public hosting stays in replay mode.
+- Local files and SQLite target a trusted single-instance deployment. The separately hosted Supabase workspace adds email/password authentication, owner isolation and private recording storage. The Python inference API itself has no public authentication layer or durable distributed queue and must remain private. Public inference stays in replay mode.
 - Audit verification checks event consistency against a root. Replacing both the chain and root defeats local verification; provenance and external anchoring matter. It does not make the physical observations trustworthy.
 - Real dev/test recordings must be independently labelled and frozen. Small samples and correlated events limit any performance conclusion.
+
+- Supabase uploads stage recordings; they do not trigger analysis. Email confirmation requires the configured production redirect and working email delivery. The email delivery/confirmation path has not been tested with a real mailbox. Default provider mail quotas apply.
+- A saved snapshot is user-supplied data and is not a certification of real model output. Account ownership does not establish the physical truth of a run.
+- Storage uploads and metadata cannot be atomic across services; failed metadata writes attempt file cleanup, but interrupted requests can leave private orphan files.

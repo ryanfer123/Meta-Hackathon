@@ -1,6 +1,6 @@
 # Apprentice
 
-**Every step. Accounted for.** A browser workstation that turns expert demonstrations into inspectable physical procedures, then checks later recordings with temporal geometry.
+**Good work. Worth repeating.** A browser workstation that turns expert demonstrations into inspectable physical procedures, then checks later recordings with temporal geometry.
 
 [Live replay](https://apprentice-meta.onrender.com) · [Deployment status](docs/DEPLOYMENT.md) · [Judge review](docs/JUDGE_REVIEW.md) · [Architecture](docs/ARCHITECTURE.md) · [Limitations](docs/LIMITATIONS.md)
 
@@ -23,6 +23,14 @@ uv run uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 Open `http://127.0.0.1:8000`. For frontend development use `npm run dev` in `frontend`; it proxies `/api` and `/ws` to port 8000. For static-only replay, `npm run dev` works without Python once bundled samples exist.
 
 Try **Skipped cap**, seek to the event markers, inspect a step's predicate, switch to **Clean procedure**, then **Audit → Verify chain**. Learn exposes the sample protocol and pending validation checks. Nothing is represented as a real model call.
+
+## Private cloud workspace
+
+The homepage opens a guest replay with no account. Sign in to save/reopen/delete run snapshots and upload source recordings to a private library. Supabase provides email/password Auth, Postgres, and private Storage. Recording uploads are staged source material; uploading alone does not run model inference.
+
+For a local cloud-enabled frontend, copy `frontend/.env.example` to `frontend/.env.local` and set `VITE_SUPABASE_URL` plus `VITE_SUPABASE_PUBLISHABLE_KEY`. Only the public client key belongs here. Never put a service role or model key in a `VITE_` variable. Set `VITE_STATIC_REPLAY=true` when serving a static replay without Python. These variables are compiled at build time.
+
+Database setup and authorization tests are in [supabase/README.md](supabase/README.md). Every protocol, run, recording row, and stored file is restricted to its authenticated owner. Snapshot saving/deletion is transactional; private playback URLs expire after 60 seconds.
 
 ## Live workflow (after configuration)
 

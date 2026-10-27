@@ -2,12 +2,200 @@ import { useState } from 'react';
 import { ArrowUpRight, CheckCircle2, Download, ShieldCheck } from 'lucide-react';
 import { download, verifyChain } from './api';
 import { isAlert, label, timecode, type ChainEntry, type Run } from './types';
-export function Audit({run}:{run:Run}){
- const [root,setRoot]=useState(run.chain_root),[chain,setChain]=useState<ChainEntry[]>(run.chain),[result,setResult]=useState(''),[busy,setBusy]=useState(false);
- const synthetic=run.provenance==='synthetic', deviations=run.events.filter(e=>isAlert(e.kind)), completed=run.events.filter(e=>e.kind==='step_completed').length;
- async function verify(){setBusy(true);try{setResult(await verifyChain(chain,root.trim())?'Chain matches this root. Store the root separately to establish trust.':'Verification failed: event data, chain order, or root differs.');}catch{setResult('Verification failed: invalid chain file.');}finally{setBusy(false);}}
- return <div className="audit-layout"><section className="panel audit-summary"><div className="section-heading"><h2>Run audit <span>/ {run.name}</span></h2><ShieldCheck size={23}/></div><p className="muted">{synthetic?'Synthetic replay. No camera footage or model inference.':'Recorded run. Decisions grounded in observed masks.'}</p><div className="audit-stats"><div><strong>{completed}<span>/{run.protocol.steps.length}</span></strong><small>steps observed</small></div><div><strong>{deviations.length}</strong><small>review events</small></div><div><strong>{run.metrics.model_calls}</strong><small>model calls</small></div></div>
- <div className="audit-metrics"><p><span>Glimmer shadow agreement</span><strong>{run.metrics.shadow_agreement===null?'Not measured':`${(run.metrics.shadow_agreement*100).toFixed(1)}%`}</strong></p><p><span>Cloud frame transmissions</span><strong>{run.metrics.egress_percent===null?'Not measured':`${run.metrics.egress_percent.toFixed(1)}%`}</strong></p><p><span>Real-world precision / recall</span><strong>Evaluation pending</strong></p><p><span>Provenance</span><strong>{run.provenance}</strong></p></div><p className="field-help">{run.metrics.note}</p><div className="actions"><button className="button" onClick={()=>download(`${run.id}-chain.json`,JSON.stringify(run.chain,null,2))}><Download size={16}/>Export chain</button><button className="button" onClick={()=>download(`${run.id}-root.txt`,run.chain_root+'\n','text/plain')}><Download size={16}/>Save root</button><a className="button primary" target="_blank" rel="noopener noreferrer" href={synthetic?`${import.meta.env.BASE_URL}samples/${run.id.replace('sample-','')}.html`:`/api/runs/${run.id}/report`}>HTML report <ArrowUpRight size={16}/></a></div></section>
- <section className="panel integrity"><h2>Verify the evidence chain</h2><p className="muted">Every event links to its predecessor and its evidence hash. Verification compares the chain with a root you trust.</p><label className="field-label" htmlFor="root-hash">Expected root hash</label><textarea id="root-hash" value={root} onChange={e=>{setRoot(e.target.value);setResult('');}} rows={3} spellCheck={false}/><label className="chain-upload">Load a chain JSON to check <input aria-label="Load audit chain" type="file" accept="application/json,.json" onChange={async e=>{try{const file=e.target.files?.[0];if(file){setChain(JSON.parse(await file.text()));setResult('Chain loaded; ready to verify.');}}catch{setResult('Invalid JSON file.');}}}/></label><button className="button primary full" onClick={()=>void verify()} disabled={busy}><CheckCircle2 size={16}/>{busy?'Verifying…':'Verify chain'}</button>{result&&<p className={result.startsWith('Verification failed')?'error-message':'notice'} role="status">{result}</p>}<p className="integrity-note">A local chain can be rewritten together with its root. Store the root outside the editable report. This check verifies event integrity; checking the pixels also requires the original evidence files.</p></section>
- <section className="panel ledger audit-ledger"><h2>Complete event history</h2><div className="table-scroll"><table><thead><tr><th>Time</th><th>Step</th><th>Decision</th><th>Evidence</th><th>Tier</th></tr></thead><tbody>{run.events.map((e,i)=><tr key={i} className={isAlert(e.kind)?'deviation-row':''}><td className="mono">{timecode(e.t)}</td><td>{e.step_id}</td><td className="decision">{label(e.kind)}</td><td>{e.detail}</td><td><span className="tier">{e.tier}</span></td></tr>)}</tbody></table></div></section></div>;
+export function Audit({ run }: { run: Run }) {
+  const [root, setRoot] = useState(run.chain_root),
+    [chain, setChain] = useState<ChainEntry[]>(run.chain),
+    [result, setResult] = useState(''),
+    [busy, setBusy] = useState(false);
+  const synthetic = run.provenance === 'synthetic',
+    deviations = run.events.filter((e) => isAlert(e.kind)),
+    completed = run.events.filter((e) => e.kind === 'step_completed').length;
+  async function verify() {
+    setBusy(true);
+    try {
+      setResult(
+        (await verifyChain(chain, root.trim()))
+          ? 'Chain matches this root. Store the root separately to establish trust.'
+          : 'Verification failed: event data, chain order, or root differs.',
+      );
+    } catch {
+      setResult('Verification failed: invalid chain file.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="audit-layout">
+      <section className="panel audit-summary">
+        <div className="section-heading">
+          <h2>
+            Run audit <span>/ {run.name}</span>
+          </h2>
+          <ShieldCheck size={23} />
+        </div>
+        <p className="muted">
+          {synthetic
+            ? 'Synthetic replay. No camera footage or model inference.'
+            : 'Recorded run. Decisions grounded in observed masks.'}
+        </p>
+        <div className="audit-stats">
+          <div>
+            <strong>
+              {completed}
+              <span>/{run.protocol.steps.length}</span>
+            </strong>
+            <small>steps observed</small>
+          </div>
+          <div>
+            <strong>{deviations.length}</strong>
+            <small>review events</small>
+          </div>
+          <div>
+            <strong>{run.metrics.model_calls}</strong>
+            <small>model calls</small>
+          </div>
+        </div>
+        <div className="audit-metrics">
+          <p>
+            <span>Glimmer shadow agreement</span>
+            <strong>
+              {run.metrics.shadow_agreement === null
+                ? 'Not measured'
+                : `${(run.metrics.shadow_agreement * 100).toFixed(1)}%`}
+            </strong>
+          </p>
+          <p>
+            <span>Cloud frame transmissions</span>
+            <strong>
+              {run.metrics.egress_percent === null
+                ? 'Not measured'
+                : `${run.metrics.egress_percent.toFixed(1)}%`}
+            </strong>
+          </p>
+          <p>
+            <span>Real-world precision / recall</span>
+            <strong>Evaluation pending</strong>
+          </p>
+          <p>
+            <span>Provenance</span>
+            <strong>{run.provenance}</strong>
+          </p>
+        </div>
+        <p className="field-help">{run.metrics.note}</p>
+        <div className="actions">
+          <button
+            className="button"
+            onClick={() => download(`${run.id}-chain.json`, JSON.stringify(run.chain, null, 2))}
+          >
+            <Download size={16} />
+            Export chain
+          </button>
+          <button
+            className="button"
+            onClick={() => download(`${run.id}-root.txt`, run.chain_root + '\n', 'text/plain')}
+          >
+            <Download size={16} />
+            Save root
+          </button>
+          <a
+            className="button primary"
+            target="_blank"
+            rel="noopener noreferrer"
+            href={
+              synthetic
+                ? `${import.meta.env.BASE_URL}samples/${run.id.replace('sample-', '')}.html`
+                : `/api/runs/${run.id}/report`
+            }
+          >
+            HTML report <ArrowUpRight size={16} />
+          </a>
+        </div>
+      </section>
+      <section className="panel integrity">
+        <h2>Verify the evidence chain</h2>
+        <p className="muted">
+          Every event links to its predecessor and its evidence hash. Verification compares the
+          chain with a root you trust.
+        </p>
+        <label className="field-label" htmlFor="root-hash">
+          Expected root hash
+        </label>
+        <textarea
+          id="root-hash"
+          value={root}
+          onChange={(e) => {
+            setRoot(e.target.value);
+            setResult('');
+          }}
+          rows={3}
+          spellCheck={false}
+        />
+        <label className="chain-upload">
+          Load a chain JSON to check{' '}
+          <input
+            aria-label="Load audit chain"
+            type="file"
+            accept="application/json,.json"
+            onChange={async (e) => {
+              try {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setChain(JSON.parse(await file.text()));
+                  setResult('Chain loaded; ready to verify.');
+                }
+              } catch {
+                setResult('Invalid JSON file.');
+              }
+            }}
+          />
+        </label>
+        <button className="button primary full" onClick={() => void verify()} disabled={busy}>
+          <CheckCircle2 size={16} />
+          {busy ? 'Verifying…' : 'Verify chain'}
+        </button>
+        {result && (
+          <p
+            className={result.startsWith('Verification failed') ? 'error-message' : 'notice'}
+            role="status"
+          >
+            {result}
+          </p>
+        )}
+        <p className="integrity-note">
+          A local chain can be rewritten together with its root. Store the root outside the editable
+          report. This check verifies event integrity; checking the pixels also requires the
+          original evidence files.
+        </p>
+      </section>
+      <section className="panel ledger audit-ledger">
+        <h2>Complete event history</h2>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Step</th>
+                <th>Decision</th>
+                <th>Evidence</th>
+                <th>Tier</th>
+              </tr>
+            </thead>
+            <tbody>
+              {run.events.map((e, i) => (
+                <tr key={i} className={isAlert(e.kind) ? 'deviation-row' : ''}>
+                  <td className="mono">{timecode(e.t)}</td>
+                  <td>{e.step_id}</td>
+                  <td className="decision">{label(e.kind)}</td>
+                  <td>{e.detail}</td>
+                  <td>
+                    <span className="tier">{e.tier}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
 }

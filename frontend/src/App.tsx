@@ -1,19 +1,33 @@
-import { useEffect, useState } from 'react';
-import { ArrowUpRight, FileText, Play, Upload, X } from 'lucide-react';
-import { getHealth, loadSample } from './api';
-import { Audit } from './Audit';
-import { Learn } from './Learn';
-import { Supervise } from './Supervise';
-import { scenarios, type Health, type Run, type View } from './types';
-export function App(){
- const [view,setView]=useState<View>('Supervise'),[run,setRun]=useState<Run|null>(null),[scenario,setScenario]=useState('skipped-cap'),[health,setHealth]=useState<Health>({replay_mode:true,live_configured:false,glimmer_configured:false}),[error,setError]=useState(''),[loading,setLoading]=useState(true),[about,setAbout]=useState(false);
- useEffect(()=>{void getHealth().then(setHealth);},[]);
- useEffect(()=>{let active=true;setLoading(true);setError('');void loadSample(scenario).then(r=>{if(active)setRun(r);}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[scenario]);
- return <div className="app"><a className="skip-link" href="#main">Skip to main content</a><header className="header"><a href="#" className="wordmark" aria-label="Apprentice home" onClick={e=>{e.preventDefault();setView('Supervise');}}>apprentice<span>✳</span></a><nav aria-label="Workspace">{(['Learn','Supervise','Audit'] as View[]).map(v=><button key={v} className={view===v?'active':''} onClick={()=>setView(v)} aria-current={view===v?'page':undefined}>{v}</button>)}</nav><button className="replay-badge" onClick={()=>setAbout(true)}><span className="concentric"/>{run?.provenance==='live-recording'?'Recorded run':'Synthetic replay'}<ArrowUpRight size={13}/></button></header>
- <main id="main"><section className="intro"><div><h1>Every step. <span>Accounted for.</span></h1><p>One demonstration becomes a protocol you can inspect.</p></div><div className="actions"><button className="button primary" onClick={()=>{setView('Supervise');if(scenario==='skipped-cap')void loadSample('skipped-cap').then(setRun).catch(e=>setError(e.message));else setScenario('skipped-cap');}}><Play size={15} fill="currentColor"/>Try a sample run</button><button className="button" onClick={()=>setView('Learn')}><Upload size={16}/>Upload a recording</button><button className="button" onClick={()=>setView('Audit')}><FileText size={16}/>Open audit</button></div></section>
- <div className="workspace-toolbar"><div className="view-heading"><span className="status-dot"/>{view==='Supervise'?'Procedure workstation':view==='Learn'?'Protocol compiler':'Evidence & integrity'}</div><label>Scenario <select aria-label="Sample scenario" value={scenario} onChange={e=>{setScenario(e.target.value);setView('Supervise');}}>{scenarios.map(([name,title])=><option key={name} value={name}>{title}</option>)}</select></label></div>
- {error?<div className="panel error-message" role="alert">{error}<button className="button" onClick={()=>location.reload()}>Retry</button></div>:loading||!run?<div className="loading panel" role="status"><span className="spinner"/>Loading the evidence replay…</div>:<>{view==='Supervise'?<Supervise key={run.id} run={run} onAudit={()=>setView('Audit')}/>:view==='Audit'?<Audit key={run.id} run={run}/>:null}<div hidden={view!=='Learn'}><Learn run={run} health={health} onRun={r=>{setRun(r);setView('Supervise');}}/></div></>}
- </main><footer><span>APPRENTICE / 2026</span><div><button className="text-button" onClick={()=>setAbout(true)}>Scope & provenance</button><a href="https://github.com/ryanfer123/Meta-Hackathon" target="_blank" rel="noopener noreferrer">View source <ArrowUpRight size={12}/></a></div></footer>
- {about&&<div className="modal-backdrop" onClick={()=>setAbout(false)}><section className="modal panel" role="dialog" aria-modal="true" aria-labelledby="about-title" onClick={e=>e.stopPropagation()}><button className="icon-button close" onClick={()=>setAbout(false)} aria-label="Close provenance dialog"><X/></button><h2 id="about-title">Built to be inspectable.</h2><p>This public demo uses deterministic synthetic masks and a handwritten sample protocol. It demonstrates the rule engine, replay interface and hash chain.</p><p>It does not demonstrate Meta model accuracy or learning from a real video. Live Spark, SAM, Voice and Glimmer integrations are implemented for later validation with your account and recordings.</p><p>Geometry observes handling. It cannot prove liquid transfer, concentration, volume, sterility or a tightly secured cap. Occlusion means uncertainty.</p><p>Real held-out evaluation and model latency are pending. Glimmer on Modal also sends frames to cloud infrastructure.</p><button className="button primary" onClick={()=>setAbout(false)}>Back to the workstation</button></section></div>}
- </div>;
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { HomePage } from './pages/HomePage';
+const Workspace = lazy(() => import('./pages/Workspace'));
+
+export function App() {
+  const [hash, setHash] = useState(location.hash);
+  useEffect(() => {
+    const update = () => {
+      setHash(location.hash);
+      if (location.hash.startsWith('#/workspace')) scrollTo(0, 0);
+    };
+    window.addEventListener('hashchange', update);
+    return () => window.removeEventListener('hashchange', update);
+  }, []);
+  function open(scenario = 'skipped-cap', view = 'Supervise') {
+    location.hash = `/workspace?${new URLSearchParams({ sample: scenario, view })}`;
+  }
+  const workspace = hash.startsWith('#/workspace') || hash.includes('access_token=');
+  return workspace ? (
+    <Suspense
+      fallback={
+        <div className="app-loading">
+          <span className="spinner" />
+          Opening the workstation…
+        </div>
+      }
+    >
+      <Workspace />
+    </Suspense>
+  ) : (
+    <HomePage onOpen={open} />
+  );
 }

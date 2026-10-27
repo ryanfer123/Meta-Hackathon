@@ -1,4 +1,14 @@
-# Verification record
+# Current verification: homepage and Supabase revision
+
+- Python: 82 tests; Ruff, formatting and strict mypy pass. Frontend production build passes.
+- Playwright: 24 desktop/mobile checks cover homepage comparison, image loading, account error handling, saved-run reopen/deletion, private upload metadata, all six replays, Learn form retention, audits and exports. Cloud HTTP is mocked in browser tests; authorization SQL is live.
+- Responsive homepage checked at 1440, 768 and 390 px. Four raster images load, no horizontal document overflow, headings fit within two lines. Corrected tablet wrapping and contrast; design inspector reports zero failures. See `FRONTEND_DIRECTION.md` for the render critique and explicit image/footage limits.
+- The comparison switches between the actual clean/skipped fixture outputs and opens the selected run. The workflow images are captures of the real interface, not invented model results. Local screenshot artifacts live outside source control under `/tmp/apprentice-design/` and `/tmp/apprentice-final-design/`.
+- Live Supabase SQL tests passed: authenticated owner access, peer isolation, spoof rejection, update/delete restrictions, private storage policy, anonymous denial, required snapshot fields, atomic failed-save rollback, save and paired deletion. Both test transactions were fully rolled back. Security advisor returned no findings after all three migrations.
+- Browser account/save/open/delete/upload tests mock cloud HTTP; they do not establish real email delivery. Production Site URL and redirect allowlist were verified in the signed-in Supabase dashboard after reload. Real mailbox confirmation and real Meta inference remain pending.
+
+## Previous release evidence (historical)
+
 
 ## Automated evidence
 

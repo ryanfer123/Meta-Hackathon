@@ -19,3 +19,6 @@ test-results/
 
 *.tsbuildinfo
 docs/*.png
+
+.taste-skill/
+supabase/.temp/

@@ -9,3 +9,5 @@ Synthetic geometry is original code. UI icons use lucide-react (ISC); React, Vit
 Pending owner-provided material: API configuration; Expert A/B; independently labelled real dev/test videos. Live Meta calls, GPU deployment, measured real-world results and the submission video/platform entry are not yet completed.
 
 Public synthetic replay deployed on Render and browser-verified: https://apprentice-meta.onrender.com. Source CI passed on commit `4a0d842515f1fc1edd93df7b5c7d036749672cde`. Fresh public clone install/build and key-free replay API checks passed.
+
+Frontend revision during Oct 27: original cobalt/sand visual identity, Jost typography, illustrated homepage, fixture-backed clean/skipped comparison, real interface captures, responsive application sidebar, overview and persistent run library. Generated tabletop hero artwork is illustrative and labelled; the three workflow images are captures of the actual interface. Supabase Auth, owner-scoped database tables, invoker RPCs, private recording storage, signed previews, upload/delete flows and transaction-based isolation tests were implemented in the same event.
