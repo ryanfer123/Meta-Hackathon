@@ -224,7 +224,7 @@ export function Learn({
         </div>
         <p className="muted">
           {id
-            ? 'Compiled from an uploaded expert recording.'
+            ? 'Compiled from an uploaded recording. Source authenticity and validation are separate.'
             : 'Sample protocol · synthetic fixture · not learned from video.'}
         </p>
         <div className="validation-checks">

@@ -1,26 +1,23 @@
-# Public web deployment
+# Public app and authenticated processing deployment
 
-Live replay: https://apprentice-meta.onrender.com
+App: https://apprentice-meta.onrender.com
+API: https://apprentice-api-meta.onrender.com
 
-Render reports deployment `dep-dbgdi9oae00c73d0piog` live for source commit `762f432fe12513f8daef8b08e8d3bbc96806482d`. The public site serves six synthetic examples. No model key, inference server or GPU is present in this deployment. Supabase separately provides authenticated persistence and private recording storage.
+Source `d29769236f747ac9f08fe7fde14b83fad80b0005` passed backend/frontend CI: https://github.com/ryanfer123/Meta-Hackathon/actions/runs/40554743678.
 
-Configuration:
-- Service: `apprentice-meta` (`srv-dbgcuj29lscs739n0qrg`)
-- Repository: https://github.com/ryanfer123/Meta-Hackathon
-- Branch: main, automatic deployment enabled
-- Build: `cd frontend && npm ci && npm run build`
-- Publish path: `frontend/dist`
-- Node: 22
-- Workspace: ryan's workspace
+- Frontend service `srv-dbgcuj29lscs739n0qrg`: static Vite build, public homepage, mandatory confirmed Supabase account for workspace routes.
+- Processing service `srv-dbgeafutlv9c73e2667g`: Render free plan, Singapore, `Dockerfile.api`, Python-only image. Deployment `dep-dbgeagmtlv9c73e26aig` is live.
+- Supabase `ntuuztideqsdvuiiohlh`: Auth, owner-scoped tables, private recording/artifact buckets and durable model reservations.
+- Both services follow main. A repository commit also redeploys the worker; avoid publishing during an active analysis. Free instances have cold starts and can restart.
 
-GitHub Pages built the app but could not create the Pages site: `Resource not accessible by integration`. Render is the active hosting provider. The alternate Pages workflow stays skipped until repository variable `DEPLOY_GITHUB_PAGES=true` is set after Pages has been enabled for GitHub Actions.
+The owner explicitly approved storing the Meta API key and separate budget authorization secret as server-side Render environment variables. Neither is a frontend variable or committed file. A deployed JS/CSS check found zero matches for either value. The API image does not build or serve frontend assets, and Uvicorn access logs are disabled to minimize request metadata logging. Supabase tokens travel in headers, never query strings. Provider response bodies and authorization headers are excluded from model-call logs.
 
-The Dockerfile can serve the full UI and FastAPI together on port 8000 for a private live instance. No backend cloud service or GPU was started during the key-free build. Real model inference and video validation remain pending owner-provided configuration and recordings.
+`VITE_API_BASE_URL` points at the processing origin. `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are public browser configuration. Do not put any model, budget or service-role secret in a VITE-prefixed variable. The API has no Supabase service-role key; it uses the authenticated user's JWT for private job/storage operations.
 
-## Homepage and cloud workspace revision
+The backend independently verifies a confirmed account with Supabase Auth. Anonymous API requests and an invalid-token upload returned 401 on the live deployment. Private job, report and media access is owner-scoped. A confirmed owner uploaded the labelled synthetic integration clip through the actual browser, Spark compiled its one-step protocol, and the resulting job/archive persisted in Supabase. This is software integration evidence, not a real expert demonstration or accuracy result.
 
-Render build variables include `VITE_STATIC_REPLAY=true`, `VITE_SUPABASE_URL` and the project publishable key. These are public client configuration; service role/model keys are absent. Values were merged into the existing service environment. Database project `ntuuztideqsdvuiiohlh` is active in ap-south-1 with three applied migrations. Auth Site URL and redirect allowlist use the production Render origin. See [Supabase setup](../supabase/README.md).
+The global reservation ledger caps estimates at $5 per UTC day, $2 per job, 60 Spark calls/day and 800 SAM calls/job. These do not replace provider billing controls or guarantee final charges. Budget authorization/network failures prevent the Meta request. An interrupted worker job becomes an explicit error rather than silently restarting paid work. Completed private archives can restore source/protocol/report files after restart; archive filenames and expanded size are validated.
 
-The homepage is `/`, the guest workstation is `/#/workspace`, and Learn/Audit/library are workspace views. Static samples continue to work without sign-in. Uploaded files remain private and staged until a separately configured inference service processes them.
+No GPU/Modal service was started. API-only Spark review is the default. Physical expert A/B, labelled dev/test recordings, and the submission video remain pending.
 
-The homepage, all four image assets, and clean/skipped sample files returned HTTP 200 in the connected browser. The hosted skipped-cap seek and guest account dialog were exercised. GitHub backend and frontend jobs passed for this source: https://github.com/ryanfer123/Meta-Hackathon/actions/runs/40546782597.
+The synthetic supervision test also finished and persisted an archive. It retained uncertainty rather than completing a step whose tube mask was missing. Private video playback and HTML report requests returned 200; browser chain verification matched the stored root. Physical-procedure evaluation is still pending.

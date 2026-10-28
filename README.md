@@ -4,7 +4,7 @@
 
 [Live replay](https://apprentice-meta.onrender.com) · [Deployment status](docs/DEPLOYMENT.md) · [Judge review](docs/JUDGE_REVIEW.md) · [Architecture](docs/ARCHITECTURE.md) · [Limitations](docs/LIMITATIONS.md)
 
-**Current evidence:** the public replay uses six original synthetic scenes and a handwritten protocol. It exercises the real Python rule engine, playback, deviations and audit chain. Initial live Spark text/image and SAM image adapter checks passed on an illustrative image. Learning from real recordings, Glimmer deployment, real accuracy and end-to-end model latency remain unverified until recordings and remaining services are supplied. This is not yet a competition-ready scientific result.
+**Current evidence:** the public replay uses six original synthetic scenes and a handwritten protocol. It exercises the real Python rule engine, playback, deviations and audit chain. Initial live Spark text/image and SAM image adapter checks passed on an illustrative image. Voice timestamps and native SAM video transport also passed on synthetic fixtures. The authenticated hosted worker compiled a protocol from a synthetic animation and persisted its private archive. Real physical-procedure accuracy and held-out evaluation remain unverified; Glimmer is optional in the API-only configuration. This is not yet a competition-ready scientific result.
 
 ## Run locally
 

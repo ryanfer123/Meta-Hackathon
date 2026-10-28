@@ -57,7 +57,7 @@ export function Audit({ run }: { run: Run }) {
         </div>
         <div className="audit-metrics">
           <p>
-            <span>Glimmer shadow agreement</span>
+            <span>Model shadow agreement</span>
             <strong>
               {run.metrics.shadow_agreement === null
                 ? 'Not measured'

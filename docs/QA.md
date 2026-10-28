@@ -1,3 +1,21 @@
+# Current verification: authenticated API-only processing
+
+- 93 Python checks passed; Ruff, formatting, strict mypy (28 app modules), and production frontend build pass.
+- 30 desktop/mobile checks passed locally and against Render: mandatory login, signup confirmation state, invalid/persisted-session rejection, sign-out, intended route retention, replay, library, upload metadata, audits and exports. Browser cloud writes use mocks; the additional live browser compile used the owner's actual confirmed account.
+- Real signup/email confirmation succeeded according to the owner; Supabase independently showed one confirmed account. A separate clean browser context displayed the login gate and no workspace controls. No guest continuation exists.
+- Live API returned 200 health with authentication/cloud jobs enabled and 401 for anonymous samples and an invalid-token upload.
+- The real authenticated browser uploaded the labelled synthetic animation and received a Spark-compiled one-step protocol. Job `f23b6e9873bb4c8ea9365536ddbf9caa` became ready with a private archive in Supabase. It remains unverified; no real expert or held-out results are claimed.
+- Hosted supervision job `a977e63c1a084a228612edcb2afd3289` completed and persisted its private archive: 16 frames, 48 SAM image calls and one Spark advisory call. The step remained ACTIVE/uncertain because the synthetic tube was not consistently detected; there was no completion and therefore no completed-step shadow sample. This is an integration check with an honest uncertain outcome, not a passing physical procedure or accuracy evaluation.
+- Reopening that job from the private library loaded an 8-second authenticated blob video (`readyState=4`). Media and report requests returned HTTP 200 from the API. The audit chain matched its root, and the browser reported no console errors/warnings. Session tokens were not placed in media URLs. The actual Save run action also succeeded; Supabase confirmed one saved snapshot for this integration run.
+- Voice API returned one timestamped turn for non-empty synthetic computer-spoken audio. Native SAM video transport completed for the 80-frame synthetic animation; the production observer still uses image keyframes.
+- Live SQL checked owner job isolation, wrong-server-key rejection, run budget limits and private ledger denial, all in rolled-back fixtures. The reservation RPC's SECURITY DEFINER warning is intentional and documented in `supabase/README.md`; its server key is never exposed to browser clients. Private ledger tables have deny-all client RLS.
+- Both GitHub jobs passed for source d297692: https://github.com/ryanfer123/Meta-Hackathon/actions/runs/40554743678. Render API deployment dep-dbgeagmtlv9c73e26aig is live.
+- Secret matching found no Meta key in tracked source or the frontend build, and no Meta/budget secret in the deployed entry JS/CSS assets. The model key is a backend runtime environment variable, separately approved by the owner.
+
+The browser connector rejected file upload paths outside its configured roots. Native macOS file-picker actions loaded the same synthetic test file; it was never substituted for real footage. Desktop/mobile login captures are local `/tmp/apprentice-auth-desktop.png` and `/tmp/apprentice-auth-mobile.png`.
+
+## Previous release evidence (historical)
+
 # Current verification: homepage and Supabase revision
 
 - Python: 82 tests; Ruff, formatting and strict mypy pass. Frontend production build passes.
