@@ -42,3 +42,11 @@ Public sample replay uses original bundled synthetic fixtures and the local dete
 ## T2 storage-only checks - October 28, 2026
 
 No Meta request shape or provider measurement changed; no paid call was run. On a seeded synthetic 180-frame × 8-object history at 1024×768, lossless packed masks including byte-object headers measured 141,605,280 bytes and the retained decoded cache including ndarray headers measured 7,865,600 bytes. The memory regression also includes detection metadata and asserts <200,000,000 stored bytes after all masks are read. A noisy 90-second synthetic final `run.json` measured 24,361,428 bytes before contour limiting and 4,613,268 bytes after, with at most 256 display points per object. These are local storage measurements; real tracking latency, accuracy and peak worker RSS remain unmeasured.
+
+## T3 native-video detail spike (prepared, not run)
+
+Official SAM overview, reading-segmentation, client-libraries and segmenting docs were accessible on October 28, 2026. They specify one concept per request, zero-based source-video frame references that may be sparse, IDs stable while objects remain continuously visible, 15,000 frames/request and 16 objects/frame, and MP4/MOV with H.264/H.265/MPEG-4. The checked pages do not publish a numeric request-byte maximum.
+
+`scripts/spike.py --native-video-detail` uses the previously observed `data:video/mp4` request path, requests one-bit masks/confidence and makes exactly one request after explicit `--allow-paid-calls`. It records local source metadata/hash, parser field names, per-frame masks/identities, ID recurrence, processed/emitted rate summaries, diagnostics, latency and usage. Missing processing usage/cost and physical identity consistency remain unknown. No new live observations exist. T3 steps 2–7 are waiting for the user-run detail output.
+
+Sources: [overview](https://dev.meta.ai/docs/sam/overview), [segmentation output](https://dev.meta.ai/docs/sam/reading-segmentation), [client libraries](https://dev.meta.ai/docs/sam/client-libraries), [segmenting limits](https://dev.meta.ai/docs/sam/segmenting).

@@ -1,3 +1,9 @@
+## T3 detailed native-video spike preparation - 2026-10-28
+
+- Isolated T3-step-1 checkout passed 133 Python tests, 42 desktop/mobile browser checks, Ruff check/format, strict mypy and production build.
+- Thirteen new mocked checks cover explicit sparse frame references, mask-ID recurrence, incomplete/diagnostic unknown evidence, missing confidence/usage, local metadata and limits, single-request behavior, and the explicit paid-call gate.
+- No paid call ran. Native tracking, frame-based budget changes and T3 acceptance on real footage remain pending user-run observations.
+
 ## T2 compact mask storage - 2026-10-28
 
 - Isolated T2 checkout passed 120 Python tests, 42 desktop/mobile browser checks, Ruff check/format across backend/scripts/eval, strict mypy and the production build.

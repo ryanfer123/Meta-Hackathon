@@ -104,3 +104,14 @@ Completed job archives survive worker restarts. A restart during processing fail
 ## Acknowledgments
 
 The Learn workspace links to Science Buddies' **How to Make a Serial Dilution** as an external reference. See [acknowledgment.md](acknowledgment.md) for credit, original sources and reuse status. The video is not bundled or represented as a completed Apprentice analysis.
+
+## Detailed native-video spike (T3 step 1)
+
+The detailed spike makes one native-video SAM request and skips the other modality checks. Run it yourself only when ready to authorize that paid call:
+
+```sh
+uv run python scripts/spike.py --native-video-detail \
+  --video path/to/short-h264.mp4 --prompt 'tube' --allow-paid-calls
+```
+
+Use an MP4 no longer than 30 seconds and no larger than 10 MiB, ideally with two visible matching props to inspect tracking identities. Review the printed `data/runs/spike-*/observations.json` and share its `native_video_detail` block before enabling native tracking. Source average FPS, reported processed-frame averages and sparse emitted frame references are reported separately. Production remains image-keyframe SAM; T3 steps 2–7 require these real observations. No new paid call has been run.
