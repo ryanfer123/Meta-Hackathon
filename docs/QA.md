@@ -1,3 +1,11 @@
+## T2 compact mask storage - 2026-10-28
+
+- Isolated T2 checkout passed 120 Python tests, 42 desktop/mobile browser checks, Ruff check/format across backend/scripts/eval, strict mypy and the production build.
+- All six synthetic sample exports remain exactly equal to the bundled baseline JSON. Packed-mask tests cover non-byte-aligned/empty/None masks, source-array independence, read-only lazy views, cache eviction, HSV fallback and saved evidence overlays.
+- A 180 × 8 × 1024×768 memory regression remains below 200 MB after every mask is decoded; internal strong decoded cache is capped at 8 MiB. This is stored memory, not peak worker RSS.
+- Seeded noisy 90-second synthetic final run JSON measured 24,361,428 bytes before and 4,613,268 bytes after the 256-point/object display contour cap. Predicate outputs and exact stored pixels are unchanged.
+- No paid calls, real recordings or physical-performance claims were added.
+
 ## T1 public synthetic replay - 2026-10-28
 
 - Synthetic Supervise, Audit and sample-protocol Learn are public on explicit sample routes. Private root/library/unknown routes remain gated. Live uploads and saved state still require sign-in.

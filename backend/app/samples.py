@@ -128,16 +128,44 @@ def sample_frames(name: str, shift: int = 0) -> list[FrameState]:
     return result
 
 
+# Display-only contours have a bounded wire size; predicates always use exact masks.
+MAX_CONTOUR_POINTS = 256
+CONTOUR_TOLERANCE_PX = 1.5
+
+
 def wire_frame(frame: FrameState) -> dict[str, Any]:
     objects: dict[str, Any] = {}
     for name, d in frame.objects.items():
-        if d is None or d.mask is None or not d.mask.any():
+        mask = d.mask if d is not None else None
+        if d is None or mask is None or not mask.any():
             objects[name] = None
             continue
         contours, _ = cv2.findContours(
-            d.mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+            mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
-        ys, xs = np.nonzero(d.mask)
+        display = list(contours)
+        display_metadata: dict[str, Any] = {}
+        if sum(len(c) for c in display) > MAX_CONTOUR_POINTS:
+            tolerance = CONTOUR_TOLERANCE_PX
+            while True:
+                simplified = [cv2.approxPolyDP(c, tolerance, True) for c in contours]
+                if max((len(c) for c in simplified), default=0) <= MAX_CONTOUR_POINTS:
+                    break
+                tolerance *= 2
+            # Prefer the main silhouettes over segmentation speckle. Omitted display
+            # components are disclosed; exact packed masks retain every original bit.
+            simplified.sort(key=cv2.contourArea, reverse=True)
+            display = []
+            remaining = MAX_CONTOUR_POINTS
+            for contour in simplified:
+                if len(contour) <= remaining:
+                    display.append(contour)
+                    remaining -= len(contour)
+            display_metadata = {
+                "contour_tolerance_px": tolerance,
+                "contours_truncated": len(display) < len(contours),
+            }
+        ys, xs = np.nonzero(mask)
         objects[name] = {
             "x": int(np.min(xs)),
             "y": int(np.min(ys)),
@@ -145,7 +173,8 @@ def wire_frame(frame: FrameState) -> dict[str, Any]:
             "h": int(np.max(ys) - np.min(ys) + 1),
             "score": d.score,
             "class": d.obj_class,
-            "contours": [c.reshape(-1, 2).tolist() for c in contours],
+            "contours": [c.reshape(-1, 2).tolist() for c in display],
+            **display_metadata,
         }
     return {"t": frame.t, "width": frame.width, "height": frame.height, "objects": objects}
 

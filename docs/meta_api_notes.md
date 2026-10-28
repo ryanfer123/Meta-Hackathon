@@ -38,3 +38,7 @@ The authenticated Render worker compiled a one-step protocol from that synthetic
 ## T1 public replay boundary - October 28, 2026
 
 Public sample replay uses original bundled synthetic fixtures and the local deterministic rule/audit pipeline. It makes no Meta calls, cloud writes or budget reservations. Only the six explicit sample IDs and their supported endpoints bypass API account verification; private jobs and all live operations remain authenticated. Static sample playback and chain verification are tested with every `/api` request blocked. No paid call was run for this change; no external request schema or measured model result changed.
+
+## T2 storage-only checks - October 28, 2026
+
+No Meta request shape or provider measurement changed; no paid call was run. On a seeded synthetic 180-frame × 8-object history at 1024×768, lossless packed masks including byte-object headers measured 141,605,280 bytes and the retained decoded cache including ndarray headers measured 7,865,600 bytes. The memory regression also includes detection metadata and asserts <200,000,000 stored bytes after all masks are read. A noisy 90-second synthetic final `run.json` measured 24,361,428 bytes before contour limiting and 4,613,268 bytes after, with at most 256 display points per object. These are local storage measurements; real tracking latency, accuracy and peak worker RSS remain unmeasured.
