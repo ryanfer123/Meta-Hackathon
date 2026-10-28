@@ -25,7 +25,8 @@ def test_official_parser_places_box_local_mask_in_source_frame():
     assert ds[0].mask[6, 6] and not ds[0].mask[0, 0]
 
 
-def test_recorded_run_orchestration_shadows_every_completion(tmp_path, monkeypatch):
+@pytest.mark.parametrize("sam_mode", ["image", "video"])
+def test_recorded_run_orchestration_shadows_every_completion(tmp_path, monkeypatch, sam_mode):
     from app import service
 
     job = "test-run"
@@ -53,7 +54,14 @@ def test_recorded_run_orchestration_shadows_every_completion(tmp_path, monkeypat
         return Opinion(completed=True, confidence=0.9, reason="mocked observation")
 
     monkeypatch.setattr(service, "sample", lambda *_: paths)
-    monkeypatch.setattr(service, "track", lambda *_: frames)
+    routed = []
+
+    def tracked(mode):
+        routed.append(mode)
+        return frames
+
+    monkeypatch.setattr(service, "track", lambda *_: tracked("image"))
+    monkeypatch.setattr(service, "track_video", lambda *_: tracked("video"))
     monkeypatch.setattr(service.GlimmerClient, "opinion", glimmer)
 
     def no_spark(*_):
@@ -65,11 +73,13 @@ def test_recorded_run_orchestration_shadows_every_completion(tmp_path, monkeypat
         data_dir=tmp_path,
         replay_mode=False,
         model_api_key="mock-only",
+        sam_mode=sam_mode,
         glimmer_base_url="http://mock-glimmer.invalid",
     )
     process_run(settings, job, sample_protocol(), False)
     run = json.loads((folder / "run.json").read_text())
     assert run["status"] == "ready", run
+    assert routed == [sam_mode]
     assert len(seen) == 4
     assert len(run["shadow"]) == 4
     assert run["metrics"]["shadow_agreement"] == 1

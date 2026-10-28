@@ -21,10 +21,18 @@ Every table has RLS. Authenticated users can access their own records only; anon
 
 `tests/rls.sql` and `tests/snapshots.sql` were executed against the live project. They create disposable fixtures inside transactions and roll back everything. They cover owner visibility, peer read/update/delete denial, owner spoof denial, private storage isolation, anonymous denial, snapshot validation, failed-save rollback and paired deletion. Run in a new empty/test project; the count assertions assume an otherwise empty fixture account.
 
-The security advisor returned no findings after all migrations. Browser cloud interaction tests mock HTTP to check UI behavior without sending email or writing production user content. Real email delivery and user confirmation remain unverified. Model inference is a separate Python service and is not provisioned by these migrations.
+The initial data-only migrations had no advisor findings. The later server-authorized budget functions intentionally use SECURITY DEFINER, and deny-all private-table RLS produces informational notices; these boundaries are documented and tested. Browser cloud interaction tests mock HTTP to check UI behavior without sending email or writing production user content. The owner confirmed successful signup and email confirmation; other mail providers and volume remain unverified. Model inference is a separate Python service and is not provisioned by these migrations.
 
 ## Hosted analysis additions
 
 `analysis_jobs` persists owner-scoped job status/results; private `analysis-artifacts` ZIP archives preserve the minimal files needed to reopen results or resume protocol validation after worker restarts. One active job per account is enforced in Postgres. Clients can only access their own rows/folders.
 
 `private.model_budget_config` holds a SHA-256 digest of a backend-only random key; `private.model_reservations` is inaccessible to browser roles. The reservation RPC intentionally runs as a definer to lock this global ledger, but requires both a user JWT and the separate backend key. No service-role key is used. Its advisor warning is intentional and reviewed; deny-all private-table RLS produces informational notices. `tests/hosted_analysis.sql` verifies wrong-key rejection, run limits, ledger isolation and peer-job denial, with all fixtures rolled back.
+
+## Native-video budgeting
+
+Migration `20261028163318_native_video_budgets.sql` adds billed-frame reservations, configurable trusted-server limits and a UTC-day accounting halt. The defaulted reservation arguments preserve existing four-argument callers; access still requires both the authenticated owner and backend-only server key. Native requests do not consume the image-call counter. The default hosted limits remain 2,000 billed frames per job, $2 per run and $5 per UTC day; local defaults are configured separately.
+
+`reconcile_sam_budget` records unexpected extra billed frames/cost and halts new reservations globally for the UTC day. The browser cannot invoke it without the backend key. Both public definer functions deliberately lock the same private config row to serialize checks. A failed reconciliation also leaves a local worker halt; it does not assert that an unreachable remote write succeeded. Reservations and failed attempts are never refunded.
+
+`tests/native_video_budgets.sql` passed against the live project: secret rejection, legacy calls, frame/image/daily caps, overrun accounting/day halt and private ledger isolation. Its disposable fixtures and temporary config changes were fully rolled back; it sent no model calls and did not delete existing reservations.

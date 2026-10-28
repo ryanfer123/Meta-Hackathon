@@ -147,8 +147,10 @@ def summarize_video_response(raw: dict[str, Any], source: dict[str, Any]) -> dic
         ),
         "emitted_frame_count": len(by_frame),
         "emitted_frames_per_source_second": len(by_frame) / duration,
-        "processed_frames_per_source_second": processed_fps,
-        "processed_fps_scope": "usage.video_frames_processed / source duration; an average, not a proof of regular sampling",
+        "billed_frames_per_source_second": processed_fps,
+        "actual_processed_fps": None,
+        "output_text_chars": len(response_text(raw)),
+        "billed_frames_scope": "usage.video_frames_processed reports billed frames with a50-frame minimum; dividing by duration is NOT the processing or sampling rate",
         "mask_object_count": len(by_object),
         "mask_record_count": len(masks),
         "record_kinds": dict(Counter(record.kind for record in result.records)),
@@ -192,6 +194,7 @@ def native_video_detail(client: MetaClient, video: Path, prompt: str) -> dict[st
         "sam-3.1",
         {
             "model": "sam-3.1",
+            "store": False,
             "metadata": {"mask_encoding": "one_bit", "include_confidence": "true"},
             "input": [
                 {
@@ -208,7 +211,8 @@ def native_video_detail(client: MetaClient, video: Path, prompt: str) -> dict[st
             ],
         },
         frames=source["source_frames"],
-        reserve_usd=max(0.05, source["source_frames"] * 0.0002),
+        reserve_usd=max(50, source["source_frames"]) * 0.0002,
+        sam_frames=max(50, source["source_frames"]),
     )
     latency_ms = (time.perf_counter() - start) * 1000
     summary = summarize_video_response(raw, source)
@@ -217,15 +221,16 @@ def native_video_detail(client: MetaClient, video: Path, prompt: str) -> dict[st
         "prompt": prompt,
         "latency_ms": latency_ms,
         "estimated_cost_usd": client.estimate("sam", summary["usage"])
-        if summary["processed_frames_per_source_second"] is not None
+        if summary["billed_frames_per_source_second"] is not None
         else None,
         "request_limits": {
             "documented_max_frames": 15000,
             "documented_max_objects_per_frame": 16,
             "documented_containers": ["MP4", "MOV"],
             "documented_codecs": ["H.264", "H.265", "MPEG-4"],
+            "provider_inline_file_max_bytes": 50_000_000,
             "provider_max_request_bytes": None,
-            "provider_max_request_bytes_status": "No numeric byte limit found in the checked SAM pages; not measured by one successful clip",
+            "provider_max_request_bytes_status": "General inline files are limited to50,000,000bytes; a separate encoded JSON-body maximum is not established",
             "local_spike_max_bytes": NATIVE_DETAIL_MAX_BYTES,
             "local_spike_max_duration_s": 30,
             "local_spike_container": "MP4",
@@ -310,34 +315,10 @@ def main() -> None:
                 wire = client.segment(path, args.prompt, job, i + 1)
                 sequence_matches.append(len(decode(wire, frame.shape[1], frame.shape[0])))
             observations["sam_frame_sequence_matches"] = sequence_matches
-            # Native video shape verified in Meta's segmenting docs. Keep clips short for this spike.
-            if args.video.stat().st_size > 10 * 1024 * 1024:
-                raise ValueError("Native video spike limited to 10 MB; use a short clip")
-            raw = client.call(
-                "responses",
-                "sam",
-                "sam-3.1",
-                {
-                    "model": "sam-3.1",
-                    "input": [
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "input_text", "text": args.prompt},
-                                {
-                                    "type": "input_video",
-                                    "video_url": "data:video/mp4;base64,"
-                                    + base64.b64encode(args.video.read_bytes()).decode(),
-                                },
-                            ],
-                        }
-                    ],
-                },
-                frames=len(sampled),
-                reserve_usd=0.05,
-            )
-            observations["sam_video_output_chars"] = len(response_text(raw))
-            observations["sam_video_usage"] = raw.get("usage")
+            detail = native_video_detail(client, args.video, args.prompt)
+            observations["native_video_detail"] = detail
+            observations["sam_video_output_chars"] = detail["output_text_chars"]
+            observations["sam_video_usage"] = detail["usage"]
         observations["open_tier_label"] = settings.open_tier_label
         observations["open_tier_model"] = settings.glimmer_model
         if settings.glimmer_base_url:

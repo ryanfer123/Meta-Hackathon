@@ -23,7 +23,11 @@ from scripts.run_batch import run_batch, videos_in
 
 def setup_batch(tmp_path, monkeypatch):
     settings = Settings(
-        _env_file=None, data_dir=tmp_path / "data", replay_mode=False, model_api_key="mock-only"
+        _env_file=None,
+        data_dir=tmp_path / "data",
+        replay_mode=False,
+        model_api_key="mock-only",
+        sam_mode="image",
     )
     protocol = Protocol.model_validate(
         {

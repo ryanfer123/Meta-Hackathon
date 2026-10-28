@@ -1,0 +1,16 @@
+{
+  "provenance": "sanitized-live-empty-summary",
+  "observation_run": "spike-1793204751",
+  "source_kind": "generated synthetic animation; not physical procedure footage",
+  "source_frames": 80,
+  "source_fps": 10.0,
+  "duration_s": 8.0,
+  "response_status": "completed",
+  "raw_output": "",
+  "mask_object_count": 0,
+  "usage": {
+    "video_frames_processed": 80
+  },
+  "note": "This is a summary of a live empty-output observation, not a nonempty tracking/identity accuracy fixture.",
+  "raw_output_file": "sam_native_empty.txt"
+}

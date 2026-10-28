@@ -21,7 +21,7 @@ from app.samples import wire_frame
 from app.schemas import Opinion, Protocol, TranscriptTurn
 from app.supervise.verifier import Verifier
 from app.track.geometry import FrameState
-from app.track.sam import track
+from app.track.sam import track, track_video
 
 
 def error_name(exc: Exception) -> str:
@@ -155,7 +155,11 @@ def run_recording(
     client = MetaClient(settings, job)
     try:
         paths = sample(video, folder / "frames")
-        frames = track(client, protocol, paths, file_hash(video), color_fallback)
+        frames = (
+            track_video(client, protocol, video, paths, file_hash(video), color_fallback)
+            if settings.sam_mode == "video"
+            else track(client, protocol, paths, file_hash(video), color_fallback)
+        )
         supervisor = replay(protocol, frames)
         glimmer = GlimmerClient(settings, job)
         evidence = evidence_overlays(frames, paths, folder)
@@ -286,8 +290,12 @@ def process_validation(
             raise ValueError("Held-out recording must differ from the compile recording")
         a_paths = sample(folder / "original.mp4", folder / "frames")
         b_paths = sample(folder / "heldout.mp4", folder / "heldout-frames")
-        a = track(client, protocol, a_paths, file_hash(folder / "original.mp4"))
-        b = track(client, protocol, b_paths, file_hash(folder / "heldout.mp4"))
+        if settings.sam_mode == "video":
+            a = track_video(client, protocol, folder / "original.mp4", a_paths, a_hash)
+            b = track_video(client, protocol, folder / "heldout.mp4", b_paths, b_hash)
+        else:
+            a = track(client, protocol, a_paths, a_hash)
+            b = track(client, protocol, b_paths, b_hash)
         result = validate_protocol(protocol, a, b, ranges)
         history: list[dict[str, object]] = [
             {

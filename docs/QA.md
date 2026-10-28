@@ -1,3 +1,11 @@
+## T3 native tracking and billed-frame budgets - 2026-10-28
+
+- Full integrated checks passed: 215 Python tests, 44 desktop/mobile browser checks, Ruff check/format across backend/scripts/eval, strict mypy and production build.
+- Native tests exercise local ffmpeg CFR conversion, one request per shared prompt, persistent synthetic IDs through position exchange, scaling, unknown gaps/overlaps/splits, missing confidence, diagnostics, source/transcode/prompt caching, no caching after incomplete/overrun output, and narrowly scoped size fallback. API-run and validation mode selection are tested in both image and video modes.
+- Twenty-six budget checks cover SQLite migration, frame/day/cost limits, configurable hosted requests, billed usage reconciliation and fail-closed day halts. Two 90-second six-prop-plus-hand clips fit the user-approved local 6,000-frame default with 5,040 estimated billed frames. Hosted defaults stay 2,000 frames/$2 run/$5 day.
+- The hosted SQL migration was applied and its rollback verification passed for legacy calls, secret gating, frame/image/daily limits, extra usage, UTC-day halt and private-ledger isolation.
+- Exactly two explicitly authorized SAM calls ran: 3,556 ms/50 billed frames/$0.010 estimate and 4,902 ms/80 billed frames/$0.016 estimate. Both returned no parseable masks. The committed measured fixture is empty with provenance; all nonempty native-mask fixtures are explicitly synthetic. Real 60–90-second native tracking/identity acceptance remains pending physical footage.
+
 ## T5 advisory tiers and targeted repairs - 2026-10-28
 
 - Full checks passed: 166 Python tests, 44 desktop/mobile browser checks, Ruff check/format, strict mypy and production build.

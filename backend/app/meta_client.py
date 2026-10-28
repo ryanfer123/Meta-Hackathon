@@ -13,6 +13,11 @@ from app.config import Settings
 from app.model_output import ModelOutputIncomplete, ensure_complete, json_object_text
 from app.replay_cache import ReplayCache, canonical, digest
 from app.schemas import TranscriptTurn
+from app.track.native_video import TRANSCODE_SETTINGS, NativeVideoTooLarge, prepare_video
+
+# A conservative local cap on serialized inline requests; provider docs instead
+# specify a50MB inline FILE maximum and do not establish a JSON-body maximum.
+LOCAL_ENCODED_REQUEST_MAX_BYTES = 50_000_000
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -59,9 +64,15 @@ class MetaClient:
         frames: int = 0,
         files: Any = None,
         reserve_usd: float = 0.25,
+        sam_frames: int = 0,
     ) -> dict[str, Any]:
         self.settings.require_live()
-        self.budget.reserve(self.run_id, kind, reserve_usd)
+        if sam_frames < 0 or (sam_frames and kind != "sam"):
+            raise ValueError("Video frame reservations require non-negative SAM frames")
+        if sam_frames:
+            self.budget.reserve(self.run_id, kind, reserve_usd, processed_frames=sam_frames)
+        else:
+            self.budget.reserve(self.run_id, kind, reserve_usd)
         start = time.perf_counter()
         usage: dict[str, Any] = {}
         status = "error"
@@ -70,6 +81,10 @@ class MetaClient:
             response.raise_for_status()
             raw: dict[str, Any] = response.json()
             usage = raw.get("usage", {})
+            if sam_frames:
+                billed = usage.get("video_frames_processed")
+                if isinstance(billed, int) and not isinstance(billed, bool) and billed >= 0:
+                    self.budget.record_video_usage(self.run_id, sam_frames, billed)
             try:
                 ensure_complete(raw)
             except ModelOutputIncomplete:
@@ -92,7 +107,13 @@ class MetaClient:
                             "latency_ms": (time.perf_counter() - start) * 1000,
                             "usage": usage,
                             "reserved_usd": reserve_usd,
-                            "cost_estimate_usd": self.estimate(kind, usage),
+                            "cost_estimate_usd": self.estimate(kind, usage)
+                            if not sam_frames or "video_frames_processed" in usage
+                            else None,
+                            "sam_video_frames_reserved": sam_frames,
+                            "sam_video_frames_billed": usage.get("video_frames_processed")
+                            if sam_frames
+                            else None,
                             "cloud_frames": frames,
                             "status": status,
                         }
@@ -177,6 +198,64 @@ class MetaClient:
             return ""
         text = response_text(raw)
         self.cache.put("sam", key, text, "live-meta-sam-3.1")
+        return text
+
+    def tracking_notice(self, event: str, detail: str) -> None:
+        # Routing notes contain no response bodies, media, authorization headers or keys.
+        path = self.budget.log_path(self.run_id).parent / "tracking.jsonl"
+        with path.open("ab") as log:
+            log.write(canonical({"event": event, "detail": detail}) + b"\n")
+
+    def segment_video(self, video_path: Path, prompt: str, video_hash: str) -> str:
+        prepared = prepare_video(
+            video_path,
+            self.settings.data_dir / "cache" / "native-video",
+            self.settings.sam_video_max_bytes,
+        )
+        if prepared.source_sha256 != video_hash:
+            raise ValueError("Native video hash does not match its recording")
+        key = digest([video_hash, prompt, "sam-3.1-video", TRANSCODE_SETTINGS])
+        cached = self.cache.get("sam-video", key)
+        if cached is not None:
+            return str(cached["payload"])
+        reserved_frames = prepared.billed_frame_reservation
+        body = {
+            "model": "sam-3.1",
+            "store": False,
+            "metadata": {"mask_encoding": "one_bit", "include_confidence": "true"},
+            "input": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": prompt},
+                        {
+                            "type": "input_video",
+                            "video_url": "data:video/mp4;base64,"
+                            + base64.b64encode(prepared.path.read_bytes()).decode(),
+                        },
+                    ],
+                }
+            ],
+        }
+        if len(canonical(body)) > LOCAL_ENCODED_REQUEST_MAX_BYTES:
+            raise NativeVideoTooLarge("Encoded native request exceeds conservative local byte cap")
+        raw = self.call(
+            "responses",
+            "sam",
+            "sam-3.1",
+            body,
+            frames=prepared.frame_count,
+            reserve_usd=reserved_frames * 0.0002,
+            sam_frames=reserved_frames,
+        )
+        if raw.get("status") != "completed":
+            self.tracking_notice(
+                "native_video_unknown",
+                "SAM video response was not completed; no mask evidence accepted or cached",
+            )
+            return ""
+        text = response_text(raw)
+        self.cache.put("sam-video", key, text, "live-meta-sam-3.1-video")
         return text
 
     def transcribe(self, audio: Path) -> list[TranscriptTurn]:

@@ -16,7 +16,7 @@ The owner explicitly approved storing the Meta API key and separate budget autho
 
 The backend independently verifies a confirmed account with Supabase Auth. Anonymous API requests and an invalid-token upload returned 401 on the live deployment. Private job, report and media access is owner-scoped. A confirmed owner uploaded the labelled synthetic integration clip through the actual browser, Spark compiled its one-step protocol, and the resulting job/archive persisted in Supabase. This is software integration evidence, not a real expert demonstration or accuracy result.
 
-The global reservation ledger caps estimates at $5 per UTC day, $2 per job, 60 Spark calls/day and 800 SAM calls/job. These do not replace provider billing controls or guarantee final charges. Budget authorization/network failures prevent the Meta request. An interrupted worker job becomes an explicit error rather than silently restarting paid work. Completed private archives can restore source/protocol/report files after restart; archive filenames and expanded size are validated.
+The global reservation ledger caps estimates at $5 per UTC day, $2 per job, 60 Spark calls/day, 2,000 billed native SAM frames/job and a separately configured image-call cap (800 in this deployment). These do not replace provider billing controls or guarantee final charges. Budget authorization/network failures prevent the Meta request. An interrupted worker job becomes an explicit error rather than silently restarting paid work. Completed private archives can restore source/protocol/report files after restart; archive filenames and expanded size are validated.
 
 No GPU/Modal service was started. API-only Spark review is the default. Physical expert A/B, labelled dev/test recordings, and the submission video remain pending.
 
@@ -45,3 +45,11 @@ Every attempted shadow opinion is recorded, including escalated Spark opinions a
 Validation now records compile/held-out per-step states and targets repairs only at non-discriminative steps, eligible unflagged counterfactual steps and replay steps not DONE. `repair_history` records attempted and changed step IDs per round. The bounded loop stops when verified, when no failing steps can be identified, or when a round changes nothing. Failure without a targeted repair remains unverified.
 
 The unused WebSocket endpoint was removed. Browser job status uses authenticated HTTP polling.
+
+## Native-video settings and budget ledger
+
+Apply `20261028163318_native_video_budgets.sql` before deploying the frame-budget client. The migration was applied to Apprentice and its rollback verification passed. Existing four-argument reservations keep working through defaulted arguments. Browser roles still cannot read the private ledger or reserve without the backend key.
+
+Local defaults: `SAM_MODE=video`, `SAM_VIDEO_MAX_BYTES=10485760`, `MAX_SAM_VIDEO_FRAMES=6000`, `MAX_SPARK_CALLS=40`, `MAX_RUN_COST_USD=3`, `MAX_DAILY_COST_USD=10`. Hosted defaults use `HOSTED_MAX_SAM_VIDEO_FRAMES=2000`, `HOSTED_MAX_RUN_COST_USD=2`, `HOSTED_MAX_DAILY_COST_USD=5`; image-call limits remain `MAX_SAM_CALLS` and Spark-day calls remain `MAX_DAILY_SPARK_CALLS`. These are trusted server runtime variables, never VITE variables. A full two-expert multi-prompt run may exceed the lower hosted frame cap and must refuse until limits are deliberately adjusted.
+
+SAM video reserves `max(50, CFR frame count, ceil(duration × 4)) × $0.0002` per prompt; retries/failed calls retain reservations. Unexpected additional billed frames are reconciled and stop further reservations for the UTC day. A local halt survives worker process restarts through SQLite on its filesystem, but an ephemeral service redeployment may replace that file; the hosted SQL halt persists if reconciliation reached Supabase. If remote reconciliation fails, only the local halt is confirmed.

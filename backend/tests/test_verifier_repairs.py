@@ -233,7 +233,8 @@ def test_failure_selection_includes_discrimination_controls_and_both_replays():
 
 
 @pytest.mark.parametrize("case", ["unchanged", "changed", "no-failures"])
-def test_validation_repairs_only_failed_step_and_stops_early(tmp_path, monkeypatch, case):
+@pytest.mark.parametrize("sam_mode", ["image", "video"])
+def test_validation_repairs_only_failed_step_and_stops_early(tmp_path, monkeypatch, case, sam_mode):
     changed = case == "changed"
     job = "repair"
     folder = tmp_path / "jobs" / job
@@ -268,10 +269,18 @@ def test_validation_repairs_only_failed_step_and_stops_early(tmp_path, monkeypat
 
     monkeypatch.setattr(service, "sample", lambda *a: [(0, Path("mock.jpg"))])
     monkeypatch.setattr(service, "keyframes", lambda *a, **kw: [])
-    monkeypatch.setattr(service, "track", lambda *a: [])
+    routed = []
+
+    def tracked(mode):
+        routed.append(mode)
+        return []
+
+    monkeypatch.setattr(service, "track", lambda *a: tracked("image"))
+    monkeypatch.setattr(service, "track_video", lambda *a: tracked("video"))
     monkeypatch.setattr(service, "validate_protocol", validate)
     monkeypatch.setattr(service, "repair_step", repair)
-    service.process_validation(cfg(tmp_path), job, {}, True)
+    service.process_validation(cfg(tmp_path, sam_mode=sam_mode), job, {}, True)
+    assert routed == [sam_mode, sam_mode]
     result = json.loads((folder / "self_check.json").read_text())
     if case == "no-failures":
         assert calls == []

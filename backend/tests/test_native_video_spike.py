@@ -35,7 +35,7 @@ def test_video_detail_reports_explicit_sparse_frame_refs_and_id_recurrence():
     assert result["evidence_status"] == "parsed"
     assert result["frame_indices_in_output_order"] == [0, 2, 7]
     assert result["frame_reference_fields"] == ["frame_index"]
-    assert result["processed_frames_per_source_second"] == 4
+    assert result["billed_frames_per_source_second"] == 4
     assert result["emitted_frames_per_source_second"] == 1.5
     assert result["mask_object_count"] == 2
     assert result["object_id_recurrence"] == [
@@ -53,7 +53,7 @@ def test_video_detail_keeps_missing_confidence_and_unreported_processing_rate_un
     raw["usage"] = {}
     result = spike.summarize_video_response(raw, source())
     assert result["frames"][0]["masks"][0]["confidence"] is None
-    assert result["processed_frames_per_source_second"] is None
+    assert result["billed_frames_per_source_second"] is None
 
 
 @pytest.mark.parametrize("status,text", [("incomplete", None), ("completed", "<0f>broken")])
@@ -69,7 +69,7 @@ def test_video_detail_accepts_empty_success_as_zero_matches_without_guessing_cov
     result = spike.summarize_video_response(response(""), source())
     assert result["mask_object_count"] == 0
     assert result["frames"] == []
-    assert result["processed_frames_per_source_second"] == 4
+    assert result["billed_frames_per_source_second"] == 4
     assert "Not established" in result["physical_identity_consistency"]
 
 
@@ -180,7 +180,9 @@ def test_detail_cli_makes_exactly_one_mocked_native_request_and_writes_observati
     assert body["metadata"] == {"include_confidence": "true", "mask_encoding": "one_bit"}
     assert body["input"][0]["content"][1]["video_url"].startswith("data:video/mp4;base64,")
     assert kwargs["frames"] == 8
-    assert kwargs["reserve_usd"] == 0.05
+    assert kwargs["reserve_usd"] == 0.01
+    assert kwargs["sam_frames"] == 50
+    assert body["store"] is False
     observations = list((tmp_path / "runs").glob("*/observations.json"))
     assert len(observations) == 1
     raw = observations[0].read_text()
@@ -208,4 +210,4 @@ def test_native_detail_does_not_reuse_image_cost_when_video_usage_is_absent(tmp_
 
     detail = spike.native_video_detail(Client(), video, "tube")
     assert detail["estimated_cost_usd"] is None
-    assert detail["processed_frames_per_source_second"] is None
+    assert detail["billed_frames_per_source_second"] is None
