@@ -1,3 +1,9 @@
+## T4 batch workflow - 2026-10-28
+
+- Isolated T4 checkout passed 143 Python tests, 42 desktop/mobile browser checks, Ruff check/format, strict mypy and production build.
+- Mocked generated-video tests cover the shared API/CLI pipeline, SHA/protocol/split-aware skipping, audit artifacts, evaluator acceptance, pre-request cumulative budget stops, failed-call reservations and advisory-budget refusals.
+- Test-only generated manifests use source=real solely to exercise the evaluator contract; no physical results or batch throughput were measured. No paid calls ran.
+
 ## T3 detailed native-video spike preparation - 2026-10-28
 
 - Isolated T3-step-1 checkout passed 133 Python tests, 42 desktop/mobile browser checks, Ruff check/format, strict mypy and production build.

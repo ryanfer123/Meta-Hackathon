@@ -28,3 +28,9 @@
 - Complex browser display contours are approximate: at most 256 points per object, using an initial 1.5 px approximation tolerance (increased only if a contour cannot fit) and preferring largest-area components. Wire metadata discloses tolerance and truncation. Tiny components may not be drawn; predicates and saved evidence overlays still use exact masks. Simple synthetic sample outlines are unchanged.
 
 - T3 detailed native-video tooling reports parser frame indices, mask-ID recurrence, response diagnostics and usage, but has not been run for this change. Recurring IDs are not proof of physical identity; the documented guarantee excludes full occlusion and exit/re-entry. A provider request-byte maximum was not found in the checked docs; the spike's 10 MiB and 30-second caps are local precautions. Production native-video tracking and frame-based budgets remain pending observations.
+
+## T4 local batch boundaries
+
+The batch tool uses the local durable SQLite reservation ledger and rejects `CLOUD_JOBS=true`; it does not silently bypass hosted RPC budgeting. The optional cumulative cap is enforced before each Meta HTTP request by narrowing the current job's existing per-run reservation cap to the remaining batch allowance. Failed HTTP attempts and retries remain reserved. A single-output-folder lock prevents competing batch processes from racing its allowance. These are conservative cost reservations, not a guarantee about provider bills or exact actual spend. Unknown-priced remote open-model endpoints are rejected when a cumulative cap is requested; loopback open tiers and API-only mode are supported. Provider-side billing controls remain separate.
+
+Interrupted/failed videos are not published as completed prediction JSONs. Cache hits can avoid repeat segmentation, but retries may still need advisory calls. Existing prediction SHA/protocol/split matches avoid new calls. Actual real-video batch quality, throughput and latency remain unmeasured.

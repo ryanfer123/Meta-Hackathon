@@ -50,3 +50,7 @@ Official SAM overview, reading-segmentation, client-libraries and segmenting doc
 `scripts/spike.py --native-video-detail` uses the previously observed `data:video/mp4` request path, requests one-bit masks/confidence and makes exactly one request after explicit `--allow-paid-calls`. It records local source metadata/hash, parser field names, per-frame masks/identities, ID recurrence, processed/emitted rate summaries, diagnostics, latency and usage. Missing processing usage/cost and physical identity consistency remain unknown. No new live observations exist. T3 steps 2–7 are waiting for the user-run detail output.
 
 Sources: [overview](https://dev.meta.ai/docs/sam/overview), [segmentation output](https://dev.meta.ai/docs/sam/reading-segmentation), [client libraries](https://dev.meta.ai/docs/sam/client-libraries), [segmenting limits](https://dev.meta.ai/docs/sam/segmenting).
+
+## T4 offline runner (mocked acceptance only)
+
+T4 adds no external API shape. The local batch runner reuses the API's recording pipeline, model adapters, cache and reservation guards. Generated video fixtures and mocked transports verify the evaluator's prediction contract, source hashes, idempotency, pre-request cost stops, failed-attempt accounting, advisory budget-denial stops and artifact export. The test-only manifest deliberately labels generated fixtures `source: "real"` to exercise existing evaluator validation; these temporary fixtures are not physical recordings or reported real-world results. No paid calls were run for T4.

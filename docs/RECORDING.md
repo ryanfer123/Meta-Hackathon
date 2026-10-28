@@ -12,3 +12,9 @@ Use colored water only. Choose a blue-labeled tube, red/yellow/green neighboring
 8. Freeze once: `uv run python eval/run_eval.py --freeze`. Commit the freeze metadata before test inference/analysis. Then run `uv run python eval/run_eval.py`. No threshold tuning based on test results.
 
 Do not commit recordings without consent. `eval/runs/dev` and `eval/runs/test` are for private data. Download public model call summaries only after inspecting them for private content. The three-minute submission video should show real held-out evidence and measured results, not promote synthetic smoke checks as scientific validation.
+
+## Batch manifest and timestamp conventions
+
+Label each deviation with its exact protocol step ID and the engine's observable trigger time. `skipped` and `out_of_order` are emitted when the later step's postcondition becomes stably true, not at an earlier instant when the operator physically omitted an action. For `skipped`, use the omitted step's ID; for `out_of_order`, use the later completed step's ID. Apply the evaluator's ±2 s tolerance to that trigger definition. Review clean runs and deliberately leave their event lists empty. Never infer ground-truth timestamps from predictions.
+
+Use the manifest and batch commands in [README](../README.md#batch-recording-workflow-t4). Keep recordings and generated artifacts in ignored private folders. The manifest helper never watches footage or labels events; confirm each real-source entry yourself before evaluation.

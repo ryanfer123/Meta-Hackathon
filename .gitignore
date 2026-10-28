@@ -22,3 +22,6 @@ docs/*.png
 
 .taste-skill/
 supabase/.temp/
+
+# Batch inputs are private in every supported video format, not only MP4.
+eval/runs/**

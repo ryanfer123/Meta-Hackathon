@@ -8,6 +8,7 @@ import httpx
 
 from app.audit.chain import build_chain
 from app.audit.report import render_report
+from app.budget import BudgetExceeded
 from app.config import Settings
 from app.glimmer_client import GlimmerClient
 from app.learn.compile import compile_protocol, repair_step
@@ -129,20 +130,44 @@ def call_metrics(settings: Settings, job: str, shadow: list[dict[str, object]]) 
     }
 
 
-def process_run(settings: Settings, job: str, protocol: Protocol, color_fallback: bool) -> None:
+def run_recording(
+    settings: Settings,
+    job: str,
+    video: Path,
+    protocol: Protocol,
+    color_fallback: bool = False,
+    *,
+    fail_on_budget_exhaustion: bool = False,
+) -> dict[str, Any]:
+    """Run one recording through the same deterministic pipeline used by the API.
+
+    The caller owns authorization, opt-in and input provenance. Exceptions propagate
+    so offline tooling can stop without treating a failed run as a prediction.
+    """
     folder = settings.data_dir / "jobs" / job
+    folder.mkdir(parents=True, exist_ok=True)
     client = MetaClient(settings, job)
     try:
-        video = folder / "original.mp4"
         paths = sample(video, folder / "frames")
         frames = track(client, protocol, paths, file_hash(video), color_fallback)
         supervisor = replay(protocol, frames)
         glimmer = GlimmerClient(settings, job)
         evidence = evidence_overlays(frames, paths, folder)
         review_full: list[Path] = []
+        budget_blocked: list[BudgetExceeded] = []
+
+        def spark_review(prompt: str, _images: list[Path]) -> Opinion:
+            try:
+                return client.structured(prompt, Opinion, review_full)
+            except BudgetExceeded as exc:
+                # Verifier treats unavailable advisory models as uncertainty. The offline
+                # batch may additionally stop instead of publishing a partial prediction.
+                budget_blocked.append(exc)
+                raise
+
         verifier = Verifier(
             glimmer.opinion,
-            lambda prompt, images: client.structured(prompt, Opinion, review_full),
+            spark_review,
             api_only=not bool(settings.glimmer_base_url),
         )
         events = []
@@ -190,6 +215,8 @@ def process_run(settings: Settings, job: str, protocol: Protocol, color_fallback
             events.extend(
                 verifier.review(event, prompt, review_crops, shadow=event.kind == "step_completed")
             )
+            if fail_on_budget_exhaustion and budget_blocked:
+                raise budget_blocked[-1]
         run: dict[str, Any] = {
             "id": job,
             "name": "Uploaded recording",
@@ -206,10 +233,17 @@ def process_run(settings: Settings, job: str, protocol: Protocol, color_fallback
         }
         run["events"].sort(key=lambda e: e["t"])
         finalize_run(folder, run, evidence)
-    except Exception as exc:
-        atomic_json(folder / "run.json", {"id": job, "status": "error", "error": error_name(exc)})
+        return run
     finally:
         client.close()
+
+
+def process_run(settings: Settings, job: str, protocol: Protocol, color_fallback: bool) -> None:
+    folder = settings.data_dir / "jobs" / job
+    try:
+        run_recording(settings, job, folder / "original.mp4", protocol, color_fallback)
+    except Exception as exc:
+        atomic_json(folder / "run.json", {"id": job, "status": "error", "error": error_name(exc)})
 
 
 def process_validation(

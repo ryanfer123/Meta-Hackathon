@@ -115,3 +115,26 @@ uv run python scripts/spike.py --native-video-detail \
 ```
 
 Use an MP4 no longer than 30 seconds and no larger than 10 MiB, ideally with two visible matching props to inspect tracking identities. Review the printed `data/runs/spike-*/observations.json` and share its `native_video_detail` block before enabling native tracking. Source average FPS, reported processed-frame averages and sparse emitted frame references are reported separately. Production remains image-keyframe SAM; T3 steps 2–7 require these real observations. No new paid call has been run.
+
+
+## Batch recording workflow (T4)
+
+Prepare the labels before opening model predictions. Use a validated protocol from Learn and distinct dev/test recordings. The manifest helper reads filenames only and creates empty event lists; inspect every `source: "real"` entry and label the footage manually. An empty list means a reviewed clean recording only after you have actually watched it.
+
+```sh
+uv run python scripts/make_manifest.py --videos eval/runs/dev --predictions data/batch/dev --split dev --out eval/labels.json
+uv run python scripts/make_manifest.py --videos eval/runs/test --predictions data/batch/test --split test --out eval/labels.json
+```
+
+Fill labels, tune on dev only and freeze the test manifest with the existing evaluator before running the test set. Never use model predictions as ground truth.
+
+For trusted local batch analysis configure `REPLAY_MODE=false`, `CLOUD_JOBS=false`, and the server-side model key in ignored local environment configuration. Use API-only mode (leave `GLIMMER_BASE_URL` empty) when requesting a cumulative cost cap:
+
+```sh
+uv run python scripts/run_batch.py --protocol data/jobs/PROTOCOL_ID/protocol.json --videos eval/runs/dev --out data/batch/dev --split dev --max-cost-usd 2 --allow-paid-calls
+uv run python scripts/run_batch.py --protocol data/jobs/PROTOCOL_ID/protocol.json --videos eval/runs/test --out data/batch/test --split test --max-cost-usd 2 --allow-paid-calls
+```
+
+Each video produces `<stem>.prediction.json` and `<stem>/report.html`, `chain.json`, `root.txt`. The reusable `run_recording` function is the same analysis pipeline used by the API. Existing ready predictions are skipped only when source SHA-256, protocol and split match. A changed video becomes a new attempt. Output folders bind to one protocol, split and local ledger; choose a new folder when these change. Keep generated outputs and recordings out of Git.
+
+The terminal table reports status, event count, cloud frame transmissions, estimated cost and elapsed seconds. Unknown costs are printed as `unknown`. Errors or exhausted budgets return exit code 2. Batch use is opt-in even for an idempotent rerun; without `--allow-paid-calls`, the runner exits before loading configuration or constructing model clients.
