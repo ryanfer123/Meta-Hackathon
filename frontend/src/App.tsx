@@ -1,15 +1,21 @@
+import { LazyMotion, MotionConfig } from 'motion/react';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { AccountProvider, useAccount } from './hooks/AccountContext';
 import { AuthDialog } from './components/AuthDialog';
 import { Brand } from './components/Brand';
 import { HomePage } from './pages/HomePage';
+const loadMotion = () => import('./motionFeatures').then((module) => module.default);
 const Workspace = lazy(() => import('./pages/Workspace'));
 
 export function App() {
   return (
-    <AccountProvider>
-      <Routes />
-    </AccountProvider>
+    <LazyMotion features={loadMotion} strict>
+      <MotionConfig reducedMotion="user" transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
+        <AccountProvider>
+          <Routes />
+        </AccountProvider>
+      </MotionConfig>
+    </LazyMotion>
   );
 }
 function Routes() {

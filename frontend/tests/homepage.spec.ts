@@ -55,3 +55,23 @@ test('workspace requires sign-in and invalid credentials do not grant access', a
   await page.getByRole('button', { name: 'Back to the homepage' }).click();
   await expect(page.getByRole('heading', { name: 'Good work. Worth repeating.' })).toBeVisible();
 });
+
+test('scroll reveals settle once and stay visible on return', async ({ page }) => {
+  await page.goto('/');
+  const heading = page.getByRole('heading', { name: 'Follow the evidence.' });
+  await heading.scrollIntoViewIfNeeded();
+  await expect(heading).toHaveCSS('opacity', '1');
+  await expect(heading).toHaveCSS('transform', 'none');
+  await page.evaluate(() => scrollTo(0, 0));
+  await heading.scrollIntoViewIfNeeded();
+  await expect(heading).toHaveCSS('opacity', '1');
+});
+
+test('reduced motion keeps content visible without entrance transforms', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const heading = page.getByRole('heading', { name: 'Follow the evidence.' });
+  await expect(heading).toHaveCSS('opacity', '1');
+  await expect(heading).toHaveCSS('transform', 'none');
+  await expect(page.locator('.hero-orbit')).toHaveCSS('transform', 'none');
+});

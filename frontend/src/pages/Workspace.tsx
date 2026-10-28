@@ -1,3 +1,5 @@
+import * as m from 'motion/react-m';
+import { AnimatePresence } from 'motion/react';
 import { useEffect, useState } from 'react';
 import {
   BookOpen,
@@ -272,52 +274,63 @@ export default function Workspace() {
               </button>
             </p>
           )}
-          {view === 'Overview' ? (
-            <Overview
-              onView={goView}
-              onScenario={chooseScenario}
-              onSignIn={() => setAuth(true)}
-              signedIn={!!session}
-            />
-          ) : view === 'Run library' ? (
-            <RunLibrary
-              userId={session?.user.id}
-              onSignIn={() => setAuth(true)}
-              onOpen={(r) => {
-                setRun(r);
-                goView('Supervise');
-              }}
-              refreshKey={refreshKey}
-              onUse={(file, kind) => {
-                setSource({ file, kind });
-                goView('Learn');
-              }}
-              onResume={(job) => {
-                if (job.kind === 'run') {
-                  setRun(job.result as unknown as Run);
+          <m.div
+            key={view}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28 }}
+          >
+            {view === 'Overview' ? (
+              <Overview
+                onView={goView}
+                onScenario={chooseScenario}
+                onSignIn={() => setAuth(true)}
+                signedIn={!!session}
+              />
+            ) : view === 'Run library' ? (
+              <RunLibrary
+                userId={session?.user.id}
+                onSignIn={() => setAuth(true)}
+                onOpen={(r) => {
+                  setRun(r);
                   goView('Supervise');
-                } else {
-                  setLearnJob(job);
+                }}
+                refreshKey={refreshKey}
+                onUse={(file, kind) => {
+                  setSource({ file, kind });
                   goView('Learn');
-                }
-              }}
-            />
-          ) : loading || !run ? (
-            <div className="loading" role="status">
-              <span className="spinner" />
-              Loading the procedure…
-            </div>
-          ) : (
-            <>
-              {view === 'Supervise' ? (
-                <Supervise key={run.id} run={run} onAudit={() => goView('Audit')} />
-              ) : view === 'Audit' ? (
-                <Audit key={run.id} run={run} />
-              ) : null}
-            </>
-          )}
+                }}
+                onResume={(job) => {
+                  if (job.kind === 'run') {
+                    setRun(job.result as unknown as Run);
+                    goView('Supervise');
+                  } else {
+                    setLearnJob(job);
+                    goView('Learn');
+                  }
+                }}
+              />
+            ) : loading || !run ? (
+              <div className="loading" role="status">
+                <span className="spinner" />
+                Loading the procedure…
+              </div>
+            ) : (
+              <>
+                {view === 'Supervise' ? (
+                  <Supervise key={run.id} run={run} onAudit={() => goView('Audit')} />
+                ) : view === 'Audit' ? (
+                  <Audit key={run.id} run={run} />
+                ) : null}
+              </>
+            )}
+          </m.div>
           {run && !loading && (
-            <div hidden={view !== 'Learn'}>
+            <m.div
+              hidden={view !== 'Learn'}
+              animate={{ opacity: view === 'Learn' ? 1 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
               <Learn
                 run={run}
                 health={health}
@@ -328,7 +341,7 @@ export default function Workspace() {
                   goView('Supervise');
                 }}
               />
-            </div>
+            </m.div>
           )}
         </main>
         <footer className="workspace-footer">
@@ -345,18 +358,28 @@ export default function Workspace() {
           </a>
         </footer>
       </div>
-      {toast && (
-        <div className="toast" role="status">
-          {toast}
-          <button
-            className="icon-button"
-            aria-label="Dismiss notification"
-            onClick={() => setToast('')}
+      <AnimatePresence>
+        {toast && (
+          <m.div
+            key="notification"
+            className="toast"
+            role="status"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.2 }}
           >
-            <X size={17} />
-          </button>
-        </div>
-      )}
+            {toast}
+            <button
+              className="icon-button"
+              aria-label="Dismiss notification"
+              onClick={() => setToast('')}
+            >
+              <X size={17} />
+            </button>
+          </m.div>
+        )}
+      </AnimatePresence>
       {auth && <AuthDialog onClose={() => setAuth(false)} />}{' '}
       {scope && (
         <Dialog title="Scope & provenance" onClose={() => setScope(false)}>

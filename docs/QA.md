@@ -1,3 +1,11 @@
+## Motion refinement - 2026-10-28
+
+- Added Motion for React (formerly Framer Motion): staggered hero entrance, one-time viewport reveals, comparison fades, workspace entrances, dialog entrances and notification exits.
+- Motion features load in a separate chunk. System reduced-motion preferences disable positional transitions; Learn stays mounted across navigation.
+- Verified desktop and mobile screenshots, including intermediate scroll states: no browser errors or horizontal page overflow.
+- Validation: 34 desktop/mobile Playwright checks (including reveal persistence and reduced motion), 93 Python tests, Ruff check/format, strict mypy and production build passed. Vite still reports its advisory for the main JavaScript chunk exceeding 500 kB.
+- No model calls, credentials, database policies or authentication gates changed.
+
 # Current verification: authenticated API-only processing
 
 - 93 Python checks passed; Ruff, formatting, strict mypy (28 app modules), and production frontend build pass.

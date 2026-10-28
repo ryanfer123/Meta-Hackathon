@@ -1,3 +1,4 @@
+import * as m from 'motion/react-m';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
@@ -17,7 +18,10 @@ export function Dialog({
     return () => dialog?.close();
   }, []);
   return (
-    <dialog
+    <m.dialog
+      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.22 }}
       className="dialog"
       ref={ref}
       onCancel={onClose}
@@ -33,6 +37,6 @@ export function Dialog({
         </button>
       </div>
       {children}
-    </dialog>
+    </m.dialog>
   );
 }

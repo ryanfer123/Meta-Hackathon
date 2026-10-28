@@ -109,64 +109,12 @@
   border-radius: 50%;
   overflow: hidden;
   background: var(--sand-deep);
-  animation: hero-shutter 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 .hero-orbit img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transform: scale(1.035);
-  animation: studio-drift 18s ease-in-out infinite alternate;
-}
-@keyframes hero-shutter {
-  from {
-    opacity: 0;
-    transform: translateX(65px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-@keyframes studio-drift {
-  from {
-    transform: scale(1.035) translateY(0);
-  }
-  to {
-    transform: scale(1.075) translateY(-8px);
-  }
-}
-.hero-copy h1,
-.hero-copy p,
-.hero-copy .home-button,
-.home-nav > a,
-.home-nav nav > * {
-  animation: home-enter 0.85s both;
-}
-.hero-copy p {
-  animation-delay: 0.1s;
-}
-.hero-copy .home-button {
-  animation-delay: 0.18s;
-}
-.home-nav nav > *:nth-child(2) {
-  animation-delay: 0.07s;
-}
-.home-nav nav > *:nth-child(3) {
-  animation-delay: 0.14s;
-}
-.home-nav nav > *:nth-child(4) {
-  animation-delay: 0.21s;
-}
-@keyframes home-enter {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 .hero-caption {
   position: absolute;
@@ -537,19 +485,6 @@
   line-height: 0.97;
   margin-left: -0.02em;
   margin-top: 39px;
-}
-.reveal {
-  transition:
-    opacity 0.6s ease,
-    transform 0.7s cubic-bezier(0.2, 0.65, 0.2, 1);
-}
-.reveal.will-reveal {
-  opacity: 0;
-  transform: translateY(22px);
-}
-.reveal.is-visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 @media (min-width: 1700px) {
   .hero-copy {
