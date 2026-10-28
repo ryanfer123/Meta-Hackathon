@@ -50,8 +50,8 @@ export function AuthDialog({
   const content = (
     <>
       <p className="dialog-description">
-        Sign in to review procedures, save runs, and store recordings. An account is required to
-        enter the workstation.
+        Sign in to analyse your recordings, save runs, and open your private library. Synthetic
+        sample replay is available without an account.
       </p>
       <form className="auth-form" onSubmit={(e) => void submit(e)}>
         <label htmlFor="account-email">Email</label>
@@ -107,7 +107,7 @@ export function AuthDialog({
         {mode === 'signin' ? 'New here? Create an account' : 'Already have an account? Sign in'}
       </button>
       <button className="text-button guest-link" onClick={onClose}>
-        Back to the homepage
+        {inline ? 'Back to the homepage' : 'Close sign-in'}
       </button>
     </>
   );

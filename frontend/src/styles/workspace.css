@@ -1646,3 +1646,22 @@ hr {
     bottom: 16px;
   }
 }
+
+.sample-access-banner {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 24px;
+  background: var(--blue);
+  color: white;
+  font-size: 14px;
+}
+.sample-access-banner .text-button {
+  color: white;
+  flex-shrink: 0;
+  text-decoration: underline;
+}

@@ -20,13 +20,13 @@ cd ..
 uv run uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 ```
 
-Open `http://127.0.0.1:8000`. For frontend development use `npm run dev` in `frontend`; it proxies `/api` and `/ws` to port 8000. For static replay, `npm run dev` works without Python once bundled samples and Supabase client configuration exist. Sign-in is mandatory; there is no guest bypass.
+Open `http://127.0.0.1:8000`. For frontend development use `npm run dev` in `frontend`; it proxies `/api` and `/ws` to port 8000. For a fully static replay, set `VITE_STATIC_REPLAY=true` and run `npm run dev` without Python. Bundled samples require no API keys, Supabase configuration, backend or account. Open `/#/workspace?sample=skipped-cap&view=Supervise` (or `view=Audit` / `view=Learn`).
 
 Try **Skipped cap**, seek to the event markers, inspect a step's predicate, switch to **Clean procedure**, then **Audit → Verify chain**. Learn exposes the sample protocol and pending validation checks. Nothing is represented as a real model call.
 
 ## Private cloud workspace
 
-The homepage is public. Entering the workstation requires a confirmed Supabase account, including replay, Learn, Audit and the run library. Sign in to save/reopen/delete run snapshots and upload source recordings to a private library. Supabase provides email/password Auth, Postgres, and private Storage. Recording uploads are staged source material; choose Use in Learn to load them into the compilation, held-out or novice workflow. Analysis jobs and their private output archives persist in Supabase.
+The homepage and six synthetic sample replays are public. Signed-out visitors can play/seek samples, inspect predicates and sample protocols, download sample audits, and verify their chains in the browser. A persistent banner identifies sample mode. Uploading recordings or chains, live Learn/analysis, saving runs, and listing the private run library require a confirmed Supabase account and show sign-in when requested. Signing out clears mounted private run/form state before returning to a bundled sample or the private-route sign-in screen. Sign in to save/reopen/delete run snapshots and upload source recordings to a private library. Supabase provides email/password Auth, Postgres, and private Storage. Recording uploads are staged source material; choose Use in Learn to load them into the compilation, held-out or novice workflow. Analysis jobs and their private output archives persist in Supabase.
 
 For a local cloud-enabled frontend, copy `frontend/.env.example` to `frontend/.env.local` and set `VITE_SUPABASE_URL` plus `VITE_SUPABASE_PUBLISHABLE_KEY`. Only the public client key belongs here. Never put a service role or model key in a `VITE_` variable. Set `VITE_STATIC_REPLAY=true` when serving a static replay without Python. These variables are compiled at build time.
 
@@ -42,7 +42,7 @@ Copy `.env.example` to `.env` and set `REPLAY_MODE=false`, `MODEL_API_KEY`, and 
 4. Export the HTML report, chain and root. Keep the root separately.
 5. Follow [recording and frozen evaluation instructions](docs/RECORDING.md). Real results belong in [eval/results.md](eval/results.md).
 
-The observer currently uses SAM image keyframes at 2 fps, requires distinct object prompts, and refuses ambiguous identity assignments. Count/absence require explicit complete coverage and may remain unknown in live input. Default budgets deliberately reject excessive calls; long recordings with many objects may need a measured budget increase. The separate API service requires a verified Supabase bearer token and owner-scoped job access. Set `VITE_API_BASE_URL` to its origin. Tokens are sent in headers, never media URLs. `AUTH_REQUIRED=false` is only for private local development/tests and must not be used on a public service.
+The observer currently uses SAM image keyframes at 2 fps, requires distinct object prompts, and refuses ambiguous identity assignments. Count/absence require explicit complete coverage and may remain unknown in live input. Default budgets deliberately reject excessive calls; long recordings with many objects may need a measured budget increase. The separate API service requires a verified Supabase bearer token and owner-scoped access for private jobs and paid operations. Only health, the six known synthetic sample routes and their run/report/verify/media endpoints are public. Sample data is generated locally without model calls, Supabase writes or budget reservations. Public sample API routes have a best-effort 30 requests per rolling minute per socket IP limit; static bundled assets do not use that API. Set `VITE_API_BASE_URL` to its origin. Tokens are sent in headers, never media URLs. `AUTH_REQUIRED=false` is only for private local development/tests and must not be used on a public service.
 
 ## Models propose. Pixels ground. Code decides.
 

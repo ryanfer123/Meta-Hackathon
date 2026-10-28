@@ -39,10 +39,12 @@ A run library holds complete review snapshots. Uploads are limited to non-empty 
 
 ## Mandatory identity and API-only processing
 
-The public homepage opens a mandatory account screen for every workspace route. Persisted sessions are checked with Supabase Auth before rendering the workspace. The API separately calls Auth's user endpoint, requires a confirmed non-anonymous user, and checks job ownership for status, reports, source media and validation. Browser media/report requests carry the access token in a header; no JWT query parameters or model keys are used.
+The public homepage links directly to read-only synthetic samples in Supervise, Audit and Learn. These render from bundled assets without an account or backend, and browser chain verification is local. Private routes and actions require confirmed accounts. Persisted sessions are checked with Supabase Auth before rendering private state; workspace trees are remounted when the account changes so sign-out cannot retain private runs or form values. The API separately calls Auth's user endpoint, requires a confirmed non-anonymous user, and checks job ownership for status, reports, source media and validation. Browser media/report requests carry the access token in a header; no JWT query parameters or model keys are used.
 
 The default advisory path uses hosted Spark for uncertain windows and every completed-step shadow opinion. Glimmer is optional and unused in API-only mode. Rules still make all pass/fail decisions.
 
 `analysis_jobs` and a private artifact bucket store durable results/archives. Restoring an archive only accepts an exact file allowlist with an expanded-size cap; path traversal is rejected. One processing job per account is enforced by a unique partial index. A worker restart makes abandoned work explicitly fail; no automatic paid retries.
 
 The server-only budget key is hashed in the private database configuration and held as a runtime secret by the API. The reservation RPC serializes the global budget before any Meta request. Authenticated browser clients cannot reserve without that key or read the ledger. Its SECURITY DEFINER scope is limited and deliberately documented; ordinary job/storage operations use the user's JWT and RLS.
+
+Public sample API access uses a method/path allowlist for six known sample IDs. Reads materialize deterministic local fixtures even with cloud jobs enabled, never invoking Auth, Meta, Supabase writes or the budget ledger. Private job folder regex/owner checks remain. A bounded per-process limiter retains up to 4096 socket IPs and permits 30 public sample requests per rolling minute per IP; it does not trust forwarded headers or coordinate multiple workers.

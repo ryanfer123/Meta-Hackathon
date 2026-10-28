@@ -30,7 +30,11 @@ export function Learn({
   onRun,
   source,
   initialJob,
+  readOnly = false,
+  onSignIn,
 }: {
+  readOnly?: boolean;
+  onSignIn?: () => void;
   run: Run;
   health: Health;
   onRun: (run: Run) => void;
@@ -64,6 +68,10 @@ export function Learn({
   }, [initialJob]);
   const live = health.live_configured;
   async function task(name: string, fn: () => Promise<void>) {
+    if (readOnly) {
+      onSignIn?.();
+      return;
+    }
     setBusy(name);
     setError('');
     try {
@@ -125,117 +133,132 @@ export function Learn({
   }
   return (
     <div className="learn-layout">
-      <section className="panel learn-input">
-        <div className="section-heading">
+      {readOnly ? (
+        <section className="panel learn-input">
           <h2>Learn from one demonstration</h2>
-          <FileVideo size={21} />
-        </div>
-        <p className="muted">
-          The expert proposes a procedure. Four checks decide whether it is verified.
-        </p>
-        {!live && (
+          <p className="muted">
+            Inspect the sample protocol and its pending validation checks. Sign in to upload and
+            analyse your own recordings.
+          </p>
+          <button className="button primary full" onClick={onSignIn}>
+            Sign in to upload a recording
+          </button>
+        </section>
+      ) : (
+        <section className="panel learn-input">
+          <div className="section-heading">
+            <h2>Learn from one demonstration</h2>
+            <FileVideo size={21} />
+          </div>
+          <p className="muted">
+            The expert proposes a procedure. Four checks decide whether it is verified.
+          </p>
+          {!live && (
+            <div className="notice">
+              <Clock3 size={18} />
+              <p>
+                The analysis service is not connected on this installation. Explore the sample
+                protocol on the right. It is a handwritten engineering fixture.
+              </p>
+            </div>
+          )}
           <div className="notice">
-            <Clock3 size={18} />
-            <p>
-              The analysis service is not connected on this installation. Explore the sample
-              protocol on the right. It is a handwritten engineering fixture.
-            </p>
+            <FileVideo size={18} />
+            <div>
+              <strong>Reference demonstration · Science Buddies</strong>
+              <p>
+                <a
+                  href="https://www.youtube.com/watch?v=gmeCY7ANrog"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Watch How to Make a Serial Dilution <ArrowUpRight size={14} />
+                </a>
+                {' · '}
+                <a
+                  href="https://www.sciencebuddies.org/science-fair-projects/references/how-to-make-a-dilution"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Original tutorial
+                </a>
+              </p>
+              <p>
+                External reference. For analysis, upload a recording you have permission to use.
+              </p>
+            </div>
           </div>
-        )}
-        <div className="notice">
-          <FileVideo size={18} />
-          <div>
-            <strong>Reference demonstration · Science Buddies</strong>
-            <p>
-              <a
-                href="https://www.youtube.com/watch?v=gmeCY7ANrog"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Watch How to Make a Serial Dilution <ArrowUpRight size={14} />
-              </a>
-              {' · '}
-              <a
-                href="https://www.sciencebuddies.org/science-fair-projects/references/how-to-make-a-dilution"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Original tutorial
-              </a>
+          <FileInput label="Expert A / compile recording" file={expert} onFile={setExpert} />
+          <label className="field-label" htmlFor="narration">
+            Timestamped narration JSON <span>optional if video has audio</span>
+          </label>
+          <textarea
+            id="narration"
+            value={narration}
+            onChange={(e) => setNarration(e.target.value)}
+            spellCheck={false}
+            rows={3}
+          />
+          <p className="field-help">
+            [{`{"start":0,"end":5,"text":"Position the dropper…"}`}]. Audio extraction requires
+            ffmpeg.
+          </p>
+          <button
+            className="button primary full"
+            onClick={() => void compile()}
+            disabled={!live || !expert || !!busy}
+          >
+            <Upload size={16} />
+            Compile protocol
+          </button>
+          <hr />
+          <h3>Validate with a second expert take</h3>
+          <FileInput label="Expert B / held-out recording" file={heldout} onFile={setHeldout} />
+          <label className="field-label" htmlFor="ranges">
+            Expert A step boundaries <span>seconds, start must precede action</span>
+          </label>
+          <textarea
+            id="ranges"
+            rows={5}
+            value={ranges}
+            onChange={(e) => setRanges(e.target.value)}
+            spellCheck={false}
+          />
+          <label className="checkbox">
+            <input type="checkbox" checked={repair} onChange={(e) => setRepair(e.target.checked)} />
+            Allow up to 3 model repair rounds within budget
+          </label>
+          <button
+            className="button full"
+            disabled={!live || !id || !heldout || !!busy}
+            onClick={() => void validate()}
+          >
+            Run four validation checks <ArrowUpRight size={15} />
+          </button>
+          <hr />
+          <h3>Supervise a novice take</h3>
+          <FileInput label="Novice recording" file={novice} onFile={setNovice} />
+          <button
+            className="button full"
+            disabled={!live || !id || !novice || !!busy}
+            onClick={() => void supervise()}
+          >
+            Analyze recording <ArrowUpRight size={15} />
+          </button>
+          {id && <p className="field-help mono">Protocol ID: {id}</p>}
+          {busy && (
+            <p className="notice" role="status">
+              <span className="spinner" />
+              {busy}
             </p>
-            <p>External reference. For analysis, upload a recording you have permission to use.</p>
-          </div>
-        </div>
-        <FileInput label="Expert A / compile recording" file={expert} onFile={setExpert} />
-        <label className="field-label" htmlFor="narration">
-          Timestamped narration JSON <span>optional if video has audio</span>
-        </label>
-        <textarea
-          id="narration"
-          value={narration}
-          onChange={(e) => setNarration(e.target.value)}
-          spellCheck={false}
-          rows={3}
-        />
-        <p className="field-help">
-          [{`{"start":0,"end":5,"text":"Position the dropper…"}`}]. Audio extraction requires
-          ffmpeg.
-        </p>
-        <button
-          className="button primary full"
-          onClick={() => void compile()}
-          disabled={!live || !expert || !!busy}
-        >
-          <Upload size={16} />
-          Compile protocol
-        </button>
-        <hr />
-        <h3>Validate with a second expert take</h3>
-        <FileInput label="Expert B / held-out recording" file={heldout} onFile={setHeldout} />
-        <label className="field-label" htmlFor="ranges">
-          Expert A step boundaries <span>seconds, start must precede action</span>
-        </label>
-        <textarea
-          id="ranges"
-          rows={5}
-          value={ranges}
-          onChange={(e) => setRanges(e.target.value)}
-          spellCheck={false}
-        />
-        <label className="checkbox">
-          <input type="checkbox" checked={repair} onChange={(e) => setRepair(e.target.checked)} />
-          Allow up to 3 model repair rounds within budget
-        </label>
-        <button
-          className="button full"
-          disabled={!live || !id || !heldout || !!busy}
-          onClick={() => void validate()}
-        >
-          Run four validation checks <ArrowUpRight size={15} />
-        </button>
-        <hr />
-        <h3>Supervise a novice take</h3>
-        <FileInput label="Novice recording" file={novice} onFile={setNovice} />
-        <button
-          className="button full"
-          disabled={!live || !id || !novice || !!busy}
-          onClick={() => void supervise()}
-        >
-          Analyze recording <ArrowUpRight size={15} />
-        </button>
-        {id && <p className="field-help mono">Protocol ID: {id}</p>}
-        {busy && (
-          <p className="notice" role="status">
-            <span className="spinner" />
-            {busy}
-          </p>
-        )}
-        {error && (
-          <p className="error-message" role="alert">
-            {error}
-          </p>
-        )}
-      </section>
+          )}
+          {error && (
+            <p className="error-message" role="alert">
+              {error}
+            </p>
+          )}
+        </section>
+      )}
       <section className="panel learned-protocol">
         <div className="section-heading">
           <h2>{protocol.name}</h2>

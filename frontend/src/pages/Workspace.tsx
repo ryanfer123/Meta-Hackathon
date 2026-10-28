@@ -41,7 +41,7 @@ function initialView() {
   const view = new URLSearchParams(location.hash.split('?')[1]).get('view');
   return navigation.some((n) => n.name === view) ? view! : 'Supervise';
 }
-export default function Workspace() {
+export default function Workspace({ readOnly = false }: { readOnly?: boolean }) {
   const [view, setView] = useState(initialView),
     [scenario, setScenario] = useState(
       () => new URLSearchParams(location.hash.split('?')[1]).get('sample') || 'skipped-cap',
@@ -67,8 +67,8 @@ export default function Workspace() {
     [learnJob, setLearnJob] = useState<AnalysisJob | null>(null);
   const { session, signOut } = useAccount();
   useEffect(() => {
-    void getHealth().then(setHealth);
-  }, []);
+    if (!readOnly) void getHealth().then(setHealth);
+  }, [readOnly]);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -93,6 +93,11 @@ export default function Workspace() {
     return () => clearTimeout(id);
   }, [toast]);
   function goView(next: string) {
+    if (readOnly && !['Supervise', 'Audit', 'Learn'].includes(next)) {
+      setAuth(true);
+      setMobileMenu(false);
+      return;
+    }
     setView(next);
     setMobileMenu(false);
     const params = new URLSearchParams({ view: next, sample: scenario });
@@ -176,7 +181,7 @@ export default function Workspace() {
           <div className="sidebar-account">
             <Cloud size={19} />
             <p>
-              {session ? 'Your work is private.' : 'You are exploring as a guest.'}
+              {session ? 'Your work is private.' : 'You are exploring a synthetic sample.'}
               <span>
                 {session
                   ? 'Saved runs and recordings belong to your account.'
@@ -221,7 +226,7 @@ export default function Workspace() {
           <div>
             <span className="cloud-status">
               <Cloud size={18} />
-              {session ? 'Private workspace' : 'Guest workspace'}
+              {session ? 'Private workspace' : 'Sample workspace'}
             </span>
             <button
               className="button primary save-run"
@@ -233,6 +238,14 @@ export default function Workspace() {
             </button>
           </div>
         </header>
+        {readOnly && (
+          <div className="sample-access-banner" role="note">
+            <span>Synthetic sample — sign in to analyse your own recordings</span>
+            <button className="text-button" onClick={() => setAuth(true)}>
+              Sign in
+            </button>
+          </div>
+        )}
         <main id="workspace-main" className="workspace-main">
           <div className="workspace-title">
             <div>
@@ -320,7 +333,12 @@ export default function Workspace() {
                 {view === 'Supervise' ? (
                   <Supervise key={run.id} run={run} onAudit={() => goView('Audit')} />
                 ) : view === 'Audit' ? (
-                  <Audit key={run.id} run={run} />
+                  <Audit
+                    key={run.id}
+                    run={run}
+                    readOnly={readOnly}
+                    onSignIn={() => setAuth(true)}
+                  />
                 ) : null}
               </>
             )}
@@ -332,6 +350,8 @@ export default function Workspace() {
               transition={{ duration: 0.2 }}
             >
               <Learn
+                readOnly={readOnly}
+                onSignIn={() => setAuth(true)}
                 run={run}
                 health={health}
                 source={source}

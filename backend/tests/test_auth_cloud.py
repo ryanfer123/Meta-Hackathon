@@ -73,7 +73,7 @@ def test_auth_required_and_owner_scoped_media(tmp_path, monkeypatch):
     config = Settings(_env_file=None, data_dir=tmp_path)
     with TestClient(main.create_app(config)) as client:
         assert client.get("/api/health").status_code == 200
-        for path in ["/api/samples", f"/api/protocols/{job}", f"/api/media/{job}/original.mp4"]:
+        for path in [f"/api/protocols/{job}", f"/api/media/{job}/original.mp4"]:
             assert client.get(path).status_code == 401
         assert (
             client.get(

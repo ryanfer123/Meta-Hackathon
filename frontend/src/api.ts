@@ -70,9 +70,10 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   const {
     data: { session },
   } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
-  if (!session) throw new Error('Sign in to access your workspace.');
+  if (!session && path !== '/api/health')
+    throw new Error('Sign in to access your private workspace.');
   const headers = new Headers(init?.headers);
-  headers.set('Authorization', `Bearer ${session.access_token}`);
+  if (session) headers.set('Authorization', `Bearer ${session.access_token}`);
   const base = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
   return fetch(base + path, { ...init, headers, cache: 'no-store', credentials: 'omit' });
 }

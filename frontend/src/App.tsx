@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { AccountProvider, useAccount } from './hooks/AccountContext';
 import { AuthDialog } from './components/AuthDialog';
 import { Brand } from './components/Brand';
+import { scenarios } from './types';
 import { HomePage } from './pages/HomePage';
 const loadMotion = () => import('./motionFeatures').then((module) => module.default);
 const Workspace = lazy(() => import('./pages/Workspace'));
@@ -33,13 +34,18 @@ function Routes() {
     location.hash = `/workspace?${new URLSearchParams({ sample: scenario, view })}`;
   }
   const workspace = hash.startsWith('#/workspace') || hash.includes('access_token=');
-  if (workspace && loading)
+  const params = new URLSearchParams(hash.split('?')[1]);
+  const publicSample =
+    hash.startsWith('#/workspace?') &&
+    scenarios.some(([name]) => name === params.get('sample')) &&
+    ['Supervise', 'Audit', 'Learn'].includes(params.get('view') ?? '');
+  if (workspace && !publicSample && loading)
     return (
       <div className="app-loading" role="status">
         Checking your session…
       </div>
     );
-  if (workspace && !session)
+  if (workspace && !publicSample && !session)
     return (
       <div className="auth-page">
         <header>
@@ -83,7 +89,7 @@ function Routes() {
         </div>
       }
     >
-      <Workspace />
+      <Workspace key={session?.user.id ?? 'public-sample'} readOnly={!session} />
     </Suspense>
   ) : (
     <HomePage onOpen={open} />

@@ -5,7 +5,7 @@ API: https://apprentice-api-meta.onrender.com
 
 Source `d29769236f747ac9f08fe7fde14b83fad80b0005` passed backend/frontend CI: https://github.com/ryanfer123/Meta-Hackathon/actions/runs/40554743678.
 
-- Frontend service `srv-dbgcuj29lscs739n0qrg`: static Vite build, public homepage, mandatory confirmed Supabase account for workspace routes.
+- Frontend service `srv-dbgcuj29lscs739n0qrg`: static Vite build, public homepage and read-only synthetic sample routes; confirmed Supabase accounts for private library, uploads and live analysis.
 - Processing service `srv-dbgeafutlv9c73e2667g`: Render free plan, Singapore, `Dockerfile.api`, Python-only image. Deployment `dep-dbgeagmtlv9c73e26aig` is live.
 - Supabase `ntuuztideqsdvuiiohlh`: Auth, owner-scoped tables, private recording/artifact buckets and durable model reservations.
 - Both services follow main. A repository commit also redeploys the worker; avoid publishing during an active analysis. Free instances have cold starts and can restart.

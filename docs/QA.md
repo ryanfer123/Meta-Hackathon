@@ -1,3 +1,10 @@
+## T1 public synthetic replay - 2026-10-28
+
+- Synthetic Supervise, Audit and sample-protocol Learn are public on explicit sample routes. Private root/library/unknown routes remain gated. Live uploads and saved state still require sign-in.
+- 42 desktop/mobile Playwright checks passed, including all six samples with API/cloud requests blocked, chain verification, sign-in prompts and clearing private form state on sign-out.
+- 104 Python tests passed, including public reads in cloud-job mode without Auth, Meta, cloud storage or budget calls; known-sample allowlisting, private IDs, rate-limit recovery, spoofed forwarded headers and bounded limiter storage.
+- Historical mandatory-login and anonymous-sample-401 observations below describe earlier commits and are superseded by T1.
+
 ## Motion refinement - 2026-10-28
 
 - Added Motion for React (formerly Framer Motion): staggered hero entrance, one-time viewport reveals, comparison fades, workspace entrances, dialog entrances and notification exits.

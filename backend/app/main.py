@@ -30,6 +30,7 @@ from app.cloud import CloudJobs
 from app.config import Settings
 from app.learn.validate import StepRange
 from app.replay_cache import atomic_json
+from app.sample_access import SampleRateLimiter, is_public_sample
 from app.samples import SAMPLES, sample_run
 from app.schemas import Protocol, TranscriptTurn
 from app.service import finalize_run, process_learn, process_run, process_validation
@@ -39,26 +40,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     config = settings or Settings()
     app = FastAPI(title="Apprentice", version="0.1.0")
 
+    sample_limiter = SampleRateLimiter()
+    sample_lock = Lock()
+    sample_ready: set[str] = set()
+
     @app.middleware("http")
     async def require_account(request: Request, call_next: Any) -> Any:
+        public_sample = is_public_sample(request.method, request.url.path)
+        if public_sample:
+            retry = sample_limiter.retry_after(request.client.host if request.client else "unknown")
+            if retry:
+                return JSONResponse(
+                    {"detail": "Sample request limit reached. Try again shortly."},
+                    status_code=429,
+                    headers={"Retry-After": str(retry), "Cache-Control": "no-store"},
+                )
+        if request.method == "POST" and request.headers.get("content-type", "").startswith(
+            "multipart/form-data"
+        ):
+            size = request.headers.get("content-length")
+            if size is None:
+                return JSONResponse({"detail": "Upload size is required"}, status_code=411)
+            if not size.isdigit() or int(size) > config.max_upload_mb * 1024 * 1024 + 1024 * 1024:
+                return JSONResponse({"detail": "Upload exceeds configured limit"}, status_code=413)
         if (
-            request.url.path.startswith("/api/")
+            not public_sample
+            and request.url.path.startswith("/api/")
             and request.url.path != "/api/health"
             and request.method != "OPTIONS"
         ):
-            if request.method == "POST" and request.headers.get("content-type", "").startswith(
-                "multipart/form-data"
-            ):
-                size = request.headers.get("content-length")
-                if size is None:
-                    return JSONResponse({"detail": "Upload size is required"}, status_code=411)
-                if (
-                    not size.isdigit()
-                    or int(size) > config.max_upload_mb * 1024 * 1024 + 1024 * 1024
-                ):
-                    return JSONResponse(
-                        {"detail": "Upload exceeds configured limit"}, status_code=413
-                    )
             try:
                 request.state.owner = await authenticate(
                     config, request.headers.get("authorization", "")
@@ -183,6 +193,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def job_folder(job: str, request: Request | None = None, create: bool = False) -> Path:
         if not re.fullmatch(r"[a-f0-9]{32}|sample-[a-z-]+", job):
             raise HTTPException(404, "Unknown job")
+        if job.startswith("sample-") and job.removeprefix("sample-") not in SAMPLES:
+            raise HTTPException(404, "Unknown sample")
         folder = config.data_dir / "jobs" / job
         if request is not None and config.auth_required and not job.startswith("sample-"):
             owner_file = folder / "owner.txt"
@@ -199,6 +211,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             elif not owner_file.exists() or owner_file.read_text() != request.state.owner:
                 raise HTTPException(404, "Unknown job")
         return folder
+
+    def ensure_sample(job: str) -> None:
+        if job.startswith("sample-"):
+            folder = job_folder(job)
+            with sample_lock:
+                if job not in sample_ready:
+                    # Local deterministic fixtures only: no clients, cloud writes or budgets.
+                    finalize_run(folder, sample_run(job.removeprefix("sample-")), {})
+                    sample_ready.add(job)
 
     def read(path: Path) -> Any:
         if not path.exists():
@@ -253,9 +274,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def start_sample(name: str) -> dict[str, Any]:
         if name not in SAMPLES:
             raise HTTPException(404, "Unknown sample")
-        run = sample_run(name)
-        finalize_run(job_folder(run["id"]), run, {})
-        return run
+        job = "sample-" + name
+        ensure_sample(job)
+        return dict(read(job_folder(job) / "run.json"))
 
     @app.post("/api/protocols", status_code=202)
     async def learn(
@@ -322,12 +343,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/api/runs/{job}")
     def get_run(job: str, request: Request) -> Any:
-        if config.cloud_jobs:
+        ensure_sample(job)
+        if config.cloud_jobs and not job.startswith("sample-"):
             return cloud_status(request, job)
         return read(job_folder(job, request) / "run.json")
 
     @app.get("/api/runs/{job}/report", response_class=HTMLResponse)
     def report(job: str, request: Request) -> str:
+        ensure_sample(job)
         path = job_folder(job, request) / "report.html"
         if not path.exists():
             raise HTTPException(404, "Report not ready")
@@ -337,6 +360,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def verify(
         job: str, request: Request, trusted_root: Annotated[str | None, Form()] = None
     ) -> dict[str, object]:
+        ensure_sample(job)
         chain = read(job_folder(job, request) / "chain.json")
         return {
             "valid": verify_entries(chain, trusted_root),
@@ -348,6 +372,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def media(job: str, name: str, request: Request) -> FileResponse:
         if not re.fullmatch(r"original\.mp4|evidence_frame_[0-9_.]+\.jpg", name):
             raise HTTPException(404, "Unknown media")
+        ensure_sample(job)
         path = job_folder(job, request) / name
         if not path.exists():
             raise HTTPException(404, "Media not found")

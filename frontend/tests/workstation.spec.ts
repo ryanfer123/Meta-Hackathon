@@ -1,12 +1,10 @@
 import { mockAccount } from './account';
 import { test, expect, type Page } from '@playwright/test';
 
-test.beforeEach(async ({ page }) => mockAccount(page));
-
 test('skip replay, inspect predicate and verify audit', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/#/workspace');
+  await page.goto('/#/workspace?sample=skipped-cap&view=Supervise');
   await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Seek to skipped', exact: true }).click();
   await expect(page.locator('.step.skipped')).toContainText('Cap tube 1');
@@ -23,7 +21,7 @@ test('skip replay, inspect predicate and verify audit', async ({ page }) => {
 });
 
 test('clean sample completes all steps and playback resets', async ({ page }) => {
-  await page.goto('/#/workspace');
+  await page.goto('/#/workspace?sample=skipped-cap&view=Supervise');
   await page.getByLabel('Sample scenario').selectOption('clean');
   await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
   await page.getByRole('slider', { name: 'Replay position' }).focus();
@@ -47,7 +45,7 @@ for (const [name, expected] of [
   ['occlusion', 'uncertain'],
 ]) {
   test(`${name} shows its rule deviation`, async ({ page }) => {
-    await page.goto('/#/workspace');
+    await page.goto('/#/workspace?sample=skipped-cap&view=Supervise');
     await page.getByLabel('Sample scenario').selectOption(name);
     await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
     await page.getByRole('slider', { name: 'Replay position' }).focus();
@@ -57,7 +55,8 @@ for (const [name, expected] of [
 }
 
 test('learn exposes pending evidence and mobile has no page overflow', async ({ page }) => {
-  await page.goto('/#/workspace');
+  await mockAccount(page);
+  await page.goto('/#/workspace?sample=skipped-cap&view=Supervise');
   await navigateView(page, 'Learn');
   await expect(page.getByRole('button', { name: 'Compile protocol', exact: true })).toBeDisabled();
   await expect(page.locator('.validation-checks .pending')).toHaveCount(4);
@@ -81,7 +80,7 @@ test('learn exposes pending evidence and mobile has no page overflow', async ({ 
 });
 
 test('report is standalone and chain export downloads', async ({ page }) => {
-  await page.goto('/#/workspace');
+  await page.goto('/#/workspace?sample=skipped-cap&view=Supervise');
   await page.getByRole('button', { name: 'Open audit', exact: true }).first().click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export chain', exact: true }).click();

@@ -2,7 +2,15 @@ import { useState } from 'react';
 import { ArrowUpRight, CheckCircle2, Download, ShieldCheck } from 'lucide-react';
 import { download, verifyChain, exportReport } from './api';
 import { isAlert, label, timecode, type ChainEntry, type Run } from './types';
-export function Audit({ run }: { run: Run }) {
+export function Audit({
+  run,
+  readOnly = false,
+  onSignIn,
+}: {
+  run: Run;
+  readOnly?: boolean;
+  onSignIn?: () => void;
+}) {
   const [root, setRoot] = useState(run.chain_root),
     [chain, setChain] = useState<ChainEntry[]>(run.chain),
     [result, setResult] = useState(''),
@@ -140,25 +148,31 @@ export function Audit({ run }: { run: Run }) {
           rows={3}
           spellCheck={false}
         />
-        <label className="chain-upload">
-          Load a chain JSON to check{' '}
-          <input
-            aria-label="Load audit chain"
-            type="file"
-            accept="application/json,.json"
-            onChange={async (e) => {
-              try {
-                const file = e.target.files?.[0];
-                if (file) {
-                  setChain(JSON.parse(await file.text()));
-                  setResult('Chain loaded; ready to verify.');
+        {readOnly ? (
+          <button className="text-button" onClick={onSignIn}>
+            Sign in to load your own chain
+          </button>
+        ) : (
+          <label className="chain-upload">
+            Load a chain JSON to check{' '}
+            <input
+              aria-label="Load audit chain"
+              type="file"
+              accept="application/json,.json"
+              onChange={async (e) => {
+                try {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setChain(JSON.parse(await file.text()));
+                    setResult('Chain loaded; ready to verify.');
+                  }
+                } catch {
+                  setResult('Invalid JSON file.');
                 }
-              } catch {
-                setResult('Invalid JSON file.');
-              }
-            }}
-          />
-        </label>
+              }}
+            />
+          </label>
+        )}
         <button className="button primary full" onClick={() => void verify()} disabled={busy}>
           <CheckCircle2 size={16} />
           {busy ? 'Verifying…' : 'Verify chain'}

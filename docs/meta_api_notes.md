@@ -34,3 +34,7 @@ An earlier connection probe authenticated successfully but its 128-token output 
 Native SAM video request `native-video-spike-1793123741` completed on the eight-second synthetic animation, reporting 80 video frames processed and non-empty output. This does not validate real tracking accuracy or change the production observer's image-keyframe strategy.
 
 The authenticated Render worker compiled a one-step protocol from that synthetic input, then supervised its follow-up: 16 sampled frames, 48 SAM image calls and one Spark advisory call. The tube was not consistently detected, so the step stayed ACTIVE/uncertain. The API-only review did not override missing rule evidence. No step completed, so that integration run supplies no shadow-agreement sample. Private archives, media playback, report download and chain verification succeeded. Real expert/held-out/frozen-test performance remains unmeasured.
+
+## T1 public replay boundary - October 28, 2026
+
+Public sample replay uses original bundled synthetic fixtures and the local deterministic rule/audit pipeline. It makes no Meta calls, cloud writes or budget reservations. Only the six explicit sample IDs and their supported endpoints bypass API account verification; private jobs and all live operations remain authenticated. Static sample playback and chain verification are tested with every `/api` request blocked. No paid call was run for this change; no external request schema or measured model result changed.
