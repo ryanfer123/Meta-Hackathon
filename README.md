@@ -98,3 +98,7 @@ MIT-licensed project source; dependencies and model weights retain their own lic
 `Dockerfile.api` builds Python only; no model key is a frontend build input. The processing service uses a server-side Meta key, the signed-in user's JWT for owner-scoped storage, and a separate server-only key authorizing durable budget reservations. It does not use a Supabase service-role key. Database reservations serialize concurrent calls with conservative limits of $2 per job and $5 per UTC day, 60 Spark calls/day and 800 SAM calls/job. These are estimates, not a billing guarantee; provider billing controls remain separate. Unknown/denied budget authorization fails before contacting Meta.
 
 Completed job archives survive worker restarts. A restart during processing fails the interrupted job explicitly rather than silently restarting paid work. The free worker has cold starts and resource limits; it is a hackathon preview, not a production queue. Keep recordings short, at most 50 MB, and retain source copies.
+
+## Acknowledgments
+
+The Learn workspace links to Science Buddies' **How to Make a Serial Dilution** as an external reference. See [acknowledgment.md](acknowledgment.md) for credit, original sources and reuse status. The video is not bundled or represented as a completed Apprentice analysis.

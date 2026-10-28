@@ -142,6 +142,30 @@ export function Learn({
             </p>
           </div>
         )}
+        <div className="notice">
+          <FileVideo size={18} />
+          <div>
+            <strong>Reference demonstration · Science Buddies</strong>
+            <p>
+              <a
+                href="https://www.youtube.com/watch?v=gmeCY7ANrog"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Watch How to Make a Serial Dilution <ArrowUpRight size={14} />
+              </a>
+              {' · '}
+              <a
+                href="https://www.sciencebuddies.org/science-fair-projects/references/how-to-make-a-dilution"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Original tutorial
+              </a>
+            </p>
+            <p>External reference. For analysis, upload a recording you have permission to use.</p>
+          </div>
+        </div>
         <FileInput label="Expert A / compile recording" file={expert} onFile={setExpert} />
         <label className="field-label" htmlFor="narration">
           Timestamped narration JSON <span>optional if video has audio</span>
