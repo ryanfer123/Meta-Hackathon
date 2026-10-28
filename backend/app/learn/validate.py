@@ -22,7 +22,10 @@ def replay(protocol: Protocol, frames: list[FrameState]) -> Supervisor:
 
 
 def clean(protocol: Protocol, frames: list[FrameState]) -> bool:
-    engine = replay(protocol, frames)
+    return clean_engine(replay(protocol, frames))
+
+
+def clean_engine(engine: Supervisor) -> bool:
     return all(s.status == "DONE" for s in engine.states.values()) and all(
         e.kind in ("step_started", "step_completed") for e in engine.events
     )
@@ -97,13 +100,21 @@ def validate_protocol(
         engine = replay(protocol, mutate(expert_a, ranges, a.id, b.id))
         caught = any(e.kind == "out_of_order" for e in engine.events)
         controls.append(
-            {"mutation": "swap", "step": a.id, "flagged": caught, "eligible": protocol.order_strict}
+            {
+                "mutation": "swap",
+                "step": a.id,
+                "swap_with": b.id,
+                "flagged": caught,
+                "eligible": protocol.order_strict,
+            }
         )
     eligible = [c for c in controls if c["eligible"]]
+    compile_engine = replay(protocol, expert_a)
+    held_out_engine = replay(protocol, expert_b)
     checks = {
         "discriminative": all(discriminative.values()),
-        "compile_replay": clean(protocol, expert_a),
-        "held_out": bool(expert_b) and clean(protocol, expert_b),
+        "compile_replay": clean_engine(compile_engine),
+        "held_out": bool(expert_b) and clean_engine(held_out_engine),
         "counterfactual": bool(eligible) and all(bool(c["flagged"]) for c in eligible),
     }
     trace: dict[str, list[dict[str, object]]] = {}
@@ -116,6 +127,10 @@ def validate_protocol(
     protocol.verified = all(checks.values())
     return {
         "checks": checks,
+        "replay_states": {
+            "compile_replay": {key: state.status for key, state in compile_engine.states.items()},
+            "held_out": {key: state.status for key, state in held_out_engine.states.items()},
+        },
         "steps": discriminative,
         "predicate_trace": trace,
         "counterfactuals": controls,

@@ -10,6 +10,7 @@ from pydantic import BaseModel, ValidationError
 
 from app.budget import Budget
 from app.config import Settings
+from app.model_output import ModelOutputIncomplete, ensure_complete, json_object_text
 from app.replay_cache import ReplayCache, canonical, digest
 from app.schemas import TranscriptTurn
 
@@ -69,6 +70,15 @@ class MetaClient:
             response.raise_for_status()
             raw: dict[str, Any] = response.json()
             usage = raw.get("usage", {})
+            try:
+                ensure_complete(raw)
+            except ModelOutputIncomplete:
+                if kind != "sam":
+                    raise
+                # Raw SAM callers (notably the observation spike) need partial
+                # frame references and diagnostics. Keep the call logged as an
+                # error; consumers must not treat partial geometry as evidence.
+                return raw
             status = "ok"
             return raw
         finally:
@@ -127,8 +137,8 @@ class MetaClient:
                 len(images or []),
             )
             try:
-                return schema.model_validate_json(response_text(raw))
-            except ValidationError as exc:
+                return schema.model_validate_json(json_object_text(response_text(raw)))
+            except (ValidationError, ValueError) as exc:
                 feedback = f"\nPrevious response invalid: {exc}. Correct the JSON."
                 if attempt == 2:
                     raise
@@ -159,6 +169,12 @@ class MetaClient:
             frames=1,
             reserve_usd=0.0025,
         )
+        try:
+            ensure_complete(raw)
+        except ModelOutputIncomplete:
+            # Image tracking has no response-status channel: no candidates is
+            # unknown evidence. Never cache a partial response as a full mask.
+            return ""
         text = response_text(raw)
         self.cache.put("sam", key, text, "live-meta-sam-3.1")
         return text

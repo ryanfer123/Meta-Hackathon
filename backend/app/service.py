@@ -116,7 +116,12 @@ def call_metrics(settings: Settings, job: str, shadow: list[dict[str, object]]) 
     available = [s for s in shadow if s.get("available")]
     return {
         "model_calls": len(calls),
-        "tier_distribution": dict(Counter(c["tier"] for c in calls)),
+        "tier_distribution": dict(
+            Counter(
+                settings.open_tier_label if c["tier"] == "glimmer" else c["tier"] for c in calls
+            )
+        ),
+        "open_tier_label": settings.open_tier_label,
         "calls": calls,
         "cloud_frames": cloud,
         "local_frames": local,
@@ -125,7 +130,8 @@ def call_metrics(settings: Settings, job: str, shadow: list[dict[str, object]]) 
         if available
         else None,
         "shadow_available": len(available),
-        "shadow_requested": len(shadow),
+        "shadow_requested": len({s.get("step_id") for s in shadow}),
+        "shadow_opinions_requested": len(shadow),
         "note": "Egress counts frame transmissions including retries, not distinct frames. Modal is cloud.",
     }
 
@@ -169,6 +175,7 @@ def run_recording(
             glimmer.opinion,
             spark_review,
             api_only=not bool(settings.glimmer_base_url),
+            open_tier_label=settings.open_tier_label,
         )
         events = []
         for event in supervisor.events:
@@ -246,6 +253,27 @@ def process_run(settings: Settings, job: str, protocol: Protocol, color_fallback
         atomic_json(folder / "run.json", {"id": job, "status": "error", "error": error_name(exc)})
 
 
+def failing_step_ids(protocol: Protocol, result: dict[str, object]) -> list[str]:
+    """Select only steps whose observed validation diagnostics identify a failure."""
+    failed: set[str] = set()
+    discriminative = result.get("steps", {})
+    if isinstance(discriminative, dict):
+        failed.update(str(step_id) for step_id, passed in discriminative.items() if passed is False)
+    controls = result.get("counterfactuals", [])
+    if isinstance(controls, list):
+        for control in controls:
+            if isinstance(control, dict) and control.get("eligible") and not control.get("flagged"):
+                failed.add(str(control.get("step")))
+                if control.get("swap_with"):
+                    failed.add(str(control["swap_with"]))
+    states = result.get("replay_states", {})
+    if isinstance(states, dict):
+        for replay_states in states.values():
+            if isinstance(replay_states, dict):
+                failed.update(str(key) for key, status in replay_states.items() if status != "DONE")
+    return [step.id for step in protocol.steps if step.id in failed]
+
+
 def process_validation(
     settings: Settings, job: str, ranges: dict[str, StepRange], repair: bool
 ) -> None:
@@ -261,21 +289,47 @@ def process_validation(
         a = track(client, protocol, a_paths, file_hash(folder / "original.mp4"))
         b = track(client, protocol, b_paths, file_hash(folder / "heldout.mp4"))
         result = validate_protocol(protocol, a, b, ranges)
-        history = [{"round": 0, "checks": result["checks"], "verified": result["verified"]}]
+        history: list[dict[str, object]] = [
+            {
+                "round": 0,
+                "checks": result["checks"],
+                "verified": result["verified"],
+                "attempted_steps": [],
+                "repaired_steps": [],
+            }
+        ]
         for round_idx in range(1, 4):
             if result["verified"] or not repair:
                 break
+            failed = failing_step_ids(protocol, result)
+            if not failed:
+                break
+            changed: list[str] = []
             for i, step in enumerate(protocol.steps):
+                if step.id not in failed:
+                    continue
                 fixed = repair_step(client, step, json.dumps(result), keyframes(a_paths, limit=3))
                 if fixed.id != step.id:
                     raise ValueError("Repair changed a step ID")
-                protocol.steps[i] = fixed
-            protocol = Protocol.model_validate(protocol.model_dump(by_alias=True))
-            result = validate_protocol(protocol, a, b, ranges)
+                if fixed != step:
+                    changed.append(step.id)
+                    protocol.steps[i] = fixed
+            if changed:
+                protocol = Protocol.model_validate(protocol.model_dump(by_alias=True))
+                result = validate_protocol(protocol, a, b, ranges)
             result["repair_rounds"] = round_idx
             history.append(
-                {"round": round_idx, "checks": result["checks"], "verified": result["verified"]}
+                {
+                    "round": round_idx,
+                    "checks": result["checks"],
+                    "verified": result["verified"],
+                    "attempted_steps": failed,
+                    "repaired_steps": changed,
+                    "changed_steps": changed,
+                }
             )
+            if not changed:
+                break
         result["repair_history"] = history
         result["compile_video_sha256"] = a_hash
         result["held_out_video_sha256"] = b_hash

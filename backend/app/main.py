@@ -16,8 +16,6 @@ from fastapi import (
     HTTPException,
     Request,
     UploadFile,
-    WebSocket,
-    WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -377,40 +375,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not path.exists():
             raise HTTPException(404, "Media not found")
         return FileResponse(path)
-
-    @app.websocket("/ws/runs/{job}")
-    async def stream(ws: WebSocket, job: str) -> None:
-        import asyncio
-
-        try:
-            owner = await authenticate(config, ws.headers.get("authorization", ""))
-            folder = job_folder(job)
-            if config.auth_required and (
-                not (folder / "owner.txt").exists() or (folder / "owner.txt").read_text() != owner
-            ):
-                await ws.close(code=1008)
-                return
-        except HTTPException:
-            await ws.close(code=1008)
-            return
-        await ws.accept()
-        try:
-            path = job_folder(job) / "run.json"
-            for _ in range(180):
-                payload = (
-                    json.loads(path.read_text()) if path.exists() else {"status": "processing"}
-                )
-                await ws.send_json(payload)
-                if payload.get("status") in ("ready", "error") or "events" in payload:
-                    break
-                await asyncio.sleep(1)
-        except (WebSocketDisconnect, HTTPException):
-            return
-        finally:
-            try:
-                await ws.close()
-            except RuntimeError:
-                pass
 
     dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
     if dist.exists():

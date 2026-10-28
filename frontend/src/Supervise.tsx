@@ -329,7 +329,13 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
                 </tr>
               ) : (
                 events.map((e, i) => (
-                  <EvidenceRow key={i} event={e} synthetic={synthetic} onSeek={() => seek(e.t)} />
+                  <EvidenceRow
+                    key={i}
+                    event={e}
+                    synthetic={synthetic}
+                    openTierLabel={run.metrics.open_tier_label ?? 'glimmer'}
+                    onSeek={() => seek(e.t)}
+                  />
                 ))
               )}
             </tbody>
@@ -347,10 +353,12 @@ function EvidenceRow({
   event: e,
   synthetic,
   onSeek,
+  openTierLabel,
 }: {
   event: Event;
   synthetic: boolean;
   onSeek: () => void;
+  openTierLabel: string;
 }) {
   return (
     <tr className={isAlert(e.kind) ? 'deviation-row' : ''}>
@@ -362,7 +370,7 @@ function EvidenceRow({
       <td>{e.detail}</td>
       <td className="decision">{label(e.kind)}</td>
       <td>
-        <span className="tier">{e.tier}</span>
+        <span className="tier">{e.tier === 'glimmer' ? openTierLabel : e.tier}</span>
         <small className="source-note">{synthetic ? 'synthetic masks' : 'recorded evidence'}</small>
       </td>
     </tr>

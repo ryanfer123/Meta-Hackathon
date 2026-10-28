@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,12 +18,20 @@ class Settings(BaseSettings):
     glimmer_base_url: str = ""
     glimmer_api_key: SecretStr = SecretStr("")
     glimmer_model: str = "muse-glimmer"
+    glimmer_max_tokens: int = Field(default=3000, ge=1, le=32768)
+    open_tier_label: str = Field(default="glimmer", pattern=r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$")
     data_dir: Path = Path("data")
     max_sam_calls: int = Field(default=120, ge=0)
     max_spark_calls: int = Field(default=12, ge=0)
     max_daily_spark_calls: int = Field(default=60, ge=0)
     max_run_cost_usd: float = Field(default=2, gt=0)
     max_upload_mb: int = Field(default=100, ge=1, le=500)
+
+    @model_validator(mode="after")
+    def honest_open_tier_label(self) -> "Settings":
+        if "muse-spark-open" in self.glimmer_model.lower() and self.open_tier_label == "glimmer":
+            self.open_tier_label = "spark-open"
+        return self
 
     def require_live(self) -> None:
         if self.replay_mode or not self.model_api_key.get_secret_value():

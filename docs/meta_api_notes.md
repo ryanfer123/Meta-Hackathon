@@ -54,3 +54,9 @@ Sources: [overview](https://dev.meta.ai/docs/sam/overview), [segmentation output
 ## T4 offline runner (mocked acceptance only)
 
 T4 adds no external API shape. The local batch runner reuses the API's recording pipeline, model adapters, cache and reservation guards. Generated video fixtures and mocked transports verify the evaluator's prediction contract, source hashes, idempotency, pre-request cost stops, failed-attempt accounting, advisory budget-denial stops and artifact export. The test-only manifest deliberately labels generated fixtures `source: "real"` to exercise existing evaluator validation; these temporary fixtures are not physical recordings or reported real-world results. No paid calls were run for T4.
+
+## T5 partner configuration and opinion handling
+
+Baseten configuration documentation checked on October 28, 2026: official quickstart and Model API overview verify `https://inference.baseten.co/v1/chat/completions`, Bearer authorization and standard image content. General official Muse Spark Open page/changelog documents model `meta-models/muse-spark-open`; the event-specific `meta-models/muse-spark-open-1026` comes from the supplied hackathon guide and remains account-unverified. No paid calls were run. Mock tests verify request construction, remote egress, strict extraction/retry limits and incomplete-output handling, not actual provider behavior.
+
+Incomplete SAM responses are retained as raw unknown evidence for the detail spike, logged with error status and never cached as completed image geometry. Spark/open opinions still stop on incomplete output without automatic retries.

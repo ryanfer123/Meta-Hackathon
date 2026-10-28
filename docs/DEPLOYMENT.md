@@ -21,3 +21,27 @@ The global reservation ledger caps estimates at $5 per UTC day, $2 per job, 60 S
 No GPU/Modal service was started. API-only Spark review is the default. Physical expert A/B, labelled dev/test recordings, and the submission video remain pending.
 
 The synthetic supervision test also finished and persisted an archive. It retained uncertainty rather than completing a step whose tube mask was missing. Private video playback and HTML report requests returned 200; browser chain verification matched the stored root. Physical-procedure evaluation is still pending.
+
+## Optional Baseten advisory tier
+
+The optional open-model tier uses the existing OpenAI-compatible Chat Completions adapter. Baseten's official [quickstart](https://docs.baseten.co/quickstart) and [Model API overview](https://docs.baseten.co/inference/model-apis/overview) verify base URL `https://inference.baseten.co/v1`, endpoint `/chat/completions` and `Authorization: Bearer <Baseten API key>`. Its [vision guide](https://docs.baseten.co/inference/model-apis/vision) documents standard `image_url` content parts. Keep its key in backend-only `GLIMMER_API_KEY`; a Meta Model API key is not a Baseten key.
+
+```env
+GLIMMER_BASE_URL=https://inference.baseten.co/v1
+GLIMMER_API_KEY=<your Baseten API key>
+GLIMMER_MODEL=meta-models/muse-spark-open-1026
+GLIMMER_MAX_TOKENS=3000
+OPEN_TIER_LABEL=spark-open
+```
+
+The hackathon guide supplies the `-1026` alias. Official general Baseten documentation confirms `meta-models/muse-spark-open`, but access to the event-specific alias and this user's image endpoint has not been verified with a paid request. Do not replace the hackathon alias silently. Run the opt-in spike only with explicit `--allow-paid-calls` approval and an image; the existing `glimmer_vision` observation now identifies the configured model and label. No Baseten account, deployment, key or call was created by these changes. This is optional; API-only Spark remains available without an open endpoint.
+
+`GLIMMER_MAX_TOKENS` defaults to 3000. An explicit incomplete/length stop is logged as an error and is not automatically retried. Presentation wrappers such as Markdown fences or leading reasoning are tolerated by extracting the first valid JSON object, but the Pydantic schema remains strict and validation retries remain capped at two after the original answer. Model opinions never complete a rule step or replace missing pixels.
+
+Display labels and metric distributions use `OPEN_TIER_LABEL` (default `glimmer`); Muse Spark Open model IDs automatically use `spark-open` if the default label was left unchanged. The event routing enum remains `glimmer` for schema compatibility, with the configured label used by report/UI display and shadow metadata. A non-loopback endpoint, including Baseten or Modal, counts as cloud egress.
+
+Every attempted shadow opinion is recorded, including escalated Spark opinions and unavailable responses. `shadow_requested` counts completed steps reviewed; `shadow_opinions_requested` counts tier attempts; `shadow_agreement` is agreement across available opinions, including escalations. Disagreement and escalated answers stay advisory; events preserve both tier answers.
+
+Validation now records compile/held-out per-step states and targets repairs only at non-discriminative steps, eligible unflagged counterfactual steps and replay steps not DONE. `repair_history` records attempted and changed step IDs per round. The bounded loop stops when verified, when no failing steps can be identified, or when a round changes nothing. Failure without a targeted repair remains unverified.
+
+The unused WebSocket endpoint was removed. Browser job status uses authenticated HTTP polling.

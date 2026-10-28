@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from app.config import Settings
 from app.meta_client import image_url
+from app.model_output import ModelOutputIncomplete, ensure_complete, json_object_text
 from app.replay_cache import canonical
 from app.schemas import Opinion
 
@@ -30,6 +31,7 @@ class GlimmerClient:
             start = time.perf_counter()
             status = "error"
             usage: dict[str, Any] = {}
+            error_type: str | None = None
             try:
                 content: list[dict[str, Any]] = [
                     {
@@ -52,17 +54,24 @@ class GlimmerClient:
                         },
                         json={
                             "model": self.settings.glimmer_model,
-                            "max_tokens": 1000,
+                            "max_tokens": self.settings.glimmer_max_tokens,
                             "messages": [{"role": "user", "content": content}],
                         },
                     )
                     response.raise_for_status()
                     raw = response.json()
                 usage = raw.get("usage", {})
-                result = Opinion.model_validate_json(raw["choices"][0]["message"]["content"])
+                ensure_complete(raw)
+                result = Opinion.model_validate_json(
+                    json_object_text(raw["choices"][0]["message"]["content"])
+                )
                 status = "ok"
                 return result
-            except ValidationError as exc:
+            except ModelOutputIncomplete:
+                error_type = "incomplete"
+                raise
+            except (ValidationError, ValueError) as exc:
+                error_type = "validation"
                 feedback = " Correct validation errors: " + str(exc)
                 if attempt == 2:
                     raise
@@ -74,9 +83,12 @@ class GlimmerClient:
                         canonical(
                             {
                                 "model": self.settings.glimmer_model,
-                                "tier": "glimmer",
+                                "tier": self.settings.open_tier_label,
+                                "routing_tier": "glimmer",
+                                "open_tier_label": self.settings.open_tier_label,
                                 "latency_ms": (time.perf_counter() - start) * 1000,
                                 "status": status,
+                                "error_type": error_type,
                                 "usage": usage,
                                 "cost_estimate_usd": None,
                                 "cloud_frames": 0 if is_local else len(frames[:3]),

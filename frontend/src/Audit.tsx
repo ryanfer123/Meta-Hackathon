@@ -212,7 +212,9 @@ export function Audit({
                   <td className="decision">{label(e.kind)}</td>
                   <td>{e.detail}</td>
                   <td>
-                    <span className="tier">{e.tier}</span>
+                    <span className="tier">
+                      {e.tier === 'glimmer' ? (run.metrics.open_tier_label ?? 'glimmer') : e.tier}
+                    </span>
                   </td>
                 </tr>
               ))}

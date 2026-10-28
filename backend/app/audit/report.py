@@ -8,9 +8,10 @@ def render_report(run: dict[str, Any], root: str, evidence: dict[str, bytes] | N
     def esc(value: object) -> str:
         return html.escape(str(value))
 
+    open_label = run.get("metrics", {}).get("open_tier_label", "glimmer")
     rows = "".join(
         f"<tr><td>{e['t']:.2f}s</td><td>{esc(e['step_id'])}</td><td>{esc(e['kind'])}</td>"
-        f"<td>{esc(e['tier'])}</td><td>{esc(e['detail'])}</td></tr>"
+        f"<td>{esc(open_label if e['tier'] == 'glimmer' else e['tier'])}</td><td>{esc(e['detail'])}</td></tr>"
         for e in run["events"]
     )
     images = "".join(

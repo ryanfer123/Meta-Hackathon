@@ -1,3 +1,10 @@
+## T5 advisory tiers and targeted repairs - 2026-10-28
+
+- Full checks passed: 166 Python tests, 44 desktop/mobile browser checks, Ruff check/format, strict mypy and production build.
+- Tests cover agreeing/disagreeing/unavailable open-tier and Spark shadow branches, fenced/leading JSON with strict schemas, explicit incomplete stops, remote egress, configured display labels, selective repairs, unchanged-round early stop, and removal of the unused WebSocket route.
+- Native incomplete SAM output is available to the detail spike as unknown evidence and is never cached as completed image geometry. Repair history distinguishes attempted steps from changed steps.
+- No Baseten or open-model paid calls ran; partner event-model access, cost and latency remain unverified. The separately authorized SAM detail call belongs to T3 and is not open-tier validation.
+
 ## T4 batch workflow - 2026-10-28
 
 - Isolated T4 checkout passed 143 Python tests, 42 desktop/mobile browser checks, Ruff check/format, strict mypy and production build.

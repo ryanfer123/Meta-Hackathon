@@ -20,7 +20,7 @@ cd ..
 uv run uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 ```
 
-Open `http://127.0.0.1:8000`. For frontend development use `npm run dev` in `frontend`; it proxies `/api` and `/ws` to port 8000. For a fully static replay, set `VITE_STATIC_REPLAY=true` and run `npm run dev` without Python. Bundled samples require no API keys, Supabase configuration, backend or account. Open `/#/workspace?sample=skipped-cap&view=Supervise` (or `view=Audit` / `view=Learn`).
+Open `http://127.0.0.1:8000`. For frontend development use `npm run dev` in `frontend`; it proxies `/api` to port 8000; job status uses HTTP polling. For a fully static replay, set `VITE_STATIC_REPLAY=true` and run `npm run dev` without Python. Bundled samples require no API keys, Supabase configuration, backend or account. Open `/#/workspace?sample=skipped-cap&view=Supervise` (or `view=Audit` / `view=Learn`).
 
 Try **Skipped cap**, seek to the event markers, inspect a step's predicate, switch to **Clean procedure**, then **Audit → Verify chain**. Learn exposes the sample protocol and pending validation checks. Nothing is represented as a real model call.
 
@@ -138,3 +138,26 @@ uv run python scripts/run_batch.py --protocol data/jobs/PROTOCOL_ID/protocol.jso
 Each video produces `<stem>.prediction.json` and `<stem>/report.html`, `chain.json`, `root.txt`. The reusable `run_recording` function is the same analysis pipeline used by the API. Existing ready predictions are skipped only when source SHA-256, protocol and split match. A changed video becomes a new attempt. Output folders bind to one protocol, split and local ledger; choose a new folder when these change. Keep generated outputs and recordings out of Git.
 
 The terminal table reports status, event count, cloud frame transmissions, estimated cost and elapsed seconds. Unknown costs are printed as `unknown`. Errors or exhausted budgets return exit code 2. Batch use is opt-in even for an idempotent rerun; without `--allow-paid-calls`, the runner exits before loading configuration or constructing model clients.
+
+
+## Optional partner open-model tier (T5)
+
+The optional open-model tier uses the existing OpenAI-compatible Chat Completions adapter. Baseten's official [quickstart](https://docs.baseten.co/quickstart) and [Model API overview](https://docs.baseten.co/inference/model-apis/overview) verify base URL `https://inference.baseten.co/v1`, endpoint `/chat/completions` and `Authorization: Bearer <Baseten API key>`. Its [vision guide](https://docs.baseten.co/inference/model-apis/vision) documents standard `image_url` content parts. Keep its key in backend-only `GLIMMER_API_KEY`; a Meta Model API key is not a Baseten key.
+
+```env
+GLIMMER_BASE_URL=https://inference.baseten.co/v1
+GLIMMER_API_KEY=<your Baseten API key>
+GLIMMER_MODEL=meta-models/muse-spark-open-1026
+GLIMMER_MAX_TOKENS=3000
+OPEN_TIER_LABEL=spark-open
+```
+
+The hackathon guide supplies the `-1026` alias. Official general Baseten documentation confirms `meta-models/muse-spark-open`, but access to the event-specific alias and this user's image endpoint has not been verified with a paid request. Do not replace the hackathon alias silently. Run the opt-in spike only with explicit `--allow-paid-calls` approval and an image; the existing `glimmer_vision` observation now identifies the configured model and label. No Baseten account, deployment, key or call was created by these changes. This is optional; API-only Spark remains available without an open endpoint.
+
+`GLIMMER_MAX_TOKENS` defaults to 3000. An explicit incomplete/length stop is logged as an error and is not automatically retried. Presentation wrappers such as Markdown fences or leading reasoning are tolerated by extracting the first valid JSON object, but the Pydantic schema remains strict and validation retries remain capped at two after the original answer. Model opinions never complete a rule step or replace missing pixels.
+
+Display labels and metric distributions use `OPEN_TIER_LABEL` (default `glimmer`); Muse Spark Open model IDs automatically use `spark-open` if the default label was left unchanged. The event routing enum remains `glimmer` for schema compatibility, with the configured label used by report/UI display and shadow metadata. A non-loopback endpoint, including Baseten or Modal, counts as cloud egress.
+
+Every attempted shadow opinion is recorded, including escalated Spark opinions and unavailable responses. `shadow_requested` counts completed steps reviewed; `shadow_opinions_requested` counts tier attempts; `shadow_agreement` is agreement across available opinions, including escalations. Disagreement and escalated answers stay advisory; events preserve both tier answers.
+
+Validation now records compile/held-out per-step states and targets repairs only at non-discriminative steps, eligible unflagged counterfactual steps and replay steps not DONE. `repair_history` records attempted and changed step IDs per round. The bounded loop stops when verified, when no failing steps can be identified, or when a round changes nothing. Failure without a targeted repair remains unverified.

@@ -338,7 +338,10 @@ def main() -> None:
             )
             observations["sam_video_output_chars"] = len(response_text(raw))
             observations["sam_video_usage"] = raw.get("usage")
+        observations["open_tier_label"] = settings.open_tier_label
+        observations["open_tier_model"] = settings.glimmer_model
         if settings.glimmer_base_url:
+            observations["open_tier_image_input_count_requested"] = 1
             observations["glimmer_vision"] = (
                 GlimmerClient(settings, job)
                 .opinion("Describe this image. completed=true if readable.", [args.image])

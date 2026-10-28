@@ -73,6 +73,8 @@ export type Run = {
     note: string;
     shadow_available?: number;
     shadow_requested?: number;
+    open_tier_label?: string;
+    shadow_opinions_requested?: number;
   };
 };
 export type Health = {
