@@ -1715,3 +1715,29 @@ hr {
 .check-page .file-input {
   margin: 24px 0;
 }
+
+.recording-add > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  list-style: none;
+}
+.recording-add > summary::after {
+  content: '+';
+  margin-left: auto;
+  font-size: 23px;
+}
+.recording-add[open] > summary::after {
+  content: '−';
+}
+.library-item-type {
+  display: inline-block;
+  padding: 3px 8px;
+  margin-bottom: 5px;
+  border-radius: 4px;
+  color: #315383;
+  background: #eef3fb;
+  font-size: 12px;
+}

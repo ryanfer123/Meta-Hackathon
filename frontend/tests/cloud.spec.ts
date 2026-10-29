@@ -101,12 +101,13 @@ test('account saves, reopens and deletes a run; private upload is retained', asy
   await expect(page.locator('.toast')).toContainText('Run saved');
   await view(page, 'Run library');
   await expect(page.locator('.saved-run')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Open run', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Mock recorded run', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
   await view(page, 'Run library');
   await page.getByRole('button', { name: `Delete ${snapshot.name}`, exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Delete run', exact: true }).click();
-  await expect(page.getByText('No saved runs yet.', { exact: false })).toBeVisible();
+  await expect(page.getByText('No runs or recordings yet.', { exact: false })).toBeVisible();
+  await page.getByText('Add a recording', { exact: true }).click();
   await page.getByLabel('Recording file').setInputFiles({
     name: 'expert.mp4',
     mimeType: 'video/mp4',
@@ -116,7 +117,9 @@ test('account saves, reopens and deletes a run; private upload is retained', asy
   await expect(page.getByText('expert.mp4', { exact: true })).toBeVisible();
   await expect.poll(() => recording?.owner_id).toBe(user.id);
   expect(recording.object_path).toMatch(new RegExp('^' + user.id + '/'));
-  await expect(page.getByText('Uploaded, analysis pending', { exact: false })).toBeVisible();
+  await expect(page.locator('.saved-run').filter({ hasText: 'expert.mp4' })).toContainText(
+    'Teaching video',
+  );
 });
 
 async function view(page: Page, name: string) {
