@@ -91,7 +91,6 @@ test('public replay runs fully static with API blocked and private actions ask f
     page.getByText('Synthetic sample — sign in to analyse your own recordings'),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Seek to skipped', exact: true }).click();
-  await page.locator('.step').filter({ hasText: 'Cap tube 1' }).click();
   await expect(page.locator('.predicate-detail')).toContainText('touching');
   await page.getByRole('button', { name: 'Open audit', exact: true }).first().click();
   await page.getByRole('button', { name: 'Verify chain', exact: true }).click();

@@ -9,7 +9,6 @@ test('skip replay, inspect predicate and verify audit', async ({ page }) => {
   await page.getByRole('button', { name: 'Seek to skipped', exact: true }).click();
   await expect(page.locator('.step.skipped')).toContainText('Cap tube 1');
   await expect(page.locator('.ledger')).toContainText('Later action label observed first.');
-  await page.locator('.step').filter({ hasText: 'Cap tube 1' }).click();
   await expect(page.locator('.predicate-detail')).toContainText('touching');
   await page.getByRole('button', { name: 'Open audit', exact: true }).first().click();
   await page.getByRole('button', { name: 'Verify chain', exact: true }).click();

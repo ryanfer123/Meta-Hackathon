@@ -47,9 +47,10 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
     };
   }, [run.id, synthetic]);
   useEffect(() => {
-    setTime(0);
+    const firstAlert = run.events.find((event) => isAlert(event.kind));
+    setTime(firstAlert?.t ?? 0);
     setPlaying(false);
-    setSelected(null);
+    setSelected(firstAlert?.step_id ?? null);
     lastAlert.current = '';
   }, [run]);
   useEffect(() => {

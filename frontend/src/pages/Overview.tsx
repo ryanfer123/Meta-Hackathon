@@ -1,4 +1,4 @@
-import { ArrowRight, Check, FileVideo, LockKeyhole } from 'lucide-react';
+import { ArrowRight, Play } from 'lucide-react';
 import { scenarios } from '../types';
 interface Props {
   onView: (view: string) => void;
@@ -11,72 +11,72 @@ export function Overview({ onView, onScenario, onSignIn, signedIn }: Props) {
     <div className="overview-page">
       <section className="overview-feature">
         <div>
-          <h2>
-            One procedure.
-            <br />
-            Every step in view.
-          </h2>
+          <h2>Catches missed steps in hands-on procedures, automatically.</h2>
           <p>
-            Play an animated example, jump to a missed step, and see the reason it was flagged. Then
-            open Audit to review and download the report.
+            Show it the right way once. It checks every later recording and tells you what was
+            skipped.
           </p>
-          <button className="button primary" onClick={() => onScenario('skipped-cap')}>
-            Inspect the skipped cap <ArrowRight size={18} />
-          </button>
+          <div className="actions">
+            <button className="button primary" onClick={() => onScenario('skipped-cap')}>
+              <Play size={18} /> See it catch a mistake (30 seconds)
+            </button>
+            <button className="button" onClick={signedIn ? () => onView('Teach') : onSignIn}>
+              Try it with your own video <ArrowRight size={18} />
+            </button>
+          </div>
         </div>
         <img
           src={`${import.meta.env.BASE_URL}images/procedure-studio.webp`}
-          alt="Illustrative colored-water procedure setup"
+          alt="Illustration of colored-water tubes; not camera footage"
           width="480"
           height="480"
         />
       </section>
+      <section className="overview-section" aria-labelledby="how-title">
+        <h2 id="how-title">How it works</h2>
+        <div className="how-strip">
+          <article className="panel">
+            <h3>1 Teach</h3>
+            <p>Upload one video of the right way.</p>
+            <small>
+              Muse Spark reads sampled video frames and writes the steps. Muse Voice Transcribe
+              transcribes narration when audio is used.
+            </small>
+          </article>
+          <article className="panel">
+            <h3>2 Check</h3>
+            <p>Upload another recording.</p>
+            <small>
+              SAM 3.1 finds the objects; the rules engine decides whether a step was observed.
+            </small>
+          </article>
+          <article className="panel">
+            <h3>3 Results</h3>
+            <p>See each skipped or out-of-order step, with the frame and reason behind it.</p>
+            <small>
+              An open-weights model gives a second opinion when configured. The rules still decide.
+            </small>
+          </article>
+        </div>
+        <p className="field-help">
+          The examples on this page are animated; no model ran for them. Accuracy on real procedure
+          videos has not been measured.
+        </p>
+      </section>
       <section className="overview-section">
         <div className="section-heading">
-          <h2>Try a different take</h2>
-          <span>Synthetic replay</span>
+          <h2>Try an animated example</h2>
+          <span>Example runs</span>
         </div>
-        <div className="scenario-list">
+        <div className="sample-chips">
           {scenarios.map(([name, title]) => (
-            <button key={name} onClick={() => onScenario(name)}>
-              <span className={name === 'clean' ? 'scenario-dot clean' : 'scenario-dot'} />
-              <span>{title}</span>
-              <ArrowRight size={18} />
+            <button className="button" key={name} onClick={() => onScenario(name)}>
+              {title}
+              <ArrowRight size={16} />
             </button>
           ))}
         </div>
       </section>
-      <div className="overview-bottom">
-        <section>
-          <FileVideo size={27} />
-          <h3>Bring your own recording.</h3>
-          <p>
-            Sign in and open Learn to upload an example video with narration. Review the suggested
-            steps before checking another recording against them.
-          </p>
-          <button className="text-button" onClick={() => onView('Learn')}>
-            Open Learn <ArrowRight size={17} />
-          </button>
-        </section>
-        <section>
-          <LockKeyhole size={27} />
-          <h3>{signedIn ? 'A private place for your work.' : 'Keep the useful runs.'}</h3>
-          <p>
-            Save a run to your library and revisit the same evidence later. Your recordings and
-            saved results are private to your account.
-          </p>
-          <button
-            className="text-button"
-            onClick={signedIn ? () => onView('Run library') : onSignIn}
-          >
-            {signedIn ? 'Open your library' : 'Sign in to save'} <ArrowRight size={17} />
-          </button>
-        </section>
-      </div>
-      <p className="scope-note">
-        <Check size={17} />
-        These animated samples show how the app works. Accuracy on real videos is not yet measured.
-      </p>
     </div>
   );
 }

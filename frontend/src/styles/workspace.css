@@ -1676,3 +1676,31 @@ hr {
   background: var(--blue);
   color: white;
 }
+
+.how-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.how-strip .panel {
+  padding: 24px;
+}
+.how-strip h3 {
+  margin-bottom: 12px;
+}
+.how-strip small {
+  display: block;
+  color: var(--muted);
+  margin-top: 18px;
+  line-height: 1.5;
+}
+@media (max-width: 760px) {
+  .how-strip {
+    grid-template-columns: 1fr;
+  }
+  .overview-feature .actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
