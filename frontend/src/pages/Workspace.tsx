@@ -252,11 +252,11 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
               <h1>{heading}</h1>
               <p>
                 {view === 'Supervise'
-                  ? 'Inspect the procedure. Follow the evidence.'
+                  ? 'Play the recording, follow each step, and select an alert to see what happened.'
                   : view === 'Learn'
-                    ? 'An expert demonstration becomes a protocol you can inspect.'
+                    ? 'Turn an example video into a checklist. Review the steps before using it.'
                     : view === 'Audit'
-                      ? 'Every decision, its evidence, and a root you can verify.'
+                      ? 'Review flagged steps, download the report, and check that its event log is unchanged.'
                       : view === 'Run library'
                         ? 'Keep the source recordings and the useful results.'
                         : 'Start with an observation. Go as deep as you need.'}

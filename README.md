@@ -1,6 +1,6 @@
 # Apprentice
 
-**Good work. Worth repeating.** A browser workstation that turns expert demonstrations into inspectable physical procedures, then checks later recordings with temporal geometry.
+**Show it once. Check each step.** Apprentice turns an example video into a step-by-step checklist, then checks another recording for missed steps and actions in the wrong order. Try the public animated samples without an account; sign in to upload and save your own recordings. Real-video accuracy remains unmeasured.
 
 [Live replay](https://apprentice-meta.onrender.com) · [Deployment status](docs/DEPLOYMENT.md) · [Judge review](docs/JUDGE_REVIEW.md) · [Architecture](docs/ARCHITECTURE.md) · [Limitations](docs/LIMITATIONS.md)
 

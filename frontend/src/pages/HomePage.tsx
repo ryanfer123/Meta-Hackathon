@@ -13,21 +13,21 @@ interface Props {
 const stages = [
   {
     title: 'Learn',
-    copy: 'Start with an expert demonstration. Inspect the proposed steps and the checks that make them meaningful.',
+    copy: 'Upload an example video with narration. Review the suggested checklist and test it with a second example.',
     image: 'learn',
-    alt: 'The Apprentice protocol compiler and its validation checks',
+    alt: 'Sample checklist with four checks still waiting for real example videos',
   },
   {
     title: 'Observe',
-    copy: 'Follow the next run, step by step. Open an observation to see why the procedure diverged.',
+    copy: 'Compare another recording with the checklist. See which steps were observed, missed, or done in the wrong order.',
     image: 'supervise',
-    alt: 'The Apprentice supervision workspace with a skipped-cap observation',
+    alt: 'Animated sample showing a missed cap step beside the playback',
   },
   {
     title: 'Keep the evidence',
-    copy: 'Save the run to your private library. Export an audit and keep its verification root separately.',
+    copy: 'Review the flagged moments and download a report. Sign in to save recordings and results in your private library.',
     image: 'audit',
-    alt: 'The Apprentice audit with its evidence chain and verification controls',
+    alt: 'Sample report showing observed steps, flagged events, and unmeasured model results',
   },
 ];
 
@@ -48,7 +48,7 @@ export function HomePage({ onOpen }: Props) {
         if (active) setSamples({ clean, 'skipped-cap': skipped });
       })
       .catch(() => {
-        if (active) setError('The replay could not load. Open the workstation to try again.');
+        if (active) setError('The replay could not load. Try a sample recording to try again.');
       });
     return () => {
       active = false;
@@ -94,9 +94,9 @@ export function HomePage({ onOpen }: Props) {
                 visible: { opacity: 1, y: 0 },
               }}
             >
-              Good work.
+              Show it once.
               <br />
-              Worth repeating.
+              Check each step.
             </m.h1>
             <m.p
               variants={{
@@ -104,8 +104,8 @@ export function HomePage({ onOpen }: Props) {
                 visible: { opacity: 1, y: 0 },
               }}
             >
-              Turn a demonstration into a procedure you can inspect. Catch the moment a later run
-              goes off course.
+              Apprentice turns an example video into a step-by-step checklist, then checks another
+              recording for missed steps and actions in the wrong order.
             </m.p>
             <m.button
               variants={{
@@ -118,7 +118,7 @@ export function HomePage({ onOpen }: Props) {
               <span className="play-disc">
                 <Play size={18} fill="currentColor" />
               </span>
-              Try the workstation
+              Try the sample
             </m.button>
           </m.div>
           <m.div
@@ -136,7 +136,7 @@ export function HomePage({ onOpen }: Props) {
             />
           </m.div>
           <p className="hero-caption">
-            Illustrative setup. The interactive demo uses synthetic masks.
+            Illustration, not camera footage. Try the animated sample without signing in.
           </p>
         </section>
         <section className="home-comparison" id="evidence">
@@ -145,8 +145,8 @@ export function HomePage({ onOpen }: Props) {
               See the difference.
             </m.h2>
             <m.p {...reveal} className="reveal">
-              The same protocol. A clean run, or a missing cap. Every decision leads back to an
-              observation.
+              Compare two animated examples: one follows every step; the other misses a cap. Open
+              either example to see what happened and when.
             </m.p>
           </div>
           <m.div {...reveal} className="comparison-product reveal" data-ui>
@@ -190,7 +190,7 @@ export function HomePage({ onOpen }: Props) {
                 </div>
               </div>
               <div className="comparison-steps">
-                <h3>What was observed</h3>
+                <h3>Step checklist</h3>
                 {run?.protocol.steps.map((s) => {
                   const missed = comparison === 'skipped-cap' && s.id === 'cap';
                   return (
@@ -204,7 +204,7 @@ export function HomePage({ onOpen }: Props) {
                     </div>
                   );
                 })}
-                <p>These results come from the rule engine's synthetic fixtures.</p>
+                <p>An animated example checked by the same rules used in the app.</p>
               </div>
             </m.div>
             <div className="comparison-bottom">
@@ -218,20 +218,22 @@ export function HomePage({ onOpen }: Props) {
                 <span>00:17</span>
                 <strong>
                   {comparison === 'skipped-cap'
-                    ? 'Cap tube 1 was not observed.'
-                    : 'Every step was observed in order.'}
+                    ? 'The cap step was missed.'
+                    : 'All steps were observed in order.'}
                 </strong>
               </div>
               <button className="button primary" onClick={() => onOpen(comparison)}>
-                Inspect this run <ArrowRight size={17} />
+                Open this sample <ArrowRight size={17} />
               </button>
             </div>
           </m.div>
-          <p className="home-note">Synthetic replay. No model accuracy is claimed.</p>
+          <p className="home-note">
+            Animated sample, not a real recording. Accuracy on real videos has not been measured.
+          </p>
         </section>
         <section className="home-method" id="how-it-works">
           <m.h2 {...reveal} className="reveal">
-            A procedure, with a memory.
+            From example to review.
           </m.h2>
           <div className="method-stages">
             {stages.map((stage) => (
@@ -260,7 +262,7 @@ export function HomePage({ onOpen }: Props) {
                   aria-label={`Open ${stage.title.toLowerCase()} workspace`}
                 >
                   <img
-                    src={`${import.meta.env.BASE_URL}images/product-${stage.image}.webp`}
+                    src={`${import.meta.env.BASE_URL}images/product-${stage.image}.png`}
                     width="960"
                     height="600"
                     alt={stage.alt}
@@ -277,18 +279,18 @@ export function HomePage({ onOpen }: Props) {
         <section className="home-evidence">
           <div className="evidence-copy">
             <m.h2 {...reveal} className="reveal">
-              Follow the evidence.
+              See why a step was flagged.
             </m.h2>
             <m.p {...reveal} className="reveal">
-              A red alert should come with a reason. Open the event, inspect the rule, and follow
-              the observation back to its frame.
+              Select an alert to jump to that moment. See what the checklist expected and what was
+              visible in the recording.
             </m.p>
             <m.button
               {...reveal}
               className="home-link reveal"
               onClick={() => onOpen('skipped-cap', 'Audit')}
             >
-              Explore an audit <ArrowRight size={21} />
+              View the sample report <ArrowRight size={21} />
             </m.button>
           </div>
           <m.div {...reveal} className="evidence-example reveal" data-ui>
@@ -298,14 +300,14 @@ export function HomePage({ onOpen }: Props) {
               <AlertCircle size={20} />
               Skipped
             </p>
-            <p>The label action was observed before the cap step.</p>
+            <p>The label was placed before the cap step was observed.</p>
             <div className="evidence-rule">
               <span>Expected observation</span>
               <strong>The blue cap touches tube 1.</strong>
             </div>
             <p className="evidence-disclosure">
-              A visible contact is not proof of a tightly secured cap. Missing pixels stay
-              uncertain.
+              Seeing a cap touch a tube does not prove it is tight. If the view is blocked, the
+              result stays uncertain.
             </p>
           </m.div>
         </section>
@@ -315,16 +317,16 @@ export function HomePage({ onOpen }: Props) {
           </m.h2>
           <div className="home-close-row">
             <m.p {...reveal} className="reveal">
-              Explore the replay now. Bring your own recordings when you are ready to put the
-              protocol to work.
+              Try an animated sample with no account. Sign in when you want to upload your own
+              example and comparison recordings.
             </m.p>
             <m.button {...reveal} className="home-button reveal" onClick={() => onOpen()}>
-              Open the workstation <ArrowRight size={21} />
+              Try a sample recording <ArrowRight size={21} />
             </m.button>
           </div>
           <m.p {...reveal} className="home-note reveal">
-            Meta inference and real-video evaluation are still being validated. The hosted examples
-            are synthetic.
+            The samples demonstrate how the app works. Checks on real recordings are still being
+            evaluated; the app does not verify liquid volume, concentration, or cap tightness.
           </m.p>
         </section>
       </main>
@@ -339,7 +341,7 @@ export function HomePage({ onOpen }: Props) {
             Built in the open <ExternalLink size={16} />
           </a>
         </div>
-        <p>Models propose. Pixels ground. Code decides.</p>
+        <p>Suggested steps. Visible evidence. Clear reasons.</p>
         <span className="footer-word">apprentice</span>
       </footer>
     </div>

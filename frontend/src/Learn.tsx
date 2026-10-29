@@ -4,10 +4,10 @@ import { download, json } from './api';
 import type { AnalysisJob } from './lib/workspace';
 import type { Health, Protocol, Run, Validation } from './types';
 const checks: [string, string, string][] = [
-  ['discriminative', 'Discriminative', 'False before, true after'],
-  ['compile_replay', 'Compile replay', 'Expert A follows every step'],
-  ['held_out', 'Held-out take', 'Expert B, different setup'],
-  ['counterfactual', 'Counterfactuals', 'Cuts and swaps must fail'],
+  ['discriminative', 'Visible change', 'Each step has a visible change'],
+  ['compile_replay', 'Original example', 'The original example passes'],
+  ['held_out', 'Second example', 'A second example also passes'],
+  ['counterfactual', 'Deliberate mistakes', 'Missing or reordered steps are flagged'],
 ];
 type ProtocolStatus = {
   status: string;
@@ -272,7 +272,7 @@ export function Learn({
         <p className="muted">
           {id
             ? 'Compiled from an uploaded recording. Source authenticity and validation are separate.'
-            : 'Sample protocol · synthetic fixture · not learned from video.'}
+            : 'Sample checklist · animated example · not learned from a real video.'}
         </p>
         <div className="validation-checks">
           {checks.map(([key, title, description]) => {
@@ -307,8 +307,10 @@ export function Learn({
                 <span className="mono">{s.id}</span>
               </div>
               <p>{s.narration_hint}</p>
-              <span className="rule-label">POSTCONDITION</span>
-              <pre>{JSON.stringify(s.post, null, 2)}</pre>
+              <details>
+                <summary className="rule-label">Show the completion rule (JSON)</summary>
+                <pre>{JSON.stringify(s.post, null, 2)}</pre>
+              </details>
               <p className="field-help">
                 Dwell {s.min_dwell_s}–{s.max_dwell_s}s ·{' '}
                 {s.group ? `unordered group ${s.group}` : 'ordered step'}

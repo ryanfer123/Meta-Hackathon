@@ -6,17 +6,15 @@ test('homepage compares real fixture results and opens the selected run', async 
   page.on('pageerror', (e) => errors.push(e.message));
   await mockAccount(page);
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Good work. Worth repeating.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Show it once. Check each step.' })).toBeVisible();
   await expect(page.locator('.comparison-step')).toHaveCount(4);
-  await expect(page.locator('.comparison-observation')).toContainText(
-    'Cap tube 1 was not observed.',
-  );
+  await expect(page.locator('.comparison-observation')).toContainText('The cap step was missed.');
   await page.getByRole('button', { name: 'Clean run', exact: true }).click();
   await expect(page.locator('.comparison-step.missed')).toHaveCount(0);
   await expect(page.locator('.comparison-observation')).toContainText(
-    'Every step was observed in order.',
+    'All steps were observed in order.',
   );
-  await page.getByRole('button', { name: 'Inspect this run' }).click();
+  await page.getByRole('button', { name: 'Open this sample' }).click();
   await expect(page.getByLabel('Sample scenario')).toHaveValue('clean');
   await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
   expect(errors).toEqual([]);
@@ -26,6 +24,7 @@ test('homepage images load and layout fits at this viewport', async ({ page }) =
   await mockAccount(page);
   await page.goto('/');
   for (const image of await page.locator('img').all()) {
+    await expect(image).toHaveAttribute('alt', /.+/);
     await image.evaluate((el) => el.scrollIntoView({ block: 'center' }));
     await expect
       .poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
@@ -34,6 +33,11 @@ test('homepage images load and layout fits at this viewport', async ({ page }) =
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBeFalsy();
   await page.getByRole('button', { name: 'Open learn workspace', exact: true }).click();
   await expect(page.locator('#narration')).toBeVisible();
+  const rule = page.locator('.protocol-cards details').first();
+  await expect(rule).not.toHaveAttribute('open');
+  await rule.locator('summary').click();
+  await expect(rule.locator('pre')).toBeVisible();
+  await expect(rule.locator('pre')).toContainText('touching');
 });
 
 test('workspace requires sign-in and invalid credentials do not grant access', async ({ page }) => {
@@ -53,12 +57,12 @@ test('workspace requires sign-in and invalid credentials do not grant access', a
   await expect(page.getByRole('alert')).toContainText('Invalid login credentials');
   await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Back to the homepage' }).click();
-  await expect(page.getByRole('heading', { name: 'Good work. Worth repeating.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Show it once. Check each step.' })).toBeVisible();
 });
 
 test('scroll reveals settle once and stay visible on return', async ({ page }) => {
   await page.goto('/');
-  const heading = page.getByRole('heading', { name: 'Follow the evidence.' });
+  const heading = page.getByRole('heading', { name: 'See why a step was flagged.' });
   await heading.scrollIntoViewIfNeeded();
   await expect(heading).toHaveCSS('opacity', '1');
   await expect(heading).toHaveCSS('transform', 'none');
@@ -70,8 +74,23 @@ test('scroll reveals settle once and stay visible on return', async ({ page }) =
 test('reduced motion keeps content visible without entrance transforms', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  const heading = page.getByRole('heading', { name: 'Follow the evidence.' });
+  const heading = page.getByRole('heading', { name: 'See why a step was flagged.' });
   await expect(heading).toHaveCSS('opacity', '1');
   await expect(heading).toHaveCSS('transform', 'none');
   await expect(page.locator('.hero-orbit')).toHaveCSS('transform', 'none');
+});
+
+test('first visit explains the workflow and opens a sample without an account', async ({
+  page,
+}) => {
+  await page.route('**/api/**', (route) => route.abort());
+  await page.goto('/');
+  await expect(page.locator('.hero-copy')).toContainText('step-by-step checklist');
+  await expect(page.locator('.hero-copy')).toContainText('missed steps');
+  await expect(page.locator('.hero-caption')).toContainText('without signing in');
+  await expect(page.locator('.home-note').first()).toContainText('not a real recording');
+  await page.getByRole('button', { name: 'Try the sample', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
+  await expect(page.getByRole('note')).toContainText('Synthetic sample');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });

@@ -1,5 +1,6 @@
 # Limitations and evidence boundaries
 
+- The homepage hero is an illustration, and the three product previews are screenshots of the animated sample workspace, not physical-procedure recordings. The Learn view keeps machine-readable completion rules behind expandable details; simplifying these labels does not change validation or step decisions.
 - The six public examples are synthetic masks and a manually authored protocol. They establish engineering behavior only. No real-video model accuracy, latency, egress percentage, shadow agreement or successful deployment of Glimmer is claimed.
 - Meta account access was verified by live Spark text/two-image and SAM image calls using a generated illustration. SAM returned two candidates, not a verified object identity. Voice returned a timestamped turn for synthetic computer-spoken audio. Physical recordings, native video calls and end-to-end real protocol validation remain pending; mocked transports still cover other adapter paths.
 - Single camera, fixed tabletop, one protocol per job; 2 fps, at most 180 sampled frames (90 seconds). Fast actions between samples can be missed. Webcam streaming is not implemented.

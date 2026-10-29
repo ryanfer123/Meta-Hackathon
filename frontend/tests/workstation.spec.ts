@@ -67,7 +67,7 @@ test('learn exposes pending evidence and mobile has no page overflow', async ({ 
     '[{"start":0,"end":2,"text":"Retained narration"}]',
   );
   await expect(
-    page.getByText('Sample protocol · synthetic fixture · not learned from video.'),
+    page.getByText('Sample checklist · animated example · not learned from a real video.'),
   ).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
   expect(overflow).toBeFalsy();

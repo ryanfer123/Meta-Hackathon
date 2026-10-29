@@ -17,8 +17,8 @@ export function Overview({ onView, onScenario, onSignIn, signedIn }: Props) {
             Every step in view.
           </h2>
           <p>
-            Begin with a sample run. Inspect an observation, follow its predicate, and take the
-            evidence into an audit.
+            Play an animated example, jump to a missed step, and see the reason it was flagged. Then
+            open Audit to review and download the report.
           </p>
           <button className="button primary" onClick={() => onScenario('skipped-cap')}>
             Inspect the skipped cap <ArrowRight size={18} />
@@ -51,8 +51,8 @@ export function Overview({ onView, onScenario, onSignIn, signedIn }: Props) {
           <FileVideo size={27} />
           <h3>Bring your own recording.</h3>
           <p>
-            The Learn view is ready for an expert take. Cloud storage keeps your source files; the
-            Python inference service compiles the protocol when connected.
+            Sign in and open Learn to upload an example video with narration. Review the suggested
+            steps before checking another recording against them.
           </p>
           <button className="text-button" onClick={() => onView('Learn')}>
             Open Learn <ArrowRight size={17} />
@@ -63,7 +63,7 @@ export function Overview({ onView, onScenario, onSignIn, signedIn }: Props) {
           <h3>{signedIn ? 'A private place for your work.' : 'Keep the useful runs.'}</h3>
           <p>
             Save a run to your library and revisit the same evidence later. Your recordings and
-            saved work are scoped to your account.
+            saved results are private to your account.
           </p>
           <button
             className="text-button"
@@ -75,7 +75,7 @@ export function Overview({ onView, onScenario, onSignIn, signedIn }: Props) {
       </div>
       <p className="scope-note">
         <Check size={17} />
-        Synthetic examples demonstrate software behavior. Real-video accuracy remains unmeasured.
+        These animated samples show how the app works. Accuracy on real videos is not yet measured.
       </p>
     </div>
   );
