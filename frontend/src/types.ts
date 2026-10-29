@@ -82,7 +82,17 @@ export type Health = {
   live_configured: boolean;
   glimmer_configured: boolean;
 };
-export type View = 'Learn' | 'Supervise' | 'Audit';
+export type View =
+  | 'Home'
+  | 'Teach'
+  | 'Check'
+  | 'Results'
+  | 'My runs'
+  | 'Overview'
+  | 'Learn'
+  | 'Supervise'
+  | 'Audit'
+  | 'Run library';
 export const scenarios = [
   ['skipped-cap', 'Skipped cap'],
   ['clean', 'Clean procedure'],

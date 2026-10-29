@@ -50,12 +50,16 @@ function ModelChips({ run }: { run: Run }) {
     <div className="models-used" aria-label="Models used">
       <span>Models used</span>
       {typeof sparkCalls === 'number' && sparkCalls > 0 && (
-        <span className="result-chip">Spark · {sparkCalls} calls</span>
+        <span className="result-chip">
+          Spark · {sparkCalls} {sparkCalls === 1 ? 'call' : 'calls'}
+        </span>
       )}
       {samCalls && samCalls.length > 0 && (
         <span className="result-chip">
           SAM 3.1 ·{' '}
-          {samFrames === null ? `${samCalls.length} calls` : `${samFrames} frame transmissions`}
+          {samFrames === null
+            ? `${samCalls.length} ${samCalls.length === 1 ? 'call' : 'calls'}`
+            : `${samFrames} ${samFrames === 1 ? 'frame' : 'frames'} sent`}
         </span>
       )}
       {metrics.open_tier_label &&
@@ -64,12 +68,12 @@ function ModelChips({ run }: { run: Run }) {
           <span className="result-chip">
             Open model ({metrics.open_tier_label}) ·{' '}
             {typeof opinions === 'number' && opinions > 0
-              ? `${opinions} second opinions`
-              : `${openCalls} calls`}
+              ? `${opinions} second ${opinions === 1 ? 'opinion' : 'opinions'}`
+              : `${openCalls} ${openCalls === 1 ? 'call' : 'calls'}`}
           </span>
         )}
       {typeof latency === 'number' && Number.isFinite(latency) && latency >= 0 && (
-        <span className="result-chip">Median model latency · {(latency / 1000).toFixed(2)} s</span>
+        <span className="result-chip">Median response · {(latency / 1000).toFixed(2)} s</span>
       )}
       {!calls && !metrics.tier_distribution && (
         <span className="muted">Call details were not recorded.</span>

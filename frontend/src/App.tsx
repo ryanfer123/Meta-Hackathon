@@ -30,8 +30,21 @@ function Routes() {
     window.addEventListener('hashchange', update);
     return () => window.removeEventListener('hashchange', update);
   }, []);
-  function open(scenario = 'skipped-cap', view = 'Supervise') {
-    location.hash = `/workspace?${new URLSearchParams({ sample: scenario, view })}`;
+  function open(scenario = 'skipped-cap', view = 'Home') {
+    const aliases: Record<string, string> = {
+      Learn: 'Teach',
+      Supervise: 'Results',
+      Audit: 'Results',
+      Overview: 'Home',
+      'Run library': 'My runs',
+    };
+    const tab =
+      view === 'Audit'
+        ? 'Integrity'
+        : view === 'Supervise' || view === 'Results'
+          ? 'Replay'
+          : undefined;
+    location.hash = `/workspace?${new URLSearchParams({ sample: scenario, view: aliases[view] ?? view, ...(tab ? { tab } : {}) })}`;
   }
   const workspace = hash.startsWith('#/workspace') || hash.includes('access_token=');
   const params = new URLSearchParams(hash.split('?')[1]);
@@ -59,14 +72,11 @@ function Routes() {
         <main>
           <div className="auth-story">
             <h2>
-              Good work.
+              Your recordings.
               <br />
-              Kept together.
+              Kept private.
             </h2>
-            <p>
-              Sign in to review procedures, save evidence, and keep your recordings in your own
-              workspace.
-            </p>
+            <p>Sign in to teach a procedure, check a recording, and save your results.</p>
             <img
               src={`${import.meta.env.BASE_URL}images/procedure-studio.webp`}
               alt="Illustrative colored-water procedure setup"

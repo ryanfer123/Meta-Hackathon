@@ -50,8 +50,8 @@ export function AuthDialog({
   const content = (
     <>
       <p className="dialog-description">
-        Sign in to analyse your recordings, save runs, and open your private library. Synthetic
-        sample replay is available without an account.
+        Sign in to upload your videos and save results in My runs. You can explore the animated
+        examples without an account.
       </p>
       <form className="auth-form" onSubmit={(e) => void submit(e)}>
         <label htmlFor="account-email">Email</label>
@@ -81,7 +81,11 @@ export function AuthDialog({
             placeholder="At least 8 characters"
           />
         </div>
-        <button className="button primary full" disabled={busy || !supabase}>
+        <button
+          className="button primary full"
+          disabled={busy || !supabase}
+          aria-describedby="auth-disabled-reason"
+        >
           {busy ? 'Working…' : mode === 'signin' ? 'Sign in' : 'Create account'}
         </button>
         {error && (
@@ -94,6 +98,15 @@ export function AuthDialog({
             {message}
           </p>
         )}
+        <p id="auth-disabled-reason" className="field-help">
+          {busy
+            ? mode === 'signup'
+              ? 'Creating your account…'
+              : 'Signing in…'
+            : !supabase
+              ? 'Sign-in is not connected in this preview. You can still try the animated examples.'
+              : ''}
+        </p>
       </form>
       {!supabase && <p className="notice">Cloud storage is not configured on this installation.</p>}
       <button

@@ -12,19 +12,19 @@ interface Props {
 }
 const stages = [
   {
-    title: 'Learn',
+    title: 'Teach',
     copy: 'Upload an example video with narration. Review the suggested checklist and test it with a second example.',
     image: 'learn',
     alt: 'Sample checklist with four checks still waiting for real example videos',
   },
   {
-    title: 'Observe',
+    title: 'Check',
     copy: 'Compare another recording with the checklist. See which steps were observed, missed, or done in the wrong order.',
     image: 'supervise',
     alt: 'Animated sample showing a missed cap step beside the playback',
   },
   {
-    title: 'Keep the evidence',
+    title: 'Results',
     copy: 'Review the flagged moments and download a report. Sign in to save recordings and results in your private library.',
     image: 'audit',
     alt: 'Sample report showing observed steps, flagged events, and unmeasured model results',
@@ -48,7 +48,7 @@ export function HomePage({ onOpen }: Props) {
         if (active) setSamples({ clean, 'skipped-cap': skipped });
       })
       .catch(() => {
-        if (active) setError('The replay could not load. Try a sample recording to try again.');
+        if (active) setError('The replay could not load. Try the example to try again.');
       });
     return () => {
       active = false;
@@ -76,7 +76,7 @@ export function HomePage({ onOpen }: Props) {
             GitHub
           </a>
           <button onClick={() => onOpen()}>
-            Open workspace <ArrowRight size={17} />
+            Open Apprentice <ArrowRight size={17} />
           </button>
         </nav>
       </header>
@@ -113,12 +113,12 @@ export function HomePage({ onOpen }: Props) {
                 visible: { opacity: 1, y: 0 },
               }}
               className="home-button"
-              onClick={() => onOpen()}
+              onClick={() => onOpen('skipped-cap', 'Supervise')}
             >
               <span className="play-disc">
                 <Play size={18} fill="currentColor" />
               </span>
-              Try the sample
+              See it catch a mistake (30 seconds)
             </m.button>
           </m.div>
           <m.div
@@ -222,7 +222,7 @@ export function HomePage({ onOpen }: Props) {
                     : 'All steps were observed in order.'}
                 </strong>
               </div>
-              <button className="button primary" onClick={() => onOpen(comparison)}>
+              <button className="button primary" onClick={() => onOpen(comparison, 'Supervise')}>
                 Open this sample <ArrowRight size={17} />
               </button>
             </div>
@@ -259,7 +259,13 @@ export function HomePage({ onOpen }: Props) {
                           : 'Supervise',
                     )
                   }
-                  aria-label={`Open ${stage.title.toLowerCase()} workspace`}
+                  aria-label={
+                    stage.image === 'learn'
+                      ? 'Open Teach'
+                      : stage.image === 'supervise'
+                        ? 'See an example check'
+                        : 'View the sample report'
+                  }
                 >
                   <img
                     src={`${import.meta.env.BASE_URL}images/product-${stage.image}.png`}
@@ -269,7 +275,12 @@ export function HomePage({ onOpen }: Props) {
                     loading="lazy"
                   />
                   <span>
-                    Open {stage.title.toLowerCase()} <ArrowRight size={17} />
+                    {stage.image === 'learn'
+                      ? 'Open Teach'
+                      : stage.image === 'supervise'
+                        ? 'See an example check'
+                        : 'View the sample report'}{' '}
+                    <ArrowRight size={17} />
                   </span>
                 </m.button>
               </article>
@@ -320,8 +331,12 @@ export function HomePage({ onOpen }: Props) {
               Try an animated sample with no account. Sign in when you want to upload your own
               example and comparison recordings.
             </m.p>
-            <m.button {...reveal} className="home-button reveal" onClick={() => onOpen()}>
-              Try a sample recording <ArrowRight size={21} />
+            <m.button
+              {...reveal}
+              className="home-button reveal"
+              onClick={() => onOpen('skipped-cap', 'Supervise')}
+            >
+              Try the example <ArrowRight size={21} />
             </m.button>
           </div>
           <m.p {...reveal} className="home-note reveal">

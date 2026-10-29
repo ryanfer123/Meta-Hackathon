@@ -17,3 +17,15 @@ test('known errors have plain wording while preserving their original detail', a
   expect(checks[3].message).toContain('identified clearly');
   for (const check of checks) expect(check.details).toBe(check.raw);
 });
+
+test('plain backend error objects retain their message and friendly explanation', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const mapped = await page.evaluate(async () => {
+    const { friendlyError } = await import('/src/api.ts');
+    return friendlyError({ message: 'run cost reservation cap reached', code: 'test' });
+  });
+  expect(mapped.message).toContain('spending limit');
+  expect(mapped.details).toBe('run cost reservation cap reached');
+});

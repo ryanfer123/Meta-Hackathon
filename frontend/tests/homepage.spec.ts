@@ -34,7 +34,7 @@ test('homepage images load and layout fits at this viewport', async ({ page }) =
       .toBeTruthy();
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBeFalsy();
-  await page.getByRole('button', { name: 'Open learn workspace', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Teach', exact: true }).click();
   await expect(page.locator('#narration')).toBeVisible();
   await page.getByRole('button', { name: 'Use the sample steps', exact: true }).click();
   await expect(page.getByText('Example', { exact: true })).toBeVisible();
@@ -92,7 +92,9 @@ test('first visit explains the workflow and opens a sample without an account', 
   await expect(page.locator('.hero-copy')).toContainText('missed steps');
   await expect(page.locator('.hero-caption')).toContainText('without signing in');
   await expect(page.locator('.home-note').first()).toContainText('not a real recording');
-  await page.getByRole('button', { name: 'Try the sample', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'See it catch a mistake (30 seconds)', exact: true })
+    .click();
   await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
   await expect(page.getByRole('note')).toContainText('Example run');
   await expect(page.getByRole('dialog')).toHaveCount(0);

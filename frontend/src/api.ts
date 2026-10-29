@@ -1,5 +1,13 @@
 export function friendlyError(error: unknown): { message: string; details: string } {
-  const details = error instanceof Error ? error.message : String(error ?? '');
+  const details =
+    error instanceof Error
+      ? error.message
+      : error &&
+          typeof error === 'object' &&
+          'message' in error &&
+          typeof error.message === 'string'
+        ? error.message
+        : String(error ?? '');
   const lower = details.toLowerCase();
   const message = /budget|cost.*cap|call cap|reservation.*cap/.test(lower)
     ? 'This analysis reached its spending limit. Try a shorter recording or review the limit.'

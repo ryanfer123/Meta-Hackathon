@@ -224,7 +224,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <button onClick={() => setScope(true)}>Scope & provenance</button>
+          <button onClick={() => setScope(true)}>About these examples</button>
           <div className="sidebar-account">
             <p>
               {session
@@ -290,7 +290,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
         </header>
         {readOnly && !['Supervise', 'Audit'].includes(view) && (
           <div className="sample-access-banner" role="note">
-            <span>Synthetic sample — sign in to analyse your own recordings</span>
+            <span>Example mode — sign in to check your own recordings.</span>
             <button className="text-button" onClick={() => setAuth(true)}>
               Sign in
             </button>
@@ -439,8 +439,12 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
         </main>
         <footer className="workspace-footer">
           <span>
-            {run?.provenance === 'live-recording' ? 'Recorded evidence' : 'Synthetic replay'} ·{' '}
-            {cloudConfigured ? 'Supabase workspace connected' : 'Local preview'}
+            {run?.provenance === 'live-recording' ? 'Recorded evidence' : 'Animated example'} ·{' '}
+            {session
+              ? cloudConfigured
+                ? 'Private storage connected'
+                : 'Local preview'
+              : 'No account needed for examples'}
           </span>
           <a
             href="https://github.com/ryanfer123/Meta-Hackathon"
@@ -475,27 +479,27 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
       </AnimatePresence>
       {auth && <AuthDialog onClose={() => setAuth(false)} />}{' '}
       {scope && (
-        <Dialog title="Scope & provenance" onClose={() => setScope(false)}>
+        <Dialog title="About these examples" onClose={() => setScope(false)}>
           <div className="provenance-copy">
             <p>
-              The hosted examples use deterministic synthetic masks and a handwritten protocol. They
-              demonstrate the software, not real Meta model accuracy.
+              The examples are animated, not camera recordings. They show how the app works; no
+              models ran for them.
             </p>
             <p>
-              Your saved runs and recordings use Supabase with owner-scoped database and storage
-              policies. Signing in does not turn a replay into a verified real recording.
+              Your recordings and saved results are private to your account. Signing in does not
+              turn an animated example into a real recording.
             </p>
             <p>
               Geometry can observe handling. It cannot prove concentration, transferred volume,
               sterility, or a tightly secured cap. Unseen actions remain uncertain.
             </p>
             <p>
-              The Python inference service and Meta models are configured separately. Real-video
-              validation and model latency are pending.
+              Accuracy on real procedure videos is still being evaluated. Diagnostic model calls are
+              not a procedure evaluation.
             </p>
           </div>
           <button className="button primary" onClick={() => setScope(false)}>
-            Back to the workstation
+            Back to the app
           </button>
         </Dialog>
       )}

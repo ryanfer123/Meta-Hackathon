@@ -164,9 +164,9 @@ test('live model chips use recorded counts and do not turn requested reviews int
   page,
 }) => {
   const surface = await mountResults(page, { live: true });
-  await expect(surface.getByLabel('Models used')).toContainText('Spark · 1 calls');
-  await expect(surface.getByLabel('Models used')).toContainText('SAM 3.1 · 4 frame transmissions');
-  await expect(surface.getByLabel('Models used')).toContainText('Median model latency · 2.00 s');
+  await expect(surface.getByLabel('Models used')).toContainText('Spark · 1 call');
+  await expect(surface.getByLabel('Models used')).toContainText('SAM 3.1 · 4 frames sent');
+  await expect(surface.getByLabel('Models used')).toContainText('Median response · 2.00 s');
   await expect(surface.getByLabel('Models used')).not.toContainText('7 second opinions');
   await expect(surface.getByRole('note')).toHaveCount(0);
 });
@@ -191,8 +191,6 @@ test('a browser verification failure is unknown, not evidence of a changed repor
 
 test('an open-model request without a saved shadow opinion shows calls only', async ({ page }) => {
   const surface = await mountResults(page, { live: true, openCall: true });
-  await expect(surface.getByLabel('Models used')).toContainText(
-    'Open model (spark-open) · 1 calls',
-  );
+  await expect(surface.getByLabel('Models used')).toContainText('Open model (spark-open) · 1 call');
   await expect(surface.getByLabel('Models used')).not.toContainText('second opinions');
 });

@@ -6,7 +6,7 @@ test('public Learn requires sign-in for uploads and sign-out returns to a clean 
   await mockAccount(page, false);
   await page.goto('/#/workspace?view=Learn&sample=clean');
   await expect(
-    page.getByText('Synthetic sample — sign in to analyse your own recordings'),
+    page.getByText('Example mode — sign in to check your own recordings.'),
   ).toBeVisible();
   await expect(page.locator('input[type="file"]:enabled')).toHaveCount(0);
   await page.getByRole('button', { name: 'Sign in to upload a recording' }).click();
@@ -21,7 +21,7 @@ test('public Learn requires sign-in for uploads and sign-out returns to a clean 
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(
-    page.getByText('Synthetic sample — sign in to analyse your own recordings'),
+    page.getByText('Example mode — sign in to check your own recordings.'),
   ).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('#narration')).toHaveValue('');
