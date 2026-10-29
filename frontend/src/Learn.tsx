@@ -14,6 +14,8 @@ type ProtocolStatus = {
   error?: string;
   protocol?: Protocol;
   validation?: Validation | null;
+  boundary_suggestions?: Record<string, { start: number; end: number }>;
+  confirmed_ranges?: Record<string, { start: number; end: number }>;
 };
 async function poll<T extends { status?: string; error?: string }>(path: string): Promise<T> {
   for (let n = 0; n < 300; n++) {
@@ -45,7 +47,9 @@ export function Learn({
     [heldout, setHeldout] = useState<File | null>(null),
     [novice, setNovice] = useState<File | null>(null),
     [narration, setNarration] = useState('[]'),
-    [ranges, setRanges] = useState('{}');
+    [ranges, setRanges] = useState('{}'),
+    [rangesConfirmed, setRangesConfirmed] = useState(false),
+    [boundaryNote, setBoundaryNote] = useState('');
   const [protocol, setProtocol] = useState<Protocol>(run.protocol),
     [validation, setValidation] = useState<Validation | undefined>(run.validation),
     [id, setId] = useState(''),
@@ -64,8 +68,36 @@ export function Learn({
       setId(initialJob.id);
       setProtocol(initialJob.result.protocol as Protocol);
       setValidation(initialJob.result.validation as Validation | undefined);
+      applyBoundarySuggestions(initialJob.result as ProtocolStatus);
     }
   }, [initialJob]);
+  function applyBoundarySuggestions(result: ProtocolStatus) {
+    if (!result.protocol) return;
+    const suggestions = result.confirmed_ranges ?? result.boundary_suggestions ?? {};
+    const missing = result.protocol.steps.filter((step) => !suggestions[step.id]);
+    setRanges(
+      JSON.stringify(
+        Object.fromEntries(
+          result.protocol.steps.map((step) => [
+            step.id,
+            suggestions[step.id] ?? { start: null, end: null },
+          ]),
+        ),
+        null,
+        2,
+      ),
+    );
+    setRangesConfirmed(false);
+    setBoundaryNote(
+      (result.confirmed_ranges
+        ? 'Previously reviewed timings loaded. Review again before rerunning validation. '
+        : `${Object.keys(suggestions).length} timing proposals from narration. `) +
+        (missing.length
+          ? `Fill missing times for: ${missing.map((step) => step.title).join(', ')}. `
+          : '') +
+        'Narration may lead or lag the action. Check that each start is before the action and each end is after it.',
+    );
+  }
   const live = health.live_configured;
   async function task(name: string, fn: () => Promise<void>) {
     if (readOnly) {
@@ -97,13 +129,7 @@ export function Learn({
       if (done.protocol) {
         setProtocol(done.protocol);
         setValidation(undefined);
-        setRanges(
-          JSON.stringify(
-            Object.fromEntries(done.protocol.steps.map((s) => [s.id, { start: 0, end: 1 }])),
-            null,
-            2,
-          ),
-        );
+        applyBoundarySuggestions(done);
       }
     });
   }
@@ -113,6 +139,7 @@ export function Learn({
       const f = new FormData();
       f.set('heldout', heldout);
       f.set('ranges', ranges);
+      f.set('ranges_confirmed', String(rangesConfirmed));
       f.set('repair', String(repair));
       await json(`/api/protocols/${id}/validate`, { method: 'POST', body: f });
       const done = await poll<ProtocolStatus>(`/api/protocols/${id}`);
@@ -215,22 +242,37 @@ export function Learn({
           <h3>Validate with a second expert take</h3>
           <FileInput label="Expert B / held-out recording" file={heldout} onFile={setHeldout} />
           <label className="field-label" htmlFor="ranges">
-            Expert A step boundaries <span>seconds, start must precede action</span>
+            Review step timings <span>seconds in the original example video</span>
           </label>
           <textarea
             id="ranges"
             rows={5}
             value={ranges}
-            onChange={(e) => setRanges(e.target.value)}
+            onChange={(e) => {
+              setRanges(e.target.value);
+              setRangesConfirmed(false);
+            }}
             spellCheck={false}
           />
+          <p className="field-help">
+            {boundaryNote ||
+              'Compile an example to suggest timings from its narration. Fill any unmatched steps yourself.'}
+          </p>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={rangesConfirmed}
+              onChange={(e) => setRangesConfirmed(e.target.checked)}
+            />
+            I checked every start and end against the video and filled any missing times
+          </label>
           <label className="checkbox">
             <input type="checkbox" checked={repair} onChange={(e) => setRepair(e.target.checked)} />
             Allow up to 3 model repair rounds within budget
           </label>
           <button
             className="button full"
-            disabled={!live || !id || !heldout || !!busy}
+            disabled={!live || !id || !heldout || !rangesConfirmed || !!busy}
             onClick={() => void validate()}
           >
             Run four validation checks <ArrowUpRight size={15} />

@@ -75,3 +75,22 @@ Native tracking uses the official parser and source-video frame indices after CF
 ## Baseten configuration - October 29, 2026
 
 The participant supplied a Baseten credit/access email documenting `https://inference.baseten.co/v1` and the exact hackathon alias `meta-models/muse-spark-open-1026`. The existing Render backend is configured with that URL, model and `OPEN_TIER_LABEL=spark-open`; its credential is a backend environment variable, never a frontend build variable or repository file. No request was sent to Baseten for this configuration change. Account access, vision responses, actual usage/cost and latency remain unmeasured. The offered credit allowance is not an observed billing balance. Existing request budgets and advisory-only model behavior remain unchanged.
+
+
+## October 29 diagnostic controls and safer defaults
+
+The user authorized exactly three probes with `--allow-paid-calls`, with a shared $0.10 local reservation ceiling. All are under ignored `data/runs/review-probes-20261029/`. Full HTTP JSON bodies (without headers or request bodies) are saved with mode0600. Historical native empty bodies were not captured and cannot be recovered; the new observed empty-image fixture keeps its envelope/item schema, with volatile IDs/timestamps removed.
+
+| Probe | Measured result | Wall latency | Estimated cost |
+|---|---|---|---|
+| SAM image, first frame of the prior synthetic blue-cap clip, prompt `blue cap` | completed, one message/output_text item, empty text,0masks |2322ms|$0.0025|
+| SAM native video, first3s of OpenCV vtest, H264640×4804fps, prompt `person` | completed,50masks,5IDs across12 explicit frames,0parser diagnostics,50billed frames |3578ms|$0.0100|
+| Baseten `meta-models/muse-spark-open-1026`, one photographed image+text | valid strict Opinion JSON,664input/1179output tokens (1060reasoning tokens included in output) |8698ms|~$0.00584 using public uncached rates; event billing not independently checked|
+
+Reservations total$0.0625; listed estimated total~$0.01834. Baseten's public [pricing](https://www.baseten.co/pricing/) lists Spark Open $1.25/M input and $4.25/M output; cached discount was not used in this conservative estimate. The offered $100 credit balance was not queried. The probe does not establish correctness of every described object, calibration, procedure accuracy or stable physical identity through occlusion.
+
+Rechecked [overview](https://dev.meta.ai/docs/sam/overview), [prompt guide](https://dev.meta.ai/docs/sam/segmenting), [output guide](https://dev.meta.ai/docs/sam/reading-segmentation) and [parser guide](https://dev.meta.ai/docs/sam/client-libraries). Streaming is recommended, explicitly optional; non-streaming returns the complete result. Empty text is a documented valid zero-match response. Requests still use one short noun phrase, input_video and the documented metadata flags. No missing streaming requirement was found. Different prompt/source/codec prevent attributing the positive photographic result to any single change.
+
+Image mode remains default until procedure footage works. At application level a completed, diagnostic-free native result with zero masks is a logged tracking failure and invokes a separately budgeted image fallback once per concept. Partial/diagnostic output does not trigger that fallback. Private native diagnostic bodies are retained before handling an empty result; old empty caches also route to fallback.
+
+Narration timing proposals require explicit confirmation (`ranges_confirmed=true`) before validation. Active recovery may refine a noun phrase for the same missing object and re-query one frame; only deterministic rule replay can change completion. Neither behavior was exercised by the three paid probes.

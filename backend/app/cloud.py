@@ -20,6 +20,9 @@ FILES = {
     "root.txt",
     "report.html",
     "self_check.json",
+    "narration.json",
+    "boundary_suggestions.json",
+    "boundary_confirmation.json",
 }
 
 

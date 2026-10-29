@@ -2,7 +2,6 @@
 
 Apprentice fits Push the Frontier: a demonstration becomes an executable temporal specification, tested against counterfactuals. This is substantially stronger than a single-image analyzer if the protocol generalizes and actually detects omissions.
 
-Concept-only assessment (subjective, not a predicted competition result): impact 7/10, Meta tooling potential 8/10, technical potential 8/10. Execution and demo are unscored until measured. Winning is not knowable from a brief.
 
 ## Changes made
 1. Web workstation, not mobile: judges can inspect evidence, timeline and protocol simultaneously without installation.
@@ -20,4 +19,8 @@ Concept-only assessment (subjective, not a predicted competition result): impact
 Show a skipped cap, seek to its evidence, inspect the predicate, run clean and counterfactual variants, then verify an audit against its downloaded root. Replace synthetic replay with recorded real evidence before submission. Lead with a real operator's observed problem once that evidence exists.
 
 ## Unresolved competition gates
-Real Meta calls; real expert A/B and >=12 labelled novice runs; frozen-test results; hardware verification; three-minute real-product video; platform submission. Deployment is separate from scientific validation.
+Real expert A/B and >=12 labelled novice runs; frozen-test results; real procedure tracking; three-minute real-product video; platform submission. Initial provider probes do not establish these gates. Deployment is separate from scientific validation.
+
+## Feature freeze
+
+Focus the next recording session on expert A/B, labelled dev takes and separately recorded test takes. Fix blockers exposed by that footage; do not add more presentation features. Narration-derived timings are proposals that must be checked against the video before validation.

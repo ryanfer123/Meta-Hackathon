@@ -39,6 +39,10 @@ class NativeVideoTooLarge(ValueError):
     """Prepared bytes exceed the local cap or documented general inline-file cap."""
 
 
+class NativeVideoNoMatches(ValueError):
+    """A completed native response has no masks; retry this concept as images once."""
+
+
 @dataclass(frozen=True)
 class PreparedVideo:
     path: Path

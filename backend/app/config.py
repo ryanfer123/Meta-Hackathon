@@ -22,17 +22,17 @@ class Settings(BaseSettings):
     glimmer_max_tokens: int = Field(default=3000, ge=1, le=32768)
     open_tier_label: str = Field(default="glimmer", pattern=r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$")
     data_dir: Path = Path("data")
-    sam_mode: Literal["video", "image"] = "video"
+    sam_mode: Literal["video", "image"] = "image"
     sam_video_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1, le=50_000_000)
     max_sam_video_frames: int = Field(default=6000, ge=1)
-    hosted_max_sam_video_frames: int = Field(default=2000, ge=1)
-    max_sam_calls: int = Field(default=120, ge=0)
+    hosted_max_sam_video_frames: int = Field(default=6000, ge=1)
+    max_sam_calls: int = Field(default=3000, ge=0)
     max_spark_calls: int = Field(default=40, ge=0)
     max_daily_spark_calls: int = Field(default=60, ge=0)
-    max_run_cost_usd: float = Field(default=3, gt=0, allow_inf_nan=False)
+    max_run_cost_usd: float = Field(default=8, gt=0, allow_inf_nan=False)
     max_daily_cost_usd: float = Field(default=10, gt=0, allow_inf_nan=False)
-    hosted_max_run_cost_usd: float = Field(default=2, gt=0, allow_inf_nan=False)
-    hosted_max_daily_cost_usd: float = Field(default=5, gt=0, allow_inf_nan=False)
+    hosted_max_run_cost_usd: float = Field(default=8, gt=0, allow_inf_nan=False)
+    hosted_max_daily_cost_usd: float = Field(default=10, gt=0, allow_inf_nan=False)
     max_upload_mb: int = Field(default=100, ge=1, le=500)
 
     @model_validator(mode="after")

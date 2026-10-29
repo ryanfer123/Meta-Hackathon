@@ -11,6 +11,7 @@ from app.schemas import ObjectSpec, Protocol
 from app.track.fallback_color import segment_color
 from app.track.geometry import Detection, FrameState, centroid
 from app.track.native_video import (
+    NativeVideoNoMatches,
     NativeVideoTooLarge,
     ParsedVideo,
     PreparedVideo,
@@ -208,12 +209,22 @@ def track_video(
             continue
         try:
             text = client.segment_video(video, prompt, video_hash)
-        except (httpx.HTTPStatusError, NativeVideoTooLarge) as exc:
-            if not isinstance(exc, NativeVideoTooLarge) and not _native_size_rejection(exc):
+        except (httpx.HTTPStatusError, NativeVideoTooLarge, NativeVideoNoMatches) as exc:
+            if not isinstance(
+                exc, NativeVideoTooLarge | NativeVideoNoMatches
+            ) and not _native_size_rejection(exc):
                 raise
+            if isinstance(exc, NativeVideoNoMatches):
+                client.tracking_notice(
+                    "native_video_failed",
+                    "Completed native response returned zero masks for this concept across the clip",
+                )
+                detail = "Completed native response had zero masks; using this concept's separately budgeted image path once"
+            else:
+                detail = "Native video exceeded local byte cap or returned 413 payload_too_large; using this concept's image path once"
             client.tracking_notice(
                 "image_fallback",
-                "Native video exceeded local byte cap or returned 413 payload_too_large; using this concept's image path once",
+                detail,
             )
             # track only uses .objects; preserving .steps here avoids inventing a new
             # protocol or weakening the validated reference graph saved to the run.

@@ -11,6 +11,7 @@ from app.audit.report import render_report
 from app.budget import BudgetExceeded
 from app.config import Settings
 from app.glimmer_client import GlimmerClient
+from app.learn.boundaries import suggest_boundaries
 from app.learn.compile import compile_protocol, repair_step
 from app.learn.frames import extract_audio, file_hash, keyframes, sample
 from app.learn.transcribe import transcribe
@@ -21,6 +22,7 @@ from app.samples import wire_frame
 from app.schemas import Opinion, Protocol, TranscriptTurn
 from app.supervise.verifier import Verifier
 from app.track.geometry import FrameState
+from app.track.recovery import recover_once
 from app.track.sam import track, track_video
 
 
@@ -48,6 +50,12 @@ def process_learn(settings: Settings, job: str, turns: list[TranscriptTurn]) -> 
             turns = transcribe(client, audio)
         protocol = compile_protocol(client, keyframes(frames), turns)
         atomic_json(folder / "protocol.json", protocol.model_dump(by_alias=True))
+        atomic_json(folder / "narration.json", [turn.model_dump() for turn in turns])
+        suggestions = {
+            key: value.model_dump()
+            for key, value in suggest_boundaries(protocol, turns, frames[-1][0]).items()
+        }
+        atomic_json(folder / "boundary_suggestions.json", suggestions)
         atomic_json(
             folder / "status.json",
             {
@@ -55,6 +63,8 @@ def process_learn(settings: Settings, job: str, turns: list[TranscriptTurn]) -> 
                 "status": "ready",
                 "protocol": protocol.model_dump(by_alias=True),
                 "validation": None,
+                "boundary_suggestions": suggestions,
+                "boundary_suggestions_scope": "Narration timing proposals only. Check the video, fill missing steps and confirm every range before validation.",
                 "provenance": "live-meta-compiled-unverified",
             },
         )
@@ -161,6 +171,12 @@ def run_recording(
             else track(client, protocol, paths, file_hash(video), color_fallback)
         )
         supervisor = replay(protocol, frames)
+        recovery = recover_once(
+            client, protocol, frames, paths, supervisor.events, file_hash(video)
+        )
+        if recovery.changed_frame is not None:
+            frames = recovery.frames
+            supervisor = replay(protocol, frames)
         glimmer = GlimmerClient(settings, job)
         evidence = evidence_overlays(frames, paths, folder)
         review_full: list[Path] = []
@@ -241,6 +257,7 @@ def run_recording(
             "states": {k: s.status for k, s in supervisor.states.items()},
             "metrics": call_metrics(settings, job, verifier.shadow),
             "shadow": verifier.shadow,
+            "recovery_actions": recovery.actions,
         }
         run["events"].sort(key=lambda e: e["t"])
         finalize_run(folder, run, evidence)
@@ -350,6 +367,12 @@ def process_validation(
                 "status": "ready",
                 "protocol": protocol.model_dump(by_alias=True),
                 "validation": result,
+                "boundary_suggestions": json.loads(
+                    (folder / "boundary_suggestions.json").read_text()
+                )
+                if (folder / "boundary_suggestions.json").exists()
+                else {},
+                "confirmed_ranges": {key: value.model_dump() for key, value in ranges.items()},
                 "provenance": "live-meta-compiled",
             },
         )

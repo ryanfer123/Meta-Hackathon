@@ -13,7 +13,13 @@ from app.config import Settings
 from app.model_output import ModelOutputIncomplete, ensure_complete, json_object_text
 from app.replay_cache import ReplayCache, canonical, digest
 from app.schemas import TranscriptTurn
-from app.track.native_video import TRANSCODE_SETTINGS, NativeVideoTooLarge, prepare_video
+from app.track.native_video import (
+    TRANSCODE_SETTINGS,
+    NativeVideoNoMatches,
+    NativeVideoTooLarge,
+    parse_video_masks,
+    prepare_video,
+)
 
 # A conservative local cap on serialized inline requests; provider docs instead
 # specify a50MB inline FILE maximum and do not establish a JSON-body maximum.
@@ -206,6 +212,15 @@ class MetaClient:
         with path.open("ab") as log:
             log.write(canonical({"event": event, "detail": detail}) + b"\n")
 
+    def save_raw_response(self, raw: dict[str, Any], name: str) -> Path:
+        """Private diagnostics: exact response JSON only, never HTTP headers or request bodies."""
+        if not name.replace("-", "").replace("_", "").isalnum():
+            raise ValueError("Invalid diagnostic name")
+        target = self.budget.log_path(self.run_id).parent / (name + ".response.json")
+        target.write_text(json.dumps(raw, indent=2))
+        target.chmod(0o600)
+        return target
+
     def segment_video(self, video_path: Path, prompt: str, video_hash: str) -> str:
         prepared = prepare_video(
             video_path,
@@ -217,7 +232,11 @@ class MetaClient:
         key = digest([video_hash, prompt, "sam-3.1-video", TRANSCODE_SETTINGS])
         cached = self.cache.get("sam-video", key)
         if cached is not None:
-            return str(cached["payload"])
+            text = str(cached["payload"])
+            parsed = parse_video_masks(text, prepared)
+            if parsed.valid and not any(parsed.frames.values()):
+                raise NativeVideoNoMatches("Cached completed video has zero masks")
+            return text
         reserved_frames = prepared.billed_frame_reservation
         body = {
             "model": "sam-3.1",
@@ -255,7 +274,14 @@ class MetaClient:
             )
             return ""
         text = response_text(raw)
-        self.cache.put("sam-video", key, text, "live-meta-sam-3.1-video")
+        parsed = parse_video_masks(text, prepared)
+        if parsed.valid and not any(parsed.frames.values()):
+            self.save_raw_response(raw, "sam-video-zero-" + key[:16])
+            raise NativeVideoNoMatches(
+                "Completed video has zero masks; raw response retained privately"
+            )
+        if parsed.valid:
+            self.cache.put("sam-video", key, text, "live-meta-sam-3.1-video")
         return text
 
     def transcribe(self, audio: Path) -> list[TranscriptTurn]:

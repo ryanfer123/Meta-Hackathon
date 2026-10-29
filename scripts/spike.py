@@ -215,7 +215,27 @@ def native_video_detail(client: MetaClient, video: Path, prompt: str) -> dict[st
         sam_frames=max(50, source["source_frames"]),
     )
     latency_ms = (time.perf_counter() - start) * 1000
+    # Preserve the full body, including non-text output items, before parsing.
+    diagnostic = client.settings.data_dir / "runs" / client.run_id / "sam-video.response.json"
+    diagnostic.parent.mkdir(parents=True, exist_ok=True)
+    diagnostic.write_text(json.dumps(raw, indent=2))
+    diagnostic.chmod(0o600)
     summary = summarize_video_response(raw, source)
+    summary["raw_response_file"] = diagnostic.name
+    summary["response_keys"] = sorted(raw)
+    summary["output_items"] = [
+        {
+            "type": item.get("type"),
+            "keys": sorted(item),
+            "content_items": [
+                {"type": part.get("type"), "keys": sorted(part)}
+                for part in item.get("content", [])
+                if isinstance(part, dict)
+            ],
+        }
+        for item in raw.get("output", [])
+        if isinstance(item, dict)
+    ]
     return {
         "source": source,
         "prompt": prompt,

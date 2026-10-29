@@ -154,6 +154,7 @@ def test_detail_cli_makes_exactly_one_mocked_native_request_and_writes_observati
 
         def __init__(self, config, job):
             assert config is settings
+            self.settings, self.run_id = config, job
 
         def call(self, *args, **kwargs):
             calls.append((args, kwargs))
@@ -200,6 +201,9 @@ def test_native_detail_does_not_reuse_image_cost_when_video_usage_is_absent(tmp_
     monkeypatch.setattr(spike, "video_metadata", lambda path: source())
 
     class Client:
+        settings = Settings(_env_file=None, data_dir=tmp_path)
+        run_id = "empty-test"
+
         def call(self, *args, **kwargs):
             raw = response("")
             raw["usage"] = {}
@@ -211,3 +215,37 @@ def test_native_detail_does_not_reuse_image_cost_when_video_usage_is_absent(tmp_
     detail = spike.native_video_detail(Client(), video, "tube")
     assert detail["estimated_cost_usd"] is None
     assert detail["billed_frames_per_source_second"] is None
+
+
+def test_detail_preserves_full_empty_response_body_and_item_schema(tmp_path, monkeypatch):
+    raw = {
+        "status": "completed",
+        "output": [
+            {
+                "type": "message",
+                "custom": {"key": "kept"},
+                "content": [{"type": "output_text", "text": "", "annotations": []}],
+            }
+        ],
+        "usage": {"video_frames_processed": 50},
+        "error": None,
+    }
+
+    class Client:
+        settings = Settings(_env_file=None, data_dir=tmp_path)
+        run_id = "empty-diagnostic"
+        estimate = staticmethod(MetaClient.estimate)
+
+        def call(self, *args, **kwargs):
+            return raw
+
+    monkeypatch.setattr(spike, "video_metadata", lambda video: source())
+    video = tmp_path / "clip.mp4"
+    video.write_bytes(b"test")
+    result = spike.native_video_detail(Client(), video, "tube")
+    saved = tmp_path / "runs/empty-diagnostic" / result["raw_response_file"]
+    assert json.loads(saved.read_text()) == raw
+    assert saved.stat().st_mode & 0o777 == 0o600
+    assert result["output_items"][0]["type"] == "message"
+    assert "custom" in result["output_items"][0]["keys"]
+    assert result["mask_record_count"] == 0

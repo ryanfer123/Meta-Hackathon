@@ -21,13 +21,22 @@ class GlimmerClient:
         self.settings, self.run_id = settings, run_id
         self.transport = transport
 
-    def opinion(self, prompt: str, frames: list[Path]) -> Opinion:
+    def opinion(
+        self,
+        prompt: str,
+        frames: list[Path],
+        *,
+        max_attempts: int = 3,
+        raw_response: Path | None = None,
+    ) -> Opinion:
+        if not 1 <= max_attempts <= 3:
+            raise ValueError("Opinion attempts must be between 1 and 3")
         if not self.settings.glimmer_base_url or self.settings.replay_mode:
             raise RuntimeError("Glimmer endpoint is not configured")
         host = urlparse(self.settings.glimmer_base_url).hostname
         is_local = host in ("localhost", "127.0.0.1", "::1")
         feedback = ""
-        for attempt in range(3):
+        for attempt in range(max_attempts):
             start = time.perf_counter()
             status = "error"
             usage: dict[str, Any] = {}
@@ -60,6 +69,10 @@ class GlimmerClient:
                     )
                     response.raise_for_status()
                     raw = response.json()
+                if raw_response is not None:
+                    raw_response.parent.mkdir(parents=True, exist_ok=True)
+                    raw_response.write_text(json.dumps(raw, indent=2))
+                    raw_response.chmod(0o600)
                 usage = raw.get("usage", {})
                 ensure_complete(raw)
                 result = Opinion.model_validate_json(
@@ -73,7 +86,7 @@ class GlimmerClient:
             except (ValidationError, ValueError) as exc:
                 error_type = "validation"
                 feedback = " Correct validation errors: " + str(exc)
-                if attempt == 2:
+                if attempt == max_attempts - 1:
                     raise
             finally:
                 path = self.settings.data_dir / "runs" / self.run_id / "calls.jsonl"

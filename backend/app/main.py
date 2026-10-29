@@ -309,14 +309,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         heldout: Annotated[UploadFile, File()],
         ranges: Annotated[str, Form()],
         repair: Annotated[bool, Form()] = False,
+        ranges_confirmed: Annotated[bool, Form()] = False,
     ) -> dict[str, str]:
         live()
         folder = job_folder(job, request)
-        read(folder / "protocol.json")
+        protocol = Protocol.model_validate(read(folder / "protocol.json"))
+        if not ranges_confirmed:
+            raise HTTPException(422, "Review and confirm every step boundary before validation")
         try:
             parsed = TypeAdapter(dict[str, StepRange]).validate_json(ranges)
         except ValidationError as exc:
             raise HTTPException(422, "Invalid step ranges") from exc
+        if set(parsed) != {step.id for step in protocol.steps} or any(
+            value.start >= value.end for value in parsed.values()
+        ):
+            raise HTTPException(422, "Confirm a valid start/end range for every protocol step")
+        atomic_json(
+            folder / "boundary_confirmation.json",
+            {
+                "confirmed": True,
+                "ranges": {key: value.model_dump() for key, value in parsed.items()},
+            },
+        )
         await save_job_upload(request, job, "learn", heldout, folder / "heldout.mp4", existing=True)
         atomic_json(folder / "status.json", {"id": job, "status": "validating"})
         tasks.add_task(execute_job, request, job, "learn", process_validation, parsed, repair)

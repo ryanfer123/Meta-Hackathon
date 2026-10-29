@@ -19,6 +19,7 @@ from app.schemas import Protocol
 from app.track import sam
 from app.track.geometry import Detection, FrameState, centroid
 from app.track.native_video import (
+    NativeVideoNoMatches,
     NativeVideoTooLarge,
     PreparedVideo,
     parse_video_masks,
@@ -401,3 +402,160 @@ def test_local_real_transcode_produces_cached_cfr_h264_small_silent_clip(tmp_pat
     assert json.loads(audio.stdout)["streams"] == []
     with pytest.raises(NativeVideoTooLarge):
         prepare_video(source, tmp_path / "cache", 1)
+
+
+@pytest.mark.parametrize("image_has_match", [False, True])
+def test_completed_zero_mask_failure_falls_back_once_for_only_that_concept(
+    tmp_path, monkeypatch, image_has_match
+):
+    video = prepared(tmp_path)
+    monkeypatch.setattr(sam, "prepare_video", lambda *args: video)
+    client = MockClient(
+        tmp_path,
+        {
+            "tube": NativeVideoNoMatches("completed response returned zero masks"),
+            "hand": wire({i: [(9, 55, 40)] for i in range(8)}),
+        },
+    )
+    seen = []
+
+    def image_track(client, partial, frames, video_hash, color_fallback):
+        seen.append([obj.name for obj in partial.objects])
+        return [
+            FrameState(
+                t,
+                {
+                    obj.name: Detection(rect(5, 6, 4, 4, 128, 128), 0.9, obj.obj_class)
+                    if image_has_match
+                    else None
+                    for obj in partial.objects
+                },
+                128,
+                128,
+                complete=False,
+            )
+            for t, path in frames
+        ]
+
+    monkeypatch.setattr(sam, "track", image_track)
+    states = sam.track_video(
+        client, protocol(), tmp_path / "original.mp4", evidence(tmp_path), "source"
+    )
+    assert seen == [["tube_2", "tube_1"]]
+    assert client.calls == ["tube", "hand"]
+    assert [event for event, _ in client.notices] == ["native_video_failed", "image_fallback"]
+    assert all((state.objects["tube_1"] is not None) == image_has_match for state in states)
+    assert all(state.objects["hand"] is not None for state in states)
+    assert all(not state.complete for state in states)
+    if not image_has_match:
+        assert all(state.objects["tube_1"] is None for state in states)
+
+
+@pytest.mark.parametrize("text", ["", "<0f>bad"])
+def test_unconfirmed_empty_or_diagnostic_response_does_not_trigger_image_fallback(
+    tmp_path, monkeypatch, text
+):
+    video = prepared(tmp_path)
+    monkeypatch.setattr(sam, "prepare_video", lambda *args: video)
+    client = MockClient(tmp_path, {"tube": text, "hand": text})
+
+    def forbidden(*args):
+        raise AssertionError("Incomplete or diagnostic output must not trigger paid fallback")
+
+    monkeypatch.setattr(sam, "track", forbidden)
+    states = sam.track_video(
+        client, protocol(), tmp_path / "original.mp4", evidence(tmp_path), "source"
+    )
+    assert all(all(d is None for d in state.objects.values()) for state in states)
+    assert not any(event == "image_fallback" for event, _ in client.notices)
+
+
+def test_zero_match_image_fallback_preserves_budget_refusal(tmp_path, monkeypatch):
+    video = prepared(tmp_path)
+    monkeypatch.setattr(sam, "prepare_video", lambda *args: video)
+    client = MockClient(tmp_path, {"tube": NativeVideoNoMatches("empty")})
+    attempts = []
+
+    def denied(*args):
+        attempts.append(True)
+        raise BudgetExceeded("image fallback cap")
+
+    monkeypatch.setattr(sam, "track", denied)
+    with pytest.raises(BudgetExceeded, match="image fallback cap"):
+        sam.track_video(client, protocol(), tmp_path / "original.mp4", evidence(tmp_path), "source")
+    assert len(attempts) == 1
+    assert client.calls == ["tube"]
+
+
+@pytest.mark.parametrize(
+    "status,text,expect_fallback",
+    [("completed", "", True), ("incomplete", "", False), ("completed", "<0f>bad", False)],
+)
+def test_completed_empty_client_preserves_raw_body_and_requests_fallback_only_when_valid(
+    tmp_path, monkeypatch, status, text, expect_fallback
+):
+    source = tmp_path / "original.mp4"
+    source.write_bytes(b"test-source")
+    video = prepared(tmp_path, file_hash(source))
+    monkeypatch.setattr(meta_client, "prepare_video", lambda *args: video)
+    raw = {
+        "status": status,
+        "output": [
+            {
+                "type": "message",
+                "extra_field": {"diagnosis": "retained"},
+                "content": [{"type": "output_text", "text": text}],
+            }
+        ],
+        "usage": {"video_frames_processed": 50},
+    }
+    client = MetaClient(
+        settings(tmp_path),
+        "empty-body",
+        httpx.MockTransport(lambda request: httpx.Response(200, json=raw)),
+    )
+    try:
+        if expect_fallback:
+            with pytest.raises(NativeVideoNoMatches):
+                client.segment_video(source, "tube", file_hash(source))
+            saved = list((tmp_path / "runs/empty-body").glob("*.response.json"))
+            assert len(saved) == 1 and json.loads(saved[0].read_text()) == raw
+            assert saved[0].stat().st_mode & 0o777 == 0o600
+            assert not list((tmp_path / "cache/sam-video").glob("*.json"))
+        else:
+            client.segment_video(source, "tube", file_hash(source))
+    finally:
+        client.close()
+
+
+def test_legacy_cached_completed_empty_also_triggers_fallback_without_call(tmp_path, monkeypatch):
+    from app.replay_cache import digest
+
+    source = tmp_path / "original.mp4"
+    source.write_bytes(b"test-source")
+    video = prepared(tmp_path, file_hash(source))
+    monkeypatch.setattr(meta_client, "prepare_video", lambda *args: video)
+    client = MetaClient(
+        settings(tmp_path),
+        "old-empty",
+        httpx.MockTransport(lambda request: pytest.fail("cached result must not call network")),
+    )
+    key = digest([file_hash(source), "tube", "sam-3.1-video", meta_client.TRANSCODE_SETTINGS])
+    client.cache.put("sam-video", key, "", "live-meta-sam-3.1-video")
+    try:
+        with pytest.raises(NativeVideoNoMatches):
+            client.segment_video(source, "tube", file_hash(source))
+    finally:
+        client.close()
+
+
+def test_observed_photographic_response_has_real_masks_and_explicit_frame_ids(tmp_path):
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures/sam_video_photographed_observed.json").read_text()
+    )
+    metadata = PreparedVideo(tmp_path / "clip.mp4", "hash", 640, 480, 12, 3, 4)
+    parsed = parse_video_masks(meta_client.response_text(fixture["response"]), metadata)
+    assert parsed.valid and len(parsed.frames) == 12
+    assert sum(len(objects) for objects in parsed.frames.values()) == 50
+    assert set(parsed.frames[0]) & set(parsed.frames[11])
+    assert fixture["response"]["usage"]["video_frames_processed"] == 50
