@@ -25,6 +25,7 @@ import { Learn } from '../Learn';
 import { Audit } from '../Audit';
 import { Supervise } from '../Supervise';
 import { Overview } from './Overview';
+import { CheckRecording, type TaughtProcedure } from './Check';
 import { RunLibrary } from './RunLibrary';
 import { scenarios, type Run, type Health } from '../types';
 
@@ -77,6 +78,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
     [scenario, setScenario] = useState(
       () => new URLSearchParams(location.hash.split('?')[1]).get('sample') || 'skipped-cap',
     );
+  const [procedure, setProcedure] = useState<TaughtProcedure | null>(null);
   const [run, setRun] = useState<Run | null>(null),
     [health, setHealth] = useState<Health>({
       replay_mode: true,
@@ -352,18 +354,19 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                 signedIn={!!session}
               />
             ) : view === 'Check' ? (
-              <section className="panel">
-                <h2>First teach it a procedure</h2>
-                <p>Create and review the steps before checking a new recording.</p>
-                <div className="actions">
-                  <button className="button primary" onClick={() => goView('Learn')}>
-                    Go to Teach
-                  </button>
-                  <button className="button" onClick={() => chooseScenario('skipped-cap')}>
-                    Use the sample steps
-                  </button>
-                </div>
-              </section>
+              <CheckRecording
+                procedure={procedure}
+                health={health}
+                readOnly={readOnly}
+                source={source?.kind === 'novice' ? source.file : null}
+                onTeach={() => goView('Learn')}
+                onSample={() => chooseScenario('skipped-cap')}
+                onSignIn={() => setAuth(true)}
+                onRun={(result) => {
+                  setRun(result);
+                  goView('Supervise');
+                }}
+              />
             ) : view === 'Run library' ? (
               <RunLibrary
                 userId={session?.user.id}
@@ -375,7 +378,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                 refreshKey={refreshKey}
                 onUse={(file, kind) => {
                   setSource({ file, kind });
-                  goView('Learn');
+                  goView(kind === 'novice' ? 'Check' : 'Learn');
                 }}
                 onResume={(job) => {
                   if (job.kind === 'run') {
@@ -414,6 +417,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
               transition={{ duration: 0.2 }}
             >
               <Learn
+                onProtocolReady={setProcedure}
                 readOnly={readOnly}
                 onSignIn={() => setAuth(true)}
                 run={run}

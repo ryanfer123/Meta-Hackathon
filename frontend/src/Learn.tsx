@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowUpRight, CheckCircle2, Clock3, FileVideo, Upload } from 'lucide-react';
 import { download, json } from './api';
+import { pollJob as poll } from './lib/analysis';
 import type { AnalysisJob } from './lib/workspace';
 import type { Health, Protocol, Run, Validation } from './types';
 const checks: [string, string, string][] = [
@@ -17,15 +18,6 @@ type ProtocolStatus = {
   boundary_suggestions?: Record<string, { start: number; end: number }>;
   confirmed_ranges?: Record<string, { start: number; end: number }>;
 };
-async function poll<T extends { status?: string; error?: string }>(path: string): Promise<T> {
-  for (let n = 0; n < 300; n++) {
-    const result = await json<T>(path);
-    if (result.status === 'error') throw new Error(result.error ?? 'Processing failed');
-    if (result.status === 'ready') return result;
-    await new Promise((r) => setTimeout(r, 2000));
-  }
-  throw new Error('Processing continues on the server. Check its status before retrying.');
-}
 export function Learn({
   run,
   health,
@@ -34,7 +26,9 @@ export function Learn({
   initialJob,
   readOnly = false,
   onSignIn,
+  onProtocolReady,
 }: {
+  onProtocolReady?: (procedure: { id: string; protocol: Protocol }) => void;
   readOnly?: boolean;
   onSignIn?: () => void;
   run: Run;
@@ -67,6 +61,7 @@ export function Learn({
     if (initialJob?.result.protocol) {
       setId(initialJob.id);
       setProtocol(initialJob.result.protocol as Protocol);
+      onProtocolReady?.({ id: initialJob.id, protocol: initialJob.result.protocol as Protocol });
       setValidation(initialJob.result.validation as Validation | undefined);
       applyBoundarySuggestions(initialJob.result as ProtocolStatus);
     }
@@ -128,6 +123,7 @@ export function Learn({
       const done = await poll<ProtocolStatus>(`/api/protocols/${result.protocol_id}`);
       if (done.protocol) {
         setProtocol(done.protocol);
+        onProtocolReady?.({ id: result.protocol_id, protocol: done.protocol });
         setValidation(undefined);
         applyBoundarySuggestions(done);
       }
@@ -143,7 +139,10 @@ export function Learn({
       f.set('repair', String(repair));
       await json(`/api/protocols/${id}/validate`, { method: 'POST', body: f });
       const done = await poll<ProtocolStatus>(`/api/protocols/${id}`);
-      if (done.protocol) setProtocol(done.protocol);
+      if (done.protocol) {
+        setProtocol(done.protocol);
+        onProtocolReady?.({ id, protocol: done.protocol });
+      }
       setValidation(done.validation ?? undefined);
     });
   }

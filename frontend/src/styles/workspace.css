@@ -1704,3 +1704,14 @@ hr {
     flex-direction: column;
   }
 }
+
+.check-page {
+  padding: 28px;
+  max-width: 860px;
+}
+.check-page > p {
+  margin: 14px 0;
+}
+.check-page .file-input {
+  margin: 24px 0;
+}
