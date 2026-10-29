@@ -86,15 +86,22 @@ test('results starts paused at first flag with plain labels and advanced rules c
   await expect(surface.getByRole('note')).toHaveText(
     'Example run — no real video and no models were involved.',
   );
-  await expect(surface.getByRole('slider', { name: 'Replay position' })).toHaveValue('16.5');
+  await expect(surface.getByRole('slider', { name: 'Replay position' })).toHaveValue('17');
   await expect(surface.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
   await expect(surface.getByRole('region', { name: 'Why this was flagged' })).toContainText(
-    'This step stayed active longer',
+    'It also stayed active longer than allowed first.',
   );
-  await expect(surface.locator('.why-flagged strong')).toHaveText('Took too long');
+  await expect(surface.locator('.why-flagged strong')).toHaveText('Step skipped');
   await surface.getByRole('button', { name: 'Seek to Step skipped', exact: true }).click();
   await expect(surface.locator('.why-flagged strong')).toHaveText('Step skipped');
-  await expect(surface.locator('.why-flagged strong')).toHaveAttribute('title', 'skipped');
+  await expect(surface.locator('.why-flagged strong')).toHaveAttribute(
+    'aria-description',
+    'skipped',
+  );
+  await expect(surface.locator('.ledger code').filter({ hasText: /^skipped$/ })).toHaveText(
+    'skipped',
+  );
+  await expect(surface.locator('.ledger')).not.toHaveAttribute('open');
   await expect(surface.locator('.predicate-detail')).not.toHaveAttribute('open');
   await surface.locator('.predicate-detail summary').click();
   await expect(surface.locator('.predicate-detail pre')).toContainText('touching');

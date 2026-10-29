@@ -1,5 +1,9 @@
+import { useEffect, useState } from 'react';
+import { loadSample } from '../api';
+import { headlineAlert } from '../lib/alerts';
+import { friendlyEventLabel } from '../eventLabels';
 import { ArrowRight, Play } from 'lucide-react';
-import { scenarios } from '../types';
+import { scenarios, timecode, type Run } from '../types';
 interface Props {
   onView: (view: string) => void;
   onScenario: (scenario: string) => void;
@@ -7,6 +11,19 @@ interface Props {
   signedIn: boolean;
 }
 export function Overview({ onView, onScenario, onSignIn, signedIn }: Props) {
+  const [example, setExample] = useState<Run | null>(null);
+  useEffect(() => {
+    let active = true;
+    void loadSample('skipped-cap')
+      .then((run) => {
+        if (active) setExample(run);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+  const headline = example ? headlineAlert(example) : undefined;
   return (
     <div className="overview-page">
       <section className="overview-feature">
@@ -17,13 +34,22 @@ export function Overview({ onView, onScenario, onSignIn, signedIn }: Props) {
             skipped.
           </p>
           <div className="actions">
-            <button className="button primary" onClick={() => onScenario('skipped-cap')}>
+            <button
+              className="button primary"
+              aria-describedby={headline ? 'home-headline' : undefined}
+              onClick={() => onScenario('skipped-cap')}
+            >
               <Play size={18} /> See it catch a mistake (30 seconds)
             </button>
             <button className="button" onClick={signedIn ? () => onView('Teach') : onSignIn}>
               Try it with your own video <ArrowRight size={18} />
             </button>
           </div>
+          {headline && (
+            <small id="home-headline">
+              {friendlyEventLabel(headline.kind)} at {timecode(headline.t)}
+            </small>
+          )}
         </div>
         <img
           src={`${import.meta.env.BASE_URL}images/procedure-studio.webp`}

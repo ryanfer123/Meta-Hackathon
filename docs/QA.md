@@ -14,3 +14,8 @@ Commands are in the README. Commit history retains earlier QA notes and their sc
 ## T6 first-visit UX - October 30, 2026
 
 Home → selected, paused alert works in two clicks with `/api` blocked. Desktop/mobile checks cover aliases, guided Teach, confirmed video timings, stale-response rejection, read-only examples, actual-count model chips, unknown verification failures, clipboard export and the unified private list. Product previews were recaptured from current animated views; no model accuracy is implied. 275 Python tests and 118 desktop/mobile browser checks passed, along with lint/format, strict typing and the production build. T7 remains pending consented footage.
+
+
+## T6.1 headline alerts - October 30, 2026
+
+Scenario metadata selects each example’s headline finding without changing its chronological events or integrity root. Skipped cap opens paused on “Step skipped” at 00:17 on Home and the landing comparison; the earlier same-step time warning stays in the timeline and reason panel. Shared-helper tests cover all six samples, stale metadata, step order and severity; desktop/mobile first-visit checks run with `/api` blocked. 281 Python tests and 136 desktop/mobile browser checks passed, plus lint/format, strict typing and the build. T7 remains pending a consented real run.

@@ -1,14 +1,14 @@
 import { mockAccount } from './account';
 import { test, expect } from '@playwright/test';
 
-test('homepage compares real fixture results and opens the selected run', async ({ page }) => {
+test('homepage compares synthetic fixture results and opens the selected run', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await mockAccount(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Show it once. Check each step.' })).toBeVisible();
   await expect(page.locator('.comparison-step')).toHaveCount(4);
-  await expect(page.locator('.comparison-observation')).toContainText('The cap step was missed.');
+  await expect(page.locator('.comparison-observation')).toContainText('Step skipped');
   await page.getByRole('button', { name: 'Clean run', exact: true }).click();
   await expect(page.locator('.comparison-step.missed')).toHaveCount(0);
   await expect(page.locator('.comparison-observation')).toContainText(

@@ -5,7 +5,9 @@ import { ArrowRight, Check, Play, AlertCircle, ExternalLink } from 'lucide-react
 import { Brand } from '../components/Brand';
 import { Scene } from '../Scene';
 import { loadSample } from '../api';
-import type { Run } from '../types';
+import { timecode, type Run } from '../types';
+import { headlineAlert } from '../lib/alerts';
+import { friendlyEventLabel } from '../eventLabels';
 
 interface Props {
   onOpen: (scenario?: string, view?: string) => void;
@@ -55,7 +57,9 @@ export function HomePage({ onOpen }: Props) {
     };
   }, []);
   const run = samples[comparison];
-  const final = run?.frames.find((f) => f.t === 17) ?? run?.frames.at(-1);
+  const headline = run ? headlineAlert(run) : undefined;
+  const previewTime = headline?.t ?? run?.duration ?? 0;
+  const final = run?.frames.find((f) => f.t >= previewTime) ?? run?.frames.at(-1);
   return (
     <div className="home-page">
       <a className="skip-link" href="#home-main">
@@ -182,17 +186,17 @@ export function HomePage({ onOpen }: Props) {
                 )}
                 <div className="comparison-clock">
                   <Play size={14} fill="currentColor" />
-                  <span>00:17</span>
+                  <span>{timecode(previewTime)}</span>
                   <div className="comparison-track">
                     <span />
                   </div>
-                  <span>00:24</span>
+                  <span>{timecode(run?.duration ?? 0)}</span>
                 </div>
               </div>
               <div className="comparison-steps">
                 <h3>Step checklist</h3>
                 {run?.protocol.steps.map((s) => {
-                  const missed = comparison === 'skipped-cap' && s.id === 'cap';
+                  const missed = headline?.step_id === s.id;
                   return (
                     <div
                       className={missed ? 'comparison-step missed' : 'comparison-step'}
@@ -215,10 +219,10 @@ export function HomePage({ onOpen }: Props) {
                     : 'comparison-observation'
                 }
               >
-                <span>00:17</span>
+                <span>{timecode(previewTime)}</span>
                 <strong>
-                  {comparison === 'skipped-cap'
-                    ? 'The cap step was missed.'
+                  {headline
+                    ? friendlyEventLabel(headline.kind)
                     : 'All steps were observed in order.'}
                 </strong>
               </div>

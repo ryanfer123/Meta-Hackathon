@@ -15,16 +15,15 @@ import { Scene } from './Scene';
 import { isAlert, timecode, type Event, type Run } from './types';
 import { checkedBy, flagReason, friendlyEventLabel } from './eventLabels';
 import './styles/results.css';
+import { headlineAlert, earlierAlertContext } from './lib/alerts';
 
-const firstAlert = (run: Run) =>
-  [...run.events].filter((event) => isAlert(event.kind)).sort((a, b) => a.t - b.t)[0];
 export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
-  const [time, setTime] = useState(() => firstAlert(run)?.t ?? 0),
+  const [time, setTime] = useState(() => headlineAlert(run)?.t ?? 0),
     [playing, setPlaying] = useState(false),
     [masks, setMasks] = useState(true),
     [sound, setSound] = useState(false),
-    [selected, setSelected] = useState<string | null>(() => firstAlert(run)?.step_id ?? null),
-    [selectedEvent, setSelectedEvent] = useState<Event | null>(() => firstAlert(run) ?? null);
+    [selected, setSelected] = useState<string | null>(() => headlineAlert(run)?.step_id ?? null),
+    [selectedEvent, setSelectedEvent] = useState<Event | null>(() => headlineAlert(run) ?? null);
   const video = useRef<HTMLVideoElement>(null),
     lastAlert = useRef('');
   const synthetic = run.provenance === 'synthetic';
@@ -52,7 +51,7 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
     };
   }, [run.id, synthetic]);
   useEffect(() => {
-    const initial = firstAlert(run);
+    const initial = headlineAlert(run);
     setTime(initial?.t ?? 0);
     setPlaying(false);
     setSelected(initial?.step_id ?? null);
@@ -154,8 +153,10 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
       {flagged && (
         <section className="why-flagged" aria-label="Why this was flagged">
           <h3>Why this was flagged{selectedStep ? ` — ${selectedStep.title}` : ''}</h3>
-          <strong title={flagged.kind}>{friendlyEventLabel(flagged.kind)}</strong>
-          <p>{flagReason(flagged)}</p>
+          <strong aria-description={flagged.kind}>{friendlyEventLabel(flagged.kind)}</strong>
+          <p>
+            {flagReason(flagged)} {earlierAlertContext(run, flagged)}
+          </p>
           <details>
             <summary>Show details</summary>
             <p>{flagged.detail}</p>
@@ -242,7 +243,7 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
                 {markers.map((e, i) => (
                   <button
                     key={i}
-                    title={`${e.kind} at ${timecode(e.t)}`}
+                    aria-description={`${e.kind} at ${timecode(e.t)}`}
                     aria-label={`Seek to ${friendlyEventLabel(e.kind)}`}
                     style={{ left: `${(100 * e.t) / run.duration}%` }}
                     onClick={() => inspect(e)}
@@ -409,8 +410,11 @@ function EvidenceRow({
         </button>
       </td>
       <td>{e.detail}</td>
-      <td className="decision" title={e.kind}>
+      <td className="decision" aria-description={e.kind}>
         {friendlyEventLabel(e.kind)}
+        <small className="source-note">
+          <code>{e.kind}</code>
+        </small>
       </td>
       <td>
         <span className="tier">{checkedBy(e.tier, openTierLabel)}</span>

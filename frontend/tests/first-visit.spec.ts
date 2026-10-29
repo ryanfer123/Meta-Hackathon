@@ -12,8 +12,9 @@ test('Home explains the product and reaches a paused alert in one click', async 
   await expect(page.locator('.overview-page')).toContainText('no model ran for them');
   await page.getByRole('button', { name: 'See it catch a mistake (30 seconds)' }).click();
   await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
-  await expect(page.getByRole('slider', { name: 'Replay position' })).not.toHaveValue('0');
+  await expect(page.getByRole('slider', { name: 'Replay position' })).toHaveValue('17');
   await expect(page.locator('.why-flagged')).toBeVisible();
+  await expect(page.locator('.why-flagged strong')).toHaveText('Step skipped');
   await expect(page.locator('.why-flagged p').first()).toBeInViewport();
   await expect(page.locator('.predicate-detail')).toBeVisible();
 });
@@ -39,8 +40,24 @@ test('entry through Home reaches a selected alert in two clicks without backend 
     .getByRole('button', { name: 'See it catch a mistake (30 seconds)', exact: true })
     .click();
   await expect(page.locator('.why-flagged')).toBeVisible();
+  await expect(page.locator('.why-flagged strong')).toHaveText('Step skipped');
   await expect(page.locator('.why-flagged p').first()).toBeInViewport();
   await expect(page.locator('.step.selected')).toContainText('Cap tube 1');
   await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
   expect(requests).toEqual([]);
+});
+
+test('landing comparison and replay focus on the same finding', async ({ page }) => {
+  await page.route('**/api/**', (route) => route.abort());
+  await page.goto('/');
+  const finding = page.locator('.comparison-observation');
+  await expect(finding).toContainText('Step skipped');
+  await expect(finding).toContainText('00:17');
+  await page.getByRole('button', { name: 'Open this sample' }).click();
+  await expect(page.locator('.why-flagged strong')).toHaveText('Step skipped');
+  await expect(page.getByRole('slider', { name: 'Replay position' })).toHaveValue('17');
+  await expect(page.locator('.why-flagged')).toContainText(
+    'It also stayed active longer than allowed first.',
+  );
+  await expect(page.locator('.why-flagged [title], .timeline-events [title]')).toHaveCount(0);
 });

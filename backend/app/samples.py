@@ -18,6 +18,15 @@ SAMPLES = {
     "occlusion": "Partial occlusion",
 }
 
+# Presentation metadata only: never part of the rule-engine events or hash chain.
+SAMPLE_FOCUS: dict[str, dict[str, str | float]] = {
+    "skipped-cap": {"kind": "skipped", "t": 17.0, "step_id": "cap"},
+    "wrong-tube": {"kind": "wrong_object", "t": 5.0, "step_id": "approach"},
+    "slow-action": {"kind": "dwell_exceeded", "t": 7.5, "step_id": "approach"},
+    "swapped-order": {"kind": "skipped", "t": 13.0, "step_id": "cap"},
+    "occlusion": {"kind": "uncertain", "t": 12.5, "step_id": "cap"},
+}
+
 
 def sample_protocol() -> Protocol:
     objects = [
@@ -187,6 +196,7 @@ def sample_run(name: str) -> dict[str, Any]:
         "id": "sample-" + name,
         "name": SAMPLES[name],
         "provenance": "synthetic",
+        **({"focus": dict(SAMPLE_FOCUS[name])} if name in SAMPLE_FOCUS else {}),
         "protocol": protocol.model_dump(by_alias=True),
         "frames": [wire_frame(f) for f in frames],
         "duration": frames[-1].t,

@@ -32,7 +32,7 @@ cd ..
 uv run uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 ```
 
-Open `http://127.0.0.1:8000`. For a frontend-only replay, set `VITE_STATIC_REPLAY=true` and run `npm run dev` in `frontend`; no backend or credentials are needed. Try **Skipped cap**, seek to the alert, then open **Results → Integrity** (automatic), or open Advanced to verify a separately kept root.
+Open `http://127.0.0.1:8000`. For a frontend-only replay, set `VITE_STATIC_REPLAY=true` and run `npm run dev` in `frontend`; no backend or credentials are needed. Try **Skipped cap**: it opens paused on **Step skipped at 00:17**, with the earlier time warning explained alongside it. Then open **Results → Integrity** (automatic), or open Advanced to verify a separately kept root.
 
 ## Private cloud workspace
 
