@@ -3,9 +3,7 @@ import { AnimatePresence } from 'motion/react';
 import { useEffect, useState } from 'react';
 import {
   BookOpen,
-  ChevronLeft,
   Cloud,
-  Database,
   FileCheck2,
   House,
   LogIn,
@@ -31,15 +29,48 @@ import { RunLibrary } from './RunLibrary';
 import { scenarios, type Run, type Health } from '../types';
 
 const navigation = [
-  { name: 'Overview', icon: House },
-  { name: 'Learn', icon: BookOpen },
-  { name: 'Supervise', icon: Play },
-  { name: 'Audit', icon: FileCheck2 },
-  { name: 'Run library', icon: Database },
+  { name: 'Home', view: 'Overview', icon: House },
+  { name: 'Teach', view: 'Learn', icon: BookOpen },
+  { name: 'Check', view: 'Check', icon: Play },
+  { name: 'Results', view: 'Supervise', icon: FileCheck2 },
 ];
+const aliases: Record<string, string> = {
+  Home: 'Overview',
+  Teach: 'Learn',
+  Check: 'Check',
+  Results: 'Supervise',
+  'My runs': 'Run library',
+  Overview: 'Overview',
+  Learn: 'Learn',
+  Supervise: 'Supervise',
+  Audit: 'Audit',
+  'Run library': 'Run library',
+};
 function initialView() {
-  const view = new URLSearchParams(location.hash.split('?')[1]).get('view');
-  return navigation.some((n) => n.name === view) ? view! : 'Supervise';
+  const params = new URLSearchParams(location.hash.split('?')[1]);
+  const view = params.get('view') ?? 'Home';
+  return view === 'Results' && params.get('tab') === 'Integrity'
+    ? 'Audit'
+    : (aliases[view] ?? 'Overview');
+}
+function routeParams(view: string, sample: string) {
+  const next =
+    view === 'Overview'
+      ? 'Home'
+      : view === 'Learn'
+        ? 'Teach'
+        : view === 'Run library'
+          ? 'My runs'
+          : ['Supervise', 'Audit'].includes(view)
+            ? 'Results'
+            : view;
+  return new URLSearchParams({
+    view: next,
+    sample,
+    ...(['Supervise', 'Audit'].includes(view)
+      ? { tab: view === 'Audit' ? 'Integrity' : 'Replay' }
+      : {}),
+  });
 }
 export default function Workspace({ readOnly = false }: { readOnly?: boolean }) {
   const [view, setView] = useState(initialView),
@@ -92,26 +123,23 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
     const id = setTimeout(() => setToast(''), 5000);
     return () => clearTimeout(id);
   }, [toast]);
-  function goView(next: string) {
-    if (readOnly && !['Supervise', 'Audit', 'Learn'].includes(next)) {
+  function goView(requested: string) {
+    const next = aliases[requested] ?? 'Overview';
+    if (readOnly && next === 'Run library') {
       setAuth(true);
       setMobileMenu(false);
       return;
     }
     setView(next);
     setMobileMenu(false);
-    const params = new URLSearchParams({ view: next, sample: scenario });
+    const params = routeParams(next, scenario);
     history.replaceState(null, '', `#/workspace?${params}`);
   }
   function chooseScenario(name: string) {
     setScenario(name);
     setView('Supervise');
     setMobileMenu(false);
-    history.replaceState(
-      null,
-      '',
-      `#/workspace?${new URLSearchParams({ view: 'Supervise', sample: name })}`,
-    );
+    history.replaceState(null, '', `#/workspace?${routeParams('Supervise', name)}`);
   }
   async function persist() {
     if (!session) {
@@ -132,15 +160,15 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
     }
   }
   const heading =
-    view === 'Supervise'
-      ? (run?.protocol.name ?? 'Procedure review')
-      : view === 'Learn'
-        ? 'Teach the procedure'
-        : view === 'Audit'
-          ? 'Evidence & audit'
-          : view === 'Run library'
-            ? 'Your run library'
-            : 'Workspace overview';
+    view === 'Learn'
+      ? 'Teach'
+      : view === 'Run library'
+        ? 'My runs'
+        : view === 'Check'
+          ? 'Check'
+          : ['Supervise', 'Audit'].includes(view)
+            ? 'Results'
+            : 'Home';
   return (
     <div className="workspace-scope">
       <a className="skip-link" href="#workspace-main">
@@ -160,12 +188,16 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
           </button>
         </div>
         <nav aria-label="Workspace">
-          {navigation.map(({ name, icon: Icon }) => (
+          {navigation.map(({ name, view: target, icon: Icon }) => (
             <button
               key={name}
-              className={view === name ? 'active' : ''}
-              onClick={() => goView(name)}
-              aria-current={view === name ? 'page' : undefined}
+              className={
+                view === target || (target === 'Supervise' && view === 'Audit') ? 'active' : ''
+              }
+              onClick={() => goView(target)}
+              aria-current={
+                view === target || (target === 'Supervise' && view === 'Audit') ? 'page' : undefined
+              }
             >
               <Icon size={20} />
               {name}
@@ -173,22 +205,17 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <a href="#">
-            <ChevronLeft size={18} />
-            Home
-          </a>
           <button onClick={() => setScope(true)}>Scope & provenance</button>
           <div className="sidebar-account">
-            <Cloud size={19} />
             <p>
-              {session ? 'Your work is private.' : 'You are exploring a synthetic sample.'}
-              <span>
-                {session
-                  ? 'Saved runs and recordings belong to your account.'
-                  : 'Sign in to keep runs and upload recordings.'}
-              </span>
+              {session
+                ? 'Your recordings and saved results belong to your account.'
+                : 'Try the examples. Sign in to use your own recordings.'}
             </p>
           </div>
+          <button className="account-action" onClick={() => goView('Run library')}>
+            My runs
+          </button>
           {session ? (
             <button className="account-action" onClick={() => void signOut()}>
               <LogOut size={17} />
@@ -220,7 +247,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
               <Menu size={22} />
             </button>
             <span>
-              Workspace <span className="breadcrumb-divider">/</span> <strong>{view}</strong>
+              Workspace <span className="breadcrumb-divider">/</span> <strong>{heading}</strong>
             </span>
           </div>
           <div>
@@ -228,14 +255,18 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
               <Cloud size={18} />
               {session ? 'Private workspace' : 'Sample workspace'}
             </span>
-            <button
-              className="button primary save-run"
-              onClick={() => void persist()}
-              disabled={!run || saving}
-            >
-              <Save size={16} />
-              {saving ? 'Saving…' : 'Save run'}
-            </button>
+            {!!session &&
+              run?.provenance === 'live-recording' &&
+              ['Supervise', 'Audit'].includes(view) && (
+                <button
+                  className="button primary save-run"
+                  onClick={() => void persist()}
+                  disabled={!run || saving}
+                >
+                  <Save size={16} />
+                  {saving ? 'Saving…' : 'Save run'}
+                </button>
+              )}
           </div>
         </header>
         {readOnly && (
@@ -262,23 +293,43 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                         : 'Start with an observation. Go as deep as you need.'}
               </p>
             </div>
-            {!['Overview', 'Run library'].includes(view) && (
-              <label className="scenario-control">
-                <span>Scenario</span>
-                <select
-                  aria-label="Sample scenario"
-                  value={scenario}
-                  onChange={(e) => chooseScenario(e.target.value)}
-                >
-                  {scenarios.map(([n, t]) => (
-                    <option key={n} value={n}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
           </div>
+          {['Supervise', 'Audit'].includes(view) && (
+            <>
+              <div className="actions" role="tablist" aria-label="Results view">
+                <button
+                  className="button"
+                  role="tab"
+                  aria-selected={view === 'Supervise'}
+                  onClick={() => goView('Supervise')}
+                >
+                  Replay
+                </button>
+                <button
+                  className="button"
+                  role="tab"
+                  aria-selected={view === 'Audit'}
+                  onClick={() => goView('Audit')}
+                >
+                  Integrity
+                </button>
+              </div>
+              {view === 'Supervise' && run?.provenance === 'synthetic' && (
+                <div className="sample-chips" aria-label="Animated examples">
+                  {scenarios.map(([id, title]) => (
+                    <button
+                      className="button"
+                      key={id}
+                      aria-pressed={scenario === id}
+                      onClick={() => chooseScenario(id)}
+                    >
+                      {title}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
           {error && (
             <p className="error-message" role="alert">
               {error}
@@ -300,6 +351,19 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                 onSignIn={() => setAuth(true)}
                 signedIn={!!session}
               />
+            ) : view === 'Check' ? (
+              <section className="panel">
+                <h2>First teach it a procedure</h2>
+                <p>Create and review the steps before checking a new recording.</p>
+                <div className="actions">
+                  <button className="button primary" onClick={() => goView('Learn')}>
+                    Go to Teach
+                  </button>
+                  <button className="button" onClick={() => chooseScenario('skipped-cap')}>
+                    Use the sample steps
+                  </button>
+                </div>
+              </section>
             ) : view === 'Run library' ? (
               <RunLibrary
                 userId={session?.user.id}

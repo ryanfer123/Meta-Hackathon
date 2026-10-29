@@ -1665,3 +1665,14 @@ hr {
   flex-shrink: 0;
   text-decoration: underline;
 }
+
+.sample-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.sample-chips button[aria-pressed='true'] {
+  background: var(--blue);
+  color: white;
+}

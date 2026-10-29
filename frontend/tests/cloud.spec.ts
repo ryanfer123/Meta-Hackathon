@@ -2,6 +2,14 @@ import { test, expect, type Page } from '@playwright/test';
 
 // UI contract tests mock cloud HTTP. Server authorization is tested separately in supabase/tests.
 test('account saves, reopens and deletes a run; private upload is retained', async ({ page }) => {
+  await page.route('**/samples/skipped-cap.json', async (route) => {
+    const response = await route.fetch();
+    const run = await response.json();
+    run.provenance = 'live-recording';
+    run.name = 'Mock recorded run';
+    run.id = 'mock-recorded';
+    await route.fulfill({ json: run });
+  });
   let snapshot: any;
   let saved = false;
   let recording: any;
@@ -73,6 +81,9 @@ test('account saves, reopens and deletes a run; private upload is retained', asy
       return reply({ Key: 'mock-private-object' });
     return reply({ message: 'Unmocked cloud request: ' + url.pathname }, 400);
   });
+  await page.route('**/api/media/mock-recorded/original.mp4', (route) =>
+    route.fulfill({ status: 404, body: 'Mock recording unavailable' }),
+  );
   await page.goto('/#/workspace');
   const save = page.getByRole('button', { name: 'Save run', exact: true });
   await expect(page.getByRole('heading', { name: 'Your private workspace' })).toBeVisible();
@@ -84,6 +95,7 @@ test('account saves, reopens and deletes a run; private upload is retained', asy
     'Cloud client not configured in this standalone installation',
   );
   await signin.click();
+  await view(page, 'Results');
   await expect(save).toBeEnabled();
   await save.click();
   await expect(page.locator('.toast')).toContainText('Run saved');
@@ -108,9 +120,13 @@ test('account saves, reopens and deletes a run; private upload is retained', asy
 });
 
 async function view(page: Page, name: string) {
-  const button = page
-    .getByRole('navigation', { name: 'Workspace' })
-    .getByRole('button', { name, exact: true });
+  await expect(page.locator('.workspace-topbar')).toBeVisible();
+  const button =
+    name === 'Run library'
+      ? page.getByRole('button', { name: 'My runs', exact: true })
+      : page
+          .getByRole('navigation', { name: 'Workspace' })
+          .getByRole('button', { name, exact: true });
   if (await page.getByRole('button', { name: 'Open navigation' }).isVisible())
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await button.click();

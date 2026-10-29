@@ -15,7 +15,10 @@ test('homepage compares real fixture results and opens the selected run', async 
     'All steps were observed in order.',
   );
   await page.getByRole('button', { name: 'Open this sample' }).click();
-  await expect(page.getByLabel('Sample scenario')).toHaveValue('clean');
+  await expect(page.getByRole('button', { name: 'Clean procedure', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });

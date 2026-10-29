@@ -23,7 +23,7 @@ test('configured open-model label appears in Audit and Supervise', async ({ page
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await page
     .getByRole('navigation', { name: 'Workspace' })
-    .getByRole('button', { name: 'Supervise', exact: true })
+    .getByRole('button', { name: 'Results', exact: true })
     .click();
   await expect(page.locator('.tier').filter({ hasText: 'spark-open' })).toBeVisible();
   await expect(page.locator('.tier').filter({ hasText: /^glimmer$/ })).toHaveCount(0);

@@ -38,7 +38,9 @@ function Routes() {
   const publicSample =
     hash.startsWith('#/workspace?') &&
     scenarios.some(([name]) => name === params.get('sample')) &&
-    ['Supervise', 'Audit', 'Learn'].includes(params.get('view') ?? '');
+    ['Supervise', 'Audit', 'Learn', 'Teach', 'Results', 'Home', 'Overview', 'Check'].includes(
+      params.get('view') ?? '',
+    );
   if (workspace && !publicSample && loading)
     return (
       <div className="app-loading" role="status">

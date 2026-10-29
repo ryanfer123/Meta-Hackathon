@@ -16,7 +16,7 @@ test('public Learn requires sign-in for uploads and sign-out returns to a clean 
   await page.getByRole('dialog').getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.locator('#narration')).toBeVisible();
   await page.locator('#narration').fill('private narration must be cleared on sign-out');
-  await expect(page.getByLabel('Sample scenario')).toHaveValue('clean');
+  await expect(page).toHaveURL(/sample=clean/);
   if (await page.getByRole('button', { name: 'Open navigation' }).isVisible())
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
@@ -64,7 +64,7 @@ test('rejected persisted session fails closed', async ({ page }) => {
 for (const query of [
   'sample=unknown&view=Supervise',
   'sample=clean&view=Run%20library',
-  'sample=clean&view=Overview',
+  'sample=clean&view=Unknown',
 ]) {
   test(`private or unknown workspace route requires auth: ${query}`, async ({ page }) => {
     await page.goto('/#/workspace?' + query);
@@ -100,27 +100,23 @@ test('public replay runs fully static with API blocked and private actions ask f
   await page.getByRole('button', { name: 'Sign in to load your own chain' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('button', { name: 'Close sign-in', exact: true }).click();
-  await page.getByRole('button', { name: 'Save run', exact: true }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await page.getByRole('button', { name: 'Close sign-in', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Save run', exact: true })).toHaveCount(0);
   if (await page.getByRole('button', { name: 'Open navigation' }).isVisible())
     await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByRole('navigation', { name: 'Workspace' })
-    .getByRole('button', { name: 'Run library', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'My runs', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(page.locator('.saved-run')).toHaveCount(0);
   await page.getByRole('button', { name: 'Close sign-in', exact: true }).click();
+  await page.getByRole('tab', { name: 'Replay', exact: true }).click();
   for (const sample of [
-    'clean',
-    'skipped-cap',
-    'wrong-tube',
-    'swapped-order',
-    'slow-action',
-    'occlusion',
+    'Clean procedure',
+    'Skipped cap',
+    'Wrong tube',
+    'Swapped order',
+    'Excessive dwell',
+    'Partial occlusion',
   ]) {
-    await page.getByLabel('Sample scenario').selectOption(sample);
+    await page.getByRole('button', { name: sample, exact: true }).click();
     await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
   }
   expect(apiRequests).toEqual([]);

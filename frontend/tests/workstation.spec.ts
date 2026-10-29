@@ -22,7 +22,7 @@ test('skip replay, inspect predicate and verify audit', async ({ page }) => {
 
 test('clean sample completes all steps and playback resets', async ({ page }) => {
   await page.goto('/#/workspace?sample=skipped-cap&view=Supervise');
-  await page.getByLabel('Sample scenario').selectOption('clean');
+  await page.getByRole('button', { name: 'Clean procedure', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
   await page.getByRole('slider', { name: 'Replay position' }).focus();
   await page.keyboard.press('End');
@@ -46,7 +46,19 @@ for (const [name, expected] of [
 ]) {
   test(`${name} shows its rule deviation`, async ({ page }) => {
     await page.goto('/#/workspace?sample=skipped-cap&view=Supervise');
-    await page.getByLabel('Sample scenario').selectOption(name);
+    await page
+      .getByRole('button', {
+        name: (
+          {
+            'wrong-tube': 'Wrong tube',
+            'swapped-order': 'Swapped order',
+            'slow-action': 'Excessive dwell',
+            occlusion: 'Partial occlusion',
+          } as Record<string, string>
+        )[name],
+        exact: true,
+      })
+      .click();
     await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
     await page.getByRole('slider', { name: 'Replay position' }).focus();
     await page.keyboard.press('End');
@@ -94,7 +106,10 @@ test('report is standalone and chain export downloads', async ({ page }) => {
 async function navigateView(page: Page, name: string) {
   const button = page
     .getByRole('navigation', { name: 'Workspace' })
-    .getByRole('button', { name, exact: true });
+    .getByRole('button', {
+      name: name === 'Learn' ? 'Teach' : name === 'Supervise' ? 'Results' : name,
+      exact: true,
+    });
   await page.locator('.workspace-topbar').waitFor({ state: 'visible' });
   if (await page.getByRole('button', { name: 'Open navigation' }).isVisible())
     await page.getByRole('button', { name: 'Open navigation' }).click();
