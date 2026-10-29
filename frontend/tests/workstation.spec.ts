@@ -65,29 +65,20 @@ for (const [name, expected] of [
   });
 }
 
-test('learn exposes pending evidence and mobile has no page overflow', async ({ page }) => {
+test('Teach keeps plain narration private across navigation and examples readable', async ({
+  page,
+}) => {
   await mockAccount(page);
-  await page.goto('/#/workspace?sample=skipped-cap&view=Supervise');
-  await navigateView(page, 'Learn');
-  await expect(page.getByRole('button', { name: 'Compile protocol', exact: true })).toBeDisabled();
-  await expect(page.locator('.validation-checks .pending')).toHaveCount(4);
-  await page.locator('#narration').fill('[{"start":0,"end":2,"text":"Retained narration"}]');
+  await page.goto('/#/workspace?sample=skipped-cap&view=Learn');
+  await expect(page.getByRole('button', { name: 'Create the steps' })).toBeDisabled();
+  await expect(page.locator('.validation-checks .pending')).toHaveCount(0);
+  await page.locator('#narration').fill('Place the cap on the blue tube.');
   await navigateView(page, 'Supervise');
   await navigateView(page, 'Learn');
-  await expect(page.locator('#narration')).toHaveValue(
-    '[{"start":0,"end":2,"text":"Retained narration"}]',
-  );
-  await expect(
-    page.getByText('Sample checklist · animated example · not learned from a real video.'),
-  ).toBeVisible();
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
-  expect(overflow).toBeFalsy();
-  if (await page.getByRole('button', { name: 'Open navigation' }).isVisible())
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('button', { name: 'Scope & provenance', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('synthetic masks');
-  await page.getByRole('button', { name: 'Back to the workstation' }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('#narration')).toHaveValue('Place the cap on the blue tube.');
+  await page.getByRole('button', { name: 'Use the sample steps', exact: true }).click();
+  await expect(page.getByText('Example', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBeFalsy();
 });
 
 test('report is standalone and chain export downloads', async ({ page }) => {
@@ -103,12 +94,10 @@ test('report is standalone and chain export downloads', async ({ page }) => {
 });
 
 async function navigateView(page: Page, name: string) {
-  const button = page
-    .getByRole('navigation', { name: 'Workspace' })
-    .getByRole('button', {
-      name: name === 'Learn' ? 'Teach' : name === 'Supervise' ? 'Results' : name,
-      exact: true,
-    });
+  const button = page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', {
+    name: name === 'Learn' ? 'Teach' : name === 'Supervise' ? 'Results' : name,
+    exact: true,
+  });
   await page.locator('.workspace-topbar').waitFor({ state: 'visible' });
   if (await page.getByRole('button', { name: 'Open navigation' }).isVisible())
     await page.getByRole('button', { name: 'Open navigation' }).click();

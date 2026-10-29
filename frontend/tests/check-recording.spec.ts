@@ -39,7 +39,7 @@ test('Check explains its prerequisite without an upload', async ({ page }) => {
   await page.goto('/#/workspace?view=Check&sample=skipped-cap');
   await expect(page.getByRole('heading', { name: 'First teach it a procedure' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Go to Teach' })).toBeVisible();
-  await expect(page.locator('input[type=file]')).toHaveCount(0);
+  await expect(page.locator('.check-page input[type=file]')).toHaveCount(0);
 });
 
 test('Check exposes a disabled reason and uses the shared upload/poll path', async ({ page }) => {
@@ -55,13 +55,11 @@ test('Check exposes a disabled reason and uses the shared upload/poll path', asy
   const button = target.getByRole('button', { name: 'Check this recording' });
   await expect(button).toBeDisabled();
   await expect(button).toHaveAccessibleDescription('Add a recording to continue.');
-  await target
-    .getByLabel('New recording', { exact: true })
-    .setInputFiles({
-      name: 'new.mp4',
-      mimeType: 'video/mp4',
-      buffer: Buffer.from('synthetic-input-fixture'),
-    });
+  await target.getByLabel('New recording', { exact: true }).setInputFiles({
+    name: 'new.mp4',
+    mimeType: 'video/mp4',
+    buffer: Buffer.from('synthetic-input-fixture'),
+  });
   await button.click();
   await expect(target).toHaveAttribute('data-finished', 'yes');
   expect(uploaded).toBeTruthy();

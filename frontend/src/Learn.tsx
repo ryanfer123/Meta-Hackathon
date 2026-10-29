@@ -1,34 +1,42 @@
-import { useState, useEffect } from 'react';
-import { ArrowUpRight, CheckCircle2, Clock3, FileVideo, Upload } from 'lucide-react';
-import { download, json } from './api';
+import { useState, useEffect, useRef } from 'react';
+import { ArrowRight, ArrowUpRight, CheckCircle2, Upload } from 'lucide-react';
+import { download, json, privateMedia } from './api';
 import { pollJob as poll } from './lib/analysis';
 import type { AnalysisJob } from './lib/workspace';
 import type { Health, Protocol, Run, Validation } from './types';
+import './styles/teach.css';
+import { ErrorNotice } from './components/ErrorNotice';
+
 const checks: [string, string, string][] = [
-  ['discriminative', 'Visible change', 'Each step has a visible change'],
-  ['compile_replay', 'Original example', 'The original example passes'],
-  ['held_out', 'Second example', 'A second example also passes'],
-  ['counterfactual', 'Deliberate mistakes', 'Missing or reordered steps are flagged'],
+  [
+    'discriminative',
+    'Each step is clear',
+    'A step needs a visible change before it can be checked.',
+  ],
+  ['compile_replay', 'Works on your first video', 'The teaching video must follow every step.'],
+  ['held_out', 'Works on a second video', 'Another take must follow the same steps.'],
+  ['counterfactual', 'Catches mistakes', 'Missing or reordered steps must be flagged.'],
 ];
+type Range = { start: number | null; end: number | null };
 type ProtocolStatus = {
   status: string;
   error?: string;
   protocol?: Protocol;
   validation?: Validation | null;
-  boundary_suggestions?: Record<string, { start: number; end: number }>;
-  confirmed_ranges?: Record<string, { start: number; end: number }>;
+  boundary_suggestions?: Record<string, Range>;
+  confirmed_ranges?: Record<string, Range>;
 };
+export type TeachingProcedure = { id: string; protocol: Protocol };
 export function Learn({
   run,
   health,
-  onRun,
   source,
   initialJob,
   readOnly = false,
   onSignIn,
   onProtocolReady,
+  onNavigateCheck,
 }: {
-  onProtocolReady?: (procedure: { id: string; protocol: Protocol }) => void;
   readOnly?: boolean;
   onSignIn?: () => void;
   run: Run;
@@ -36,333 +44,561 @@ export function Learn({
   onRun: (run: Run) => void;
   source?: { file: File; kind: 'expert' | 'held_out' | 'novice' } | null;
   initialJob?: AnalysisJob | null;
+  onProtocolReady?: (procedure: TeachingProcedure) => void;
+  onNavigateCheck?: () => void;
 }) {
-  const [expert, setExpert] = useState<File | null>(null),
-    [heldout, setHeldout] = useState<File | null>(null),
-    [novice, setNovice] = useState<File | null>(null),
-    [narration, setNarration] = useState('[]'),
-    [ranges, setRanges] = useState('{}'),
-    [rangesConfirmed, setRangesConfirmed] = useState(false),
-    [boundaryNote, setBoundaryNote] = useState('');
-  const [protocol, setProtocol] = useState<Protocol>(run.protocol),
-    [validation, setValidation] = useState<Validation | undefined>(run.validation),
-    [id, setId] = useState(''),
-    [busy, setBusy] = useState(''),
-    [error, setError] = useState(''),
-    [repair, setRepair] = useState(false);
+  const [stage, setStage] = useState<1 | 2 | 3>(1);
+  const [teaching, setTeaching] = useState<File | null>(null);
+  const [second, setSecond] = useState<File | null>(null);
+  const [description, setDescription] = useState('');
+  const [protocol, setProtocol] = useState<Protocol>(run.protocol);
+  const [validation, setValidation] = useState<Validation | undefined>();
+  const [id, setId] = useState('');
+  const [example, setExample] = useState(false);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [videoError, setVideoError] = useState('');
+  const [duration, setDuration] = useState(0);
+  const [ranges, setRanges] = useState<Record<string, Range>>({});
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState<unknown>(null);
+  const [repair, setRepair] = useState(false);
+  const player = useRef<HTMLVideoElement>(null);
+
   useEffect(() => {
-    if (source) {
-      if (source.kind === 'expert') setExpert(source.file);
-      else if (source.kind === 'held_out') setHeldout(source.file);
-      else setNovice(source.file);
+    if (source?.kind === 'expert') {
+      invalidateTeaching();
+      setTeaching(source.file);
+    } else if (source?.kind === 'held_out') {
+      setSecond(source.file);
+      setStage(2);
     }
   }, [source]);
   useEffect(() => {
-    if (initialJob?.result.protocol) {
-      setId(initialJob.id);
-      setProtocol(initialJob.result.protocol as Protocol);
-      onProtocolReady?.({ id: initialJob.id, protocol: initialJob.result.protocol as Protocol });
-      setValidation(initialJob.result.validation as Validation | undefined);
-      applyBoundarySuggestions(initialJob.result as ProtocolStatus);
-    }
+    if (!initialJob?.result.protocol) return;
+    const result = initialJob.result as ProtocolStatus;
+    const loaded = result.protocol!;
+    setTeaching(null);
+    setDescription('');
+    setSecond(null);
+    setId(initialJob.id);
+    setProtocol(loaded);
+    setExample(false);
+    setValidation(result.validation ?? undefined);
+    setRanges(result.confirmed_ranges ?? result.boundary_suggestions ?? {});
+    setConfirmed(false);
+    setStage(2);
+    onProtocolReady?.({ id: initialJob.id, protocol: loaded });
   }, [initialJob]);
-  function applyBoundarySuggestions(result: ProtocolStatus) {
-    if (!result.protocol) return;
-    const suggestions = result.confirmed_ranges ?? result.boundary_suggestions ?? {};
-    const missing = result.protocol.steps.filter((step) => !suggestions[step.id]);
-    setRanges(
-      JSON.stringify(
-        Object.fromEntries(
-          result.protocol.steps.map((step) => [
-            step.id,
-            suggestions[step.id] ?? { start: null, end: null },
-          ]),
-        ),
-        null,
-        2,
+  useEffect(() => {
+    let disposed = false;
+    let url = '';
+    setVideoUrl('');
+    setVideoError('');
+    setDuration(0);
+    if (teaching) {
+      url = URL.createObjectURL(teaching);
+      setVideoUrl(url);
+    } else if (id && !example) {
+      void privateMedia(`/api/media/${id}/original.mp4`)
+        .then((value) => {
+          url = value;
+          if (disposed) URL.revokeObjectURL(value);
+          else setVideoUrl(value);
+        })
+        .catch(() => {
+          if (!disposed)
+            setVideoError(
+              'Teaching video unavailable. Add the original video to review its timings.',
+            );
+        });
+    }
+    return () => {
+      disposed = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [teaching, id, example]);
+  useEffect(() => {
+    if (!duration || example || !id) return;
+    setRanges((current) =>
+      Object.fromEntries(
+        protocol.steps.map((step, index) => [
+          step.id,
+          current[step.id]?.start !== null && current[step.id]?.end !== null && current[step.id]
+            ? current[step.id]
+            : {
+                start: (duration * index) / protocol.steps.length,
+                end:
+                  index === protocol.steps.length - 1
+                    ? duration
+                    : (duration * (index + 1)) / protocol.steps.length,
+              },
+        ]),
       ),
     );
-    setRangesConfirmed(false);
-    setBoundaryNote(
-      (result.confirmed_ranges
-        ? 'Previously reviewed timings loaded. Review again before rerunning validation. '
-        : `${Object.keys(suggestions).length} timing proposals from narration. `) +
-        (missing.length
-          ? `Fill missing times for: ${missing.map((step) => step.title).join(', ')}. `
-          : '') +
-        'Narration may lead or lag the action. Check that each start is before the action and each end is after it.',
+    setConfirmed(false);
+  }, [duration, protocol, example, id]);
+
+  const live = health.live_configured && !health.replay_mode && !readOnly;
+  const createReason = busy
+    ? 'Wait for the current task to finish.'
+    : readOnly
+      ? 'Sign in to upload your own teaching video.'
+      : !health.live_configured || health.replay_mode
+        ? "Analysis isn't connected here — try the sample."
+        : !teaching
+          ? 'Add a video to continue.'
+          : '';
+  const invalidStep = protocol.steps.find((step) => {
+    const range = ranges[step.id];
+    return (
+      !range ||
+      range.start === null ||
+      range.end === null ||
+      !Number.isFinite(range.start) ||
+      !Number.isFinite(range.end) ||
+      range.start < 0 ||
+      range.start >= range.end ||
+      range.end > duration
     );
-  }
-  const live = health.live_configured;
-  async function task(name: string, fn: () => Promise<void>) {
+  });
+  const placeholders =
+    protocol.steps.length > 0 &&
+    protocol.steps.every((step) => ranges[step.id]?.start === 0 && ranges[step.id]?.end === 1);
+  const checkReason = busy
+    ? 'Wait for the current task to finish.'
+    : example
+      ? 'Example steps are read-only. Use your own teaching video to run these checks.'
+      : !live
+        ? "Analysis isn't connected here — try the sample."
+        : !id
+          ? 'Create the steps first.'
+          : !second
+            ? 'Add a second video of the same procedure.'
+            : !duration
+              ? 'Load the teaching video to check its duration.'
+              : invalidStep
+                ? `Adjust the start and end for “${invalidStep.title}”.`
+                : placeholders
+                  ? 'Adjust the suggested timings to match the video.'
+                  : !confirmed
+                    ? 'Review every timing, then confirm below.'
+                    : '';
+  async function task(message: string, action: () => Promise<void>) {
     if (readOnly) {
       onSignIn?.();
       return;
     }
-    setBusy(name);
-    setError('');
+    setBusy(message);
+    setError(null);
     try {
-      await fn();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Request failed');
+      await action();
+    } catch (caught) {
+      setError(caught);
     } finally {
       setBusy('');
     }
   }
-  async function compile() {
-    if (!expert) return;
-    await task('Compiling expert recording…', async () => {
-      const f = new FormData();
-      f.set('video', expert);
-      f.set('narration', narration);
-      const result = await json<{ protocol_id: string }>('/api/protocols', {
+  async function createSteps() {
+    if (!teaching || createReason) return;
+    await task('Reading the video and writing the steps…', async () => {
+      const form = new FormData();
+      form.set('video', teaching);
+      form.set('narration_text', description.trim());
+      const created = await json<{ protocol_id: string }>('/api/protocols', {
         method: 'POST',
-        body: f,
+        body: form,
       });
-      setId(result.protocol_id);
-      const done = await poll<ProtocolStatus>(`/api/protocols/${result.protocol_id}`);
-      if (done.protocol) {
-        setProtocol(done.protocol);
-        onProtocolReady?.({ id: result.protocol_id, protocol: done.protocol });
-        setValidation(undefined);
-        applyBoundarySuggestions(done);
-      }
+      const result = await poll<ProtocolStatus>(`/api/protocols/${created.protocol_id}`);
+      if (!result.protocol)
+        throw new Error('The steps were not returned. Please reopen this task.');
+      setId(created.protocol_id);
+      setProtocol(result.protocol);
+      setValidation(undefined);
+      setExample(false);
+      setRanges(result.boundary_suggestions ?? {});
+      setConfirmed(false);
+      setStage(2);
+      onProtocolReady?.({ id: created.protocol_id, protocol: result.protocol });
     });
   }
-  async function validate() {
-    if (!heldout || !id) return;
-    await task('Checking expert A/B and counterfactuals…', async () => {
-      const f = new FormData();
-      f.set('heldout', heldout);
-      f.set('ranges', ranges);
-      f.set('ranges_confirmed', String(rangesConfirmed));
-      f.set('repair', String(repair));
-      await json(`/api/protocols/${id}/validate`, { method: 'POST', body: f });
-      const done = await poll<ProtocolStatus>(`/api/protocols/${id}`);
-      if (done.protocol) {
-        setProtocol(done.protocol);
-        onProtocolReady?.({ id, protocol: done.protocol });
+  async function checkSteps() {
+    if (!second || checkReason) return;
+    await task('Checking both videos and deliberate mistakes…', async () => {
+      const form = new FormData();
+      form.set('heldout', second);
+      form.set('ranges', JSON.stringify(ranges));
+      form.set('ranges_confirmed', String(confirmed));
+      form.set('repair', String(repair));
+      await json(`/api/protocols/${id}/validate`, { method: 'POST', body: form });
+      const result = await poll<ProtocolStatus>(`/api/protocols/${id}`);
+      if (result.protocol) {
+        setProtocol(result.protocol);
+        onProtocolReady?.({ id, protocol: result.protocol });
       }
-      setValidation(done.validation ?? undefined);
+      setValidation(result.validation ?? undefined);
     });
   }
-  async function supervise() {
-    if (!novice || !id) return;
-    await task('Tracking and reviewing the novice recording…', async () => {
-      const f = new FormData();
-      f.set('video', novice);
-      f.set('protocol_id', id);
-      const result = await json<{ run_id: string }>('/api/runs', { method: 'POST', body: f });
-      const done = await poll<Run & { status: string }>(`/api/runs/${result.run_id}`);
-      onRun(done);
-    });
+  function invalidateTeaching() {
+    setId('');
+    setValidation(undefined);
+    setRanges({});
+    setConfirmed(false);
+    setSecond(null);
+    setExample(false);
+    setProtocol(run.protocol);
+    setStage(1);
+    onProtocolReady?.({ id: '', protocol: run.protocol });
+  }
+  function chooseExample() {
+    setProtocol(run.protocol);
+    setExample(true);
+    setId('');
+    setValidation(undefined);
+    setRanges({});
+    setConfirmed(false);
+    setStage(2);
+    onProtocolReady?.({ id: '', protocol: run.protocol });
+  }
+  function mark(stepId: string, edge: 'start' | 'end', value: number | null) {
+    setRanges((current) => ({
+      ...current,
+      [stepId]: { ...(current[stepId] ?? { start: null, end: null }), [edge]: value },
+    }));
+    setConfirmed(false);
   }
   return (
-    <div className="learn-layout">
-      {readOnly ? (
-        <section className="panel learn-input">
-          <h2>Learn from one demonstration</h2>
-          <p className="muted">
-            Inspect the sample protocol and its pending validation checks. Sign in to upload and
-            analyse your own recordings.
-          </p>
-          <button className="button primary full" onClick={onSignIn}>
-            Sign in to upload a recording
-          </button>
-        </section>
-      ) : (
-        <section className="panel learn-input">
-          <div className="section-heading">
-            <h2>Learn from one demonstration</h2>
-            <FileVideo size={21} />
-          </div>
-          <p className="muted">
-            The expert proposes a procedure. Four checks decide whether it is verified.
-          </p>
-          {!live && (
-            <div className="notice">
-              <Clock3 size={18} />
-              <p>
-                The analysis service is not connected on this installation. Explore the sample
-                protocol on the right. It is a handwritten engineering fixture.
-              </p>
-            </div>
+    <div className="teach-flow">
+      <ol className="teach-progress" aria-label="Teaching progress">
+        {['Show the right way', 'Check the steps', 'Try a new recording'].map((title, index) => (
+          <li key={title} aria-current={stage === index + 1 ? 'step' : undefined}>
+            <span>{index + 1}</span>
+            {title}
+          </li>
+        ))}
+      </ol>
+      <section className="panel teach-stage" aria-label="Show the right way">
+        <div className="section-heading">
+          <h2>1 Show the right way</h2>
+          {stage !== 1 && (
+            <button className="text-button" onClick={() => setStage(1)} disabled={!!busy}>
+              Edit
+            </button>
           )}
-          <div className="notice">
-            <FileVideo size={18} />
-            <div>
-              <strong>Reference demonstration · Science Buddies</strong>
-              <p>
-                <a
-                  href="https://www.youtube.com/watch?v=gmeCY7ANrog"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Watch How to Make a Serial Dilution <ArrowUpRight size={14} />
-                </a>
-                {' · '}
-                <a
-                  href="https://www.sciencebuddies.org/science-fair-projects/references/how-to-make-a-dilution"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Original tutorial
-                </a>
-              </p>
-              <p>
-                External reference. For analysis, upload a recording you have permission to use.
-              </p>
-            </div>
-          </div>
-          <FileInput label="Expert A / compile recording" file={expert} onFile={setExpert} />
-          <label className="field-label" htmlFor="narration">
-            Timestamped narration JSON <span>optional if video has audio</span>
-          </label>
-          <textarea
-            id="narration"
-            value={narration}
-            onChange={(e) => setNarration(e.target.value)}
-            spellCheck={false}
-            rows={3}
-          />
-          <p className="field-help">
-            [{`{"start":0,"end":5,"text":"Position the dropper…"}`}]. Audio extraction requires
-            ffmpeg.
+        </div>
+        {stage !== 1 ? (
+          <p className="muted">
+            {example
+              ? 'Example steps selected — no video was analysed.'
+              : (teaching?.name ?? 'Teaching video saved with this procedure.')}
           </p>
-          <button
-            className="button primary full"
-            onClick={() => void compile()}
-            disabled={!live || !expert || !!busy}
-          >
-            <Upload size={16} />
-            Compile protocol
-          </button>
-          <hr />
-          <h3>Validate with a second expert take</h3>
-          <FileInput label="Expert B / held-out recording" file={heldout} onFile={setHeldout} />
-          <label className="field-label" htmlFor="ranges">
-            Review step timings <span>seconds in the original example video</span>
-          </label>
-          <textarea
-            id="ranges"
-            rows={5}
-            value={ranges}
-            onChange={(e) => {
-              setRanges(e.target.value);
-              setRangesConfirmed(false);
-            }}
-            spellCheck={false}
-          />
-          <p className="field-help">
-            {boundaryNote ||
-              'Compile an example to suggest timings from its narration. Fill any unmatched steps yourself.'}
-          </p>
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              checked={rangesConfirmed}
-              onChange={(e) => setRangesConfirmed(e.target.checked)}
+        ) : (
+          <>
+            <p>Upload a video showing the right way to do one hands-on procedure.</p>
+            <FileInput
+              label="Teaching video"
+              file={teaching}
+              onFile={(file) => {
+                invalidateTeaching();
+                setTeaching(file);
+              }}
+              disabled={readOnly || !!busy}
             />
-            I checked every start and end against the video and filled any missing times
-          </label>
-          <label className="checkbox">
-            <input type="checkbox" checked={repair} onChange={(e) => setRepair(e.target.checked)} />
-            Allow up to 3 model repair rounds within budget
-          </label>
-          <button
-            className="button full"
-            disabled={!live || !id || !heldout || !rangesConfirmed || !!busy}
-            onClick={() => void validate()}
-          >
-            Run four validation checks <ArrowUpRight size={15} />
-          </button>
-          <hr />
-          <h3>Supervise a novice take</h3>
-          <FileInput label="Novice recording" file={novice} onFile={setNovice} />
-          <button
-            className="button full"
-            disabled={!live || !id || !novice || !!busy}
-            onClick={() => void supervise()}
-          >
-            Analyze recording <ArrowUpRight size={15} />
-          </button>
-          {id && <p className="field-help mono">Protocol ID: {id}</p>}
-          {busy && (
-            <p className="notice" role="status">
-              <span className="spinner" />
-              {busy}
+            {readOnly && (
+              <button className="text-button" onClick={onSignIn}>
+                Sign in to upload a recording
+              </button>
+            )}
+            <a
+              className="text-button"
+              href="https://www.youtube.com/watch?v=gmeCY7ANrog"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Need a sample video? <ArrowUpRight size={14} />
+            </a>
+            <p className="field-help">
+              Science Buddies reference. Upload only recordings you have permission to analyse.
             </p>
-          )}
-          {error && (
-            <p className="error-message" role="alert">
-              {error}
+            <label className="field-label" htmlFor="narration">
+              Describe what happens (optional)
+            </label>
+            <textarea
+              id="narration"
+              rows={3}
+              value={description}
+              maxLength={4000}
+              onChange={(event) => {
+                invalidateTeaching();
+                setDescription(event.target.value);
+              }}
+              disabled={readOnly || !!busy}
+              placeholder="For example: place the dropper back, then put the cap on the blue tube."
+            />
+            <p className="field-help">
+              If you provide a description, it is used as narration for the whole video. Without
+              one, the app transcribes the audio. Timing suggestions always need your review.
             </p>
+            <button
+              className="button primary"
+              disabled={!!createReason}
+              aria-describedby="create-steps-reason"
+              onClick={() => void createSteps()}
+            >
+              Create the steps <ArrowRight size={16} />
+            </button>
+            <p id="create-steps-reason" className="field-help">
+              {createReason || 'Ready to create a checklist from your video.'}
+            </p>
+            <button className="button" onClick={chooseExample} disabled={!!busy}>
+              Use the sample steps
+            </button>
+          </>
+        )}
+      </section>
+      {(stage >= 2 || id || example) && (
+        <section className="panel teach-stage learned-protocol" aria-label="Check the steps">
+          <div className="section-heading">
+            <h2>2 Check the steps</h2>
+            {example && <span className="example-tag">Example</span>}
+            {stage === 3 && (
+              <button className="text-button" onClick={() => setStage(2)}>
+                Edit
+              </button>
+            )}
+          </div>
+          {stage !== 2 ? (
+            <p className="muted">
+              {protocol.steps.length} steps reviewed.{' '}
+              {validation?.verified
+                ? 'All four checks passed.'
+                : 'Checks do not yet establish a verified procedure.'}
+            </p>
+          ) : (
+            <>
+              <h3>{protocol.name}</h3>
+              <p className="muted">
+                {example
+                  ? 'Animated example — these steps were written by hand, not learned from a video.'
+                  : 'Review the suggested steps and their timing before running the checks.'}
+              </p>
+              <div className="protocol-cards">
+                {protocol.steps.map((step, index) => (
+                  <article key={step.id}>
+                    <h3>
+                      <span className="small-number">{index + 1}</span> {step.title}
+                    </h3>
+                    <p>{step.narration_hint || 'Review this step against the teaching video.'}</p>
+                  </article>
+                ))}
+              </div>
+              {!example && (
+                <>
+                  <h3>When does each step happen?</h3>
+                  <p className="field-help">
+                    Suggested — adjust. Narration gives a starting point; unmatched steps are spaced
+                    evenly across the video. Watch the action and mark its start and end.
+                  </p>
+                  {videoUrl && (
+                    <video
+                      className="teaching-player"
+                      ref={player}
+                      src={videoUrl}
+                      controls
+                      preload="metadata"
+                      aria-label="Teaching video timing editor"
+                      onLoadedMetadata={(event) => {
+                        const value = event.currentTarget.duration;
+                        if (Number.isFinite(value) && value > 0 && value <= 90) setDuration(value);
+                        else
+                          setVideoError('Use a video with a valid duration of up to 90 seconds.');
+                      }}
+                    />
+                  )}
+                  {videoError && <p role="alert">{videoError}</p>}
+                  {!videoUrl && (
+                    <p className="field-help">Add the teaching video to review the timings.</p>
+                  )}
+                  <div className="step-timeline">
+                    {protocol.steps.map((step) => (
+                      <fieldset key={step.id}>
+                        <legend>{step.title}</legend>
+                        {(['start', 'end'] as const).map((edge) => (
+                          <div className="timing-control" key={edge}>
+                            <label>
+                              {edge === 'start' ? 'Start' : 'End'} (seconds)
+                              <input
+                                type="number"
+                                min={0}
+                                max={duration || 90}
+                                step="0.1"
+                                value={ranges[step.id]?.[edge] ?? ''}
+                                aria-label={`${step.title} ${edge} in seconds`}
+                                onChange={(event) =>
+                                  mark(
+                                    step.id,
+                                    edge,
+                                    event.target.value === '' ? null : Number(event.target.value),
+                                  )
+                                }
+                                disabled={!!busy}
+                              />
+                            </label>
+                            <button
+                              className="button"
+                              disabled={!duration || !!busy}
+                              aria-label={`${step.title}: mark ${edge} here`}
+                              onClick={() => mark(step.id, edge, player.current?.currentTime ?? 0)}
+                            >
+                              Mark {edge} here
+                            </button>
+                          </div>
+                        ))}
+                      </fieldset>
+                    ))}
+                  </div>
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={confirmed}
+                      disabled={!!busy || !duration || !!invalidStep}
+                      onChange={(event) => setConfirmed(event.target.checked)}
+                    />
+                    I checked every start and end against the teaching video
+                  </label>
+                  <FileInput
+                    label="Second video (same procedure, different take)"
+                    file={second}
+                    onFile={setSecond}
+                    disabled={!!busy}
+                  />
+                  <button
+                    className="button primary"
+                    disabled={!!checkReason}
+                    aria-describedby="check-steps-reason"
+                    onClick={() => void checkSteps()}
+                  >
+                    Run the checks
+                  </button>
+                  <p id="check-steps-reason" className="field-help">
+                    {checkReason || 'Ready to check both videos and deliberate mistakes.'}
+                  </p>
+                </>
+              )}
+              {validation && (
+                <div className="validation-checks" aria-label="Check results">
+                  {checks.map(([key, title, reason]) => (
+                    <div
+                      key={key}
+                      className={validation.checks[key] === true ? 'passed' : 'failed'}
+                    >
+                      <div>
+                        <strong>{title}</strong>
+                        <span>
+                          {validation.checks[key] === true
+                            ? 'Passed'
+                            : validation.checks[key] === false
+                              ? 'Needs attention'
+                              : 'Not completed'}
+                        </span>
+                        {validation.checks[key] !== true && (
+                          <>
+                            <p>{reason}</p>
+                            <details>
+                              <summary>Show details</summary>
+                              <p>{validation.scope}</p>
+                            </details>
+                          </>
+                        )}
+                      </div>
+                      {validation.checks[key] === true && <CheckCircle2 size={18} />}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <details className="teach-advanced">
+                <summary>Advanced details</summary>
+                <p className="mono">Protocol ID: {id || 'Example only'}</p>
+                <p>
+                  Verified: {protocol.verified ? 'yes' : 'no'} · repair rounds:{' '}
+                  {validation?.repair_rounds ?? 0}
+                </p>
+                <button
+                  className="button"
+                  onClick={() => download('protocol.json', JSON.stringify(protocol, null, 2))}
+                >
+                  Export JSON
+                </button>
+                {!example && (
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={repair}
+                      onChange={(event) => setRepair(event.target.checked)}
+                      disabled={!!busy}
+                    />
+                    Allow up to 3 model repair rounds within budget
+                  </label>
+                )}
+                {protocol.steps.map((step) => (
+                  <article key={step.id}>
+                    <h4>{step.title}</h4>
+                    <p className="mono">Step ID: {step.id}</p>
+                    <p>
+                      Dwell {step.min_dwell_s}–{step.max_dwell_s}s ·{' '}
+                      {step.group ? `unordered group ${step.group}` : 'ordered step'}
+                    </p>
+                    <p>Completion rule (JSON)</p>
+                    <pre>{JSON.stringify(step.post, null, 2)}</pre>
+                  </article>
+                ))}
+              </details>
+              <p className="field-help">
+                Visible contact cannot prove liquid volume, concentration, sterility or cap
+                tightness.
+              </p>
+              <button className="button" disabled={!!busy} onClick={() => setStage(3)}>
+                Continue to a new recording <ArrowRight size={16} />
+              </button>
+            </>
           )}
         </section>
       )}
-      <section className="panel learned-protocol">
-        <div className="section-heading">
-          <h2>{protocol.name}</h2>
+      {stage === 3 && (
+        <section className="panel teach-stage">
+          <h2>3 Try a new recording</h2>
+          <p>
+            {example
+              ? 'The example checklist is read-only. Open Check to explore an animated result or teach your own procedure.'
+              : validation?.verified
+                ? 'All four checks passed. Open Check to upload another recording of this procedure.'
+                : 'You can try another recording, but these steps are not yet verified. Open Check to continue.'}
+          </p>
           <button
-            className="text-button"
-            onClick={() => download('protocol.json', JSON.stringify(protocol, null, 2))}
+            className="button primary"
+            onClick={onNavigateCheck}
+            disabled={!onNavigateCheck}
+            aria-describedby="open-check-reason"
           >
-            Export JSON <ArrowUpRight size={15} />
+            Go to Check <ArrowRight size={16} />
           </button>
+          <p id="open-check-reason" className="field-help">
+            {onNavigateCheck
+              ? 'Choose your next recording on the Check page.'
+              : 'Open Check from the sidebar to continue.'}
+          </p>
+        </section>
+      )}
+      {busy && (
+        <div className="notice" role="status">
+          <p>{busy}</p>
+          <p className="field-help">
+            Processing on the server. The current internal stage and completion time are not
+            available.
+          </p>
         </div>
-        <p className="muted">
-          {id
-            ? 'Compiled from an uploaded recording. Source authenticity and validation are separate.'
-            : 'Sample checklist · animated example · not learned from a real video.'}
-        </p>
-        <div className="validation-checks">
-          {checks.map(([key, title, description]) => {
-            const value = validation?.checks[key];
-            return (
-              <div
-                key={key}
-                className={value === true ? 'passed' : value === false ? 'failed' : 'pending'}
-              >
-                {value === true ? <CheckCircle2 size={19} /> : <Clock3 size={19} />}
-                <div>
-                  <strong>{title}</strong>
-                  <small>{description}</small>
-                </div>
-                <span>{value === true ? 'PASS' : value === false ? 'FAIL' : 'PENDING'}</span>
-              </div>
-            );
-          })}
-        </div>
-        <p className="field-help">
-          Verified: {protocol.verified ? 'yes' : 'no'} · repair rounds:{' '}
-          {validation?.repair_rounds ?? 0}. {validation?.scope ?? 'Real expert validation pending.'}
-        </p>
-        <div className="protocol-cards">
-          {protocol.steps.map((s, i) => (
-            <article key={s.id}>
-              <div className="section-heading">
-                <h3>
-                  <span className="small-number">{i + 1}</span>
-                  {s.title}
-                </h3>
-                <span className="mono">{s.id}</span>
-              </div>
-              <p>{s.narration_hint}</p>
-              <details>
-                <summary className="rule-label">Show the completion rule (JSON)</summary>
-                <pre>{JSON.stringify(s.post, null, 2)}</pre>
-              </details>
-              <p className="field-help">
-                Dwell {s.min_dwell_s}–{s.max_dwell_s}s ·{' '}
-                {s.group ? `unordered group ${s.group}` : 'ordered step'}
-              </p>
-            </article>
-          ))}
-        </div>
-        <div className="notice">
-          <EyeNote />
-        </div>
-      </section>
+      )}
+      <ErrorNotice error={error} />
     </div>
   );
 }
@@ -370,10 +606,12 @@ function FileInput({
   label,
   file,
   onFile,
+  disabled = false,
 }: {
   label: string;
   file: File | null;
-  onFile: (f: File | null) => void;
+  onFile: (file: File | null) => void;
+  disabled?: boolean;
 }) {
   return (
     <label className="file-input">
@@ -384,17 +622,11 @@ function FileInput({
       </span>
       <input
         type="file"
+        aria-label={label}
         accept="video/mp4,video/quicktime"
-        onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+        disabled={disabled}
+        onChange={(event) => onFile(event.target.files?.[0] ?? null)}
       />
     </label>
-  );
-}
-function EyeNote() {
-  return (
-    <p>
-      Contact and placement are observable. Concentration, transferred volume, tightness of a cap,
-      and sterility are outside this protocol.
-    </p>
   );
 }

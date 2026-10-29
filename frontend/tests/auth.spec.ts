@@ -8,7 +8,7 @@ test('public Learn requires sign-in for uploads and sign-out returns to a clean 
   await expect(
     page.getByText('Synthetic sample — sign in to analyse your own recordings'),
   ).toBeVisible();
-  await expect(page.locator('input[type="file"]')).toHaveCount(0);
+  await expect(page.locator('input[type="file"]:enabled')).toHaveCount(0);
   await page.getByRole('button', { name: 'Sign in to upload a recording' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByLabel('Email', { exact: true }).fill('ui@example.invalid');
@@ -24,7 +24,8 @@ test('public Learn requires sign-in for uploads and sign-out returns to a clean 
     page.getByText('Synthetic sample — sign in to analyse your own recordings'),
   ).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('#narration')).toHaveCount(0);
+  await expect(page.locator('#narration')).toHaveValue('');
+  await expect(page.locator('#narration')).toBeDisabled();
   await expect(page.getByText('private narration must be cleared on sign-out')).toHaveCount(0);
 });
 test('signup waits for email confirmation and cannot enter as a guest', async ({ page }) => {
@@ -95,7 +96,7 @@ test('public replay runs fully static with API blocked and private actions ask f
   await page.getByRole('button', { name: 'Open audit', exact: true }).first().click();
   await page.getByRole('button', { name: 'Verify chain', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Chain matches' })).toBeVisible();
-  await expect(page.locator('input[type="file"]')).toHaveCount(0);
+  await expect(page.locator('input[type="file"]:enabled')).toHaveCount(0);
   await page.getByRole('button', { name: 'Sign in to load your own chain' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('button', { name: 'Close sign-in', exact: true }).click();

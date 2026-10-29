@@ -1,0 +1,180 @@
+.teach-flow {
+  display: grid;
+  gap: 22px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.teach-progress {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+}
+.teach-progress li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  border-bottom: 2px solid #d6dce4;
+  color: #63728a;
+}
+.teach-progress li[aria-current='step'] {
+  border-color: var(--blue);
+  color: var(--blue);
+  font-weight: 600;
+}
+.teach-progress li > span {
+  display: grid;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  flex: none;
+}
+.teach-stage {
+  padding: 26px;
+}
+.teach-stage > .button {
+  margin: 8px 12px 8px 0;
+}
+.teach-stage > .file-input {
+  margin: 20px 0;
+}
+.teach-stage > .field-label {
+  margin-top: 20px;
+}
+.teach-stage .protocol-cards article {
+  padding: 20px 0;
+}
+.teach-stage .protocol-cards h3 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.teaching-player {
+  display: block;
+  width: 100%;
+  max-height: 430px;
+  background: #152023;
+  margin: 20px 0;
+  border-radius: 8px;
+}
+.step-timeline {
+  display: grid;
+  gap: 16px;
+  margin: 20px 0;
+}
+.step-timeline fieldset {
+  border: 1px solid #d6dce4;
+  border-radius: 7px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  min-width: 0;
+}
+.step-timeline legend {
+  padding: 0 8px;
+  font-weight: 600;
+}
+.timing-control {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  min-width: 0;
+}
+.timing-control label {
+  display: grid;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+.timing-control input {
+  width: 100%;
+  min-width: 0;
+}
+.timing-control .button {
+  font-size: 13px;
+  padding: 9px;
+  min-height: 40px;
+}
+.teach-advanced {
+  margin: 24px 0;
+}
+.teach-advanced > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 12px 0;
+}
+.teach-advanced article {
+  border-top: 1px solid #d6dce4;
+  margin-top: 18px;
+  padding-top: 18px;
+}
+.teach-advanced pre {
+  overflow: auto;
+}
+.example-tag {
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: #e9eef8;
+  color: var(--blue);
+  font-size: 13px;
+}
+.teach-stage .validation-checks {
+  margin-top: 24px;
+}
+.teach-stage .validation-checks > div {
+  align-items: start;
+}
+.teach-stage .validation-checks span {
+  display: block;
+  margin: 5px 0;
+}
+.teach-stage .validation-checks p {
+  margin: 7px 0;
+}
+.teach-stage .checkbox {
+  margin: 18px 0;
+}
+.teach-flow summary:focus-visible,
+.teach-flow button:focus-visible,
+.teach-flow input:focus-visible,
+.teach-flow textarea:focus-visible,
+.teach-flow video:focus-visible {
+  outline: 3px solid #4167a9;
+  outline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .teach-progress {
+    gap: 4px;
+  }
+  .teach-progress li {
+    font-size: 12px;
+    flex-direction: column;
+    align-items: start;
+    padding: 10px 5px;
+    gap: 8px;
+  }
+  .teach-stage {
+    padding: 19px;
+  }
+  .step-timeline fieldset {
+    grid-template-columns: 1fr;
+  }
+  .timing-control {
+    flex-wrap: wrap;
+  }
+  .timing-control label {
+    flex-basis: 130px;
+  }
+  .teach-stage .section-heading {
+    align-items: start;
+  }
+  .teach-stage .validation-checks {
+    grid-template-columns: 1fr;
+  }
+}

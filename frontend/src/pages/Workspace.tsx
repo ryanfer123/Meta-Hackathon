@@ -377,6 +377,10 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                 }}
                 refreshKey={refreshKey}
                 onUse={(file, kind) => {
+                  if (kind === 'expert') {
+                    setLearnJob(null);
+                    setProcedure(null);
+                  }
                   setSource({ file, kind });
                   goView(kind === 'novice' ? 'Check' : 'Learn');
                 }}
@@ -385,6 +389,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                     setRun(job.result as unknown as Run);
                     goView('Supervise');
                   } else {
+                    setSource(null);
                     setLearnJob(job);
                     goView('Learn');
                   }
@@ -418,6 +423,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
             >
               <Learn
                 onProtocolReady={setProcedure}
+                onNavigateCheck={() => goView('Check')}
                 readOnly={readOnly}
                 onSignIn={() => setAuth(true)}
                 run={run}

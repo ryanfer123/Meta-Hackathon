@@ -36,11 +36,11 @@ test('homepage images load and layout fits at this viewport', async ({ page }) =
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBeFalsy();
   await page.getByRole('button', { name: 'Open learn workspace', exact: true }).click();
   await expect(page.locator('#narration')).toBeVisible();
-  const rule = page.locator('.protocol-cards details').first();
-  await expect(rule).not.toHaveAttribute('open');
-  await rule.locator('summary').click();
-  await expect(rule.locator('pre')).toBeVisible();
-  await expect(rule.locator('pre')).toContainText('touching');
+  await page.getByRole('button', { name: 'Use the sample steps', exact: true }).click();
+  await expect(page.getByText('Example', { exact: true })).toBeVisible();
+  const advanced = page.getByText('Advanced details', { exact: true });
+  await advanced.click();
+  await expect(page.locator('pre').first()).toContainText('touching');
 });
 
 test('workspace requires sign-in and invalid credentials do not grant access', async ({ page }) => {
