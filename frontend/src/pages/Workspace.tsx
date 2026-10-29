@@ -22,8 +22,7 @@ import type { AnalysisJob } from '../lib/workspace';
 import { saveRun } from '../lib/workspace';
 import { getHealth, loadSample } from '../api';
 import { Learn } from '../Learn';
-import { Audit } from '../Audit';
-import { Supervise } from '../Supervise';
+import { Results } from '../Results';
 import { Overview } from './Overview';
 import { CheckRecording, type TaughtProcedure } from './Check';
 import { RunLibrary } from './RunLibrary';
@@ -92,7 +91,8 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
     [mobileMenu, setMobileMenu] = useState(false),
     [saving, setSaving] = useState(false),
     [toast, setToast] = useState(''),
-    [refreshKey, setRefreshKey] = useState(0);
+    [refreshKey, setRefreshKey] = useState(0),
+    [sampleRevision, setSampleRevision] = useState(0);
   const [source, setSource] = useState<{
       file: File;
       kind: 'expert' | 'held_out' | 'novice';
@@ -119,7 +119,22 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
     return () => {
       active = false;
     };
-  }, [scenario]);
+  }, [scenario, sampleRevision]);
+  useEffect(() => {
+    const sync = () => {
+      const params = new URLSearchParams(location.hash.split('?')[1]);
+      setView(initialView());
+      const name = params.get('sample');
+      if (scenarios.some(([id]) => id === name)) {
+        setLoading(true);
+        setScenario(name!);
+        setSampleRevision((value) => value + 1);
+      }
+      setMobileMenu(false);
+    };
+    window.addEventListener('hashchange', sync);
+    return () => window.removeEventListener('hashchange', sync);
+  }, []);
   useEffect(() => {
     if (!toast) return;
     const id = setTimeout(() => setToast(''), 5000);
@@ -138,6 +153,8 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
     history.replaceState(null, '', `#/workspace?${params}`);
   }
   function chooseScenario(name: string) {
+    setLoading(true);
+    setSampleRevision((value) => value + 1);
     setScenario(name);
     setView('Supervise');
     setMobileMenu(false);
@@ -271,7 +288,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
               )}
           </div>
         </header>
-        {readOnly && (
+        {readOnly && !['Supervise', 'Audit'].includes(view) && (
           <div className="sample-access-banner" role="note">
             <span>Synthetic sample — sign in to analyse your own recordings</span>
             <button className="text-button" onClick={() => setAuth(true)}>
@@ -298,24 +315,6 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
           </div>
           {['Supervise', 'Audit'].includes(view) && (
             <>
-              <div className="actions" role="tablist" aria-label="Results view">
-                <button
-                  className="button"
-                  role="tab"
-                  aria-selected={view === 'Supervise'}
-                  onClick={() => goView('Supervise')}
-                >
-                  Replay
-                </button>
-                <button
-                  className="button"
-                  role="tab"
-                  aria-selected={view === 'Audit'}
-                  onClick={() => goView('Audit')}
-                >
-                  Integrity
-                </button>
-              </div>
               {view === 'Supervise' && run?.provenance === 'synthetic' && (
                 <div className="sample-chips" aria-label="Animated examples">
                   {scenarios.map(([id, title]) => (
@@ -402,16 +401,16 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
               </div>
             ) : (
               <>
-                {view === 'Supervise' ? (
-                  <Supervise key={run.id} run={run} onAudit={() => goView('Audit')} />
-                ) : view === 'Audit' ? (
-                  <Audit
+                {['Supervise', 'Audit'].includes(view) && (
+                  <Results
                     key={run.id}
                     run={run}
+                    initialTab={view === 'Audit' ? 'Integrity' : 'Replay'}
+                    onTabChange={(tab) => goView(tab === 'Integrity' ? 'Audit' : 'Supervise')}
                     readOnly={readOnly}
                     onSignIn={() => setAuth(true)}
                   />
-                ) : null}
+                )}
               </>
             )}
           </m.div>

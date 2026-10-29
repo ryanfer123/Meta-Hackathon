@@ -89,11 +89,15 @@ test('public replay runs fully static with API blocked and private actions ask f
   });
   await page.goto('/#/workspace?sample=skipped-cap&view=Supervise');
   await expect(
-    page.getByText('Synthetic sample — sign in to analyse your own recordings'),
+    page.getByText('Example run — no real video and no models were involved.'),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Seek to skipped', exact: true }).click();
+  await page.getByRole('button', { name: 'Seek to Step skipped', exact: true }).click();
+  await page.locator('.predicate-detail summary').click();
+  await expect(page.locator('.predicate-detail pre')).toBeVisible();
   await expect(page.locator('.predicate-detail')).toContainText('touching');
-  await page.getByRole('button', { name: 'Open audit', exact: true }).first().click();
+  await page.getByRole('tab', { name: 'Integrity', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Report unchanged');
+  await page.locator('.integrity-advanced > summary').click();
   await page.getByRole('button', { name: 'Verify chain', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Chain matches' })).toBeVisible();
   await expect(page.locator('input[type="file"]:enabled')).toHaveCount(0);

@@ -188,7 +188,7 @@ export function Scene({ frame, masks }: { frame: Frame; masks: boolean }) {
           );
         })}
       <text x="29" y="333" fontSize="8" fill="#a9b6ab" letterSpacing="1">
-        SYNTHETIC MASKS · NO CAMERA FOOTAGE
+        ANIMATED EXAMPLE
       </text>
       <path d="M595 312h16v16m-16-16v16h16" fill="none" stroke="#a4b59f" strokeWidth="1" />
     </svg>

@@ -32,3 +32,27 @@ test('sidebar has four destinations and My runs stays an account action', async 
   await page.getByRole('button', { name: 'My runs', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
 });
+
+test('mounted workspace follows external legacy and current hash changes', async ({ page }) => {
+  await page.goto('/#/workspace?view=Supervise&sample=skipped-cap');
+  await expect(page.getByRole('tab', { name: 'Replay', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await page.evaluate(() => {
+    location.hash = '/workspace?view=Results&tab=Integrity&sample=clean';
+  });
+  await expect(page.getByRole('tab', { name: 'Integrity', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByRole('status').filter({ hasText: 'Report unchanged' })).toBeVisible();
+  await page.evaluate(() => {
+    location.hash = '/workspace?view=Supervise&sample=clean';
+  });
+  await expect(page.getByRole('button', { name: 'Clean procedure', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(page.getByRole('slider', { name: 'Replay position' })).toHaveValue('0');
+});

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  AlertTriangle,
   Check,
   ChevronRight,
   Eye,
@@ -13,13 +12,19 @@ import {
 } from 'lucide-react';
 import { privateMedia } from './api';
 import { Scene } from './Scene';
-import { isAlert, label, timecode, type Event, type Run } from './types';
+import { isAlert, timecode, type Event, type Run } from './types';
+import { checkedBy, flagReason, friendlyEventLabel } from './eventLabels';
+import './styles/results.css';
+
+const firstAlert = (run: Run) =>
+  [...run.events].filter((event) => isAlert(event.kind)).sort((a, b) => a.t - b.t)[0];
 export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
-  const [time, setTime] = useState(0),
+  const [time, setTime] = useState(() => firstAlert(run)?.t ?? 0),
     [playing, setPlaying] = useState(false),
     [masks, setMasks] = useState(true),
     [sound, setSound] = useState(false),
-    [selected, setSelected] = useState<string | null>(null);
+    [selected, setSelected] = useState<string | null>(() => firstAlert(run)?.step_id ?? null),
+    [selectedEvent, setSelectedEvent] = useState<Event | null>(() => firstAlert(run) ?? null);
   const video = useRef<HTMLVideoElement>(null),
     lastAlert = useRef('');
   const synthetic = run.provenance === 'synthetic';
@@ -47,10 +52,11 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
     };
   }, [run.id, synthetic]);
   useEffect(() => {
-    const firstAlert = run.events.find((event) => isAlert(event.kind));
-    setTime(firstAlert?.t ?? 0);
+    const initial = firstAlert(run);
+    setTime(initial?.t ?? 0);
     setPlaying(false);
-    setSelected(firstAlert?.step_id ?? null);
+    setSelected(initial?.step_id ?? null);
+    setSelectedEvent(initial ?? null);
     lastAlert.current = '';
   }, [run]);
   useEffect(() => {
@@ -129,13 +135,26 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
     }
     setPlaying(!playing);
   }
+  function inspect(event: Event) {
+    seek(event.t);
+    setPlaying(false);
+    video.current?.pause();
+    setSelected(event.step_id);
+    setSelectedEvent(event);
+  }
   const selectedStep = run.protocol.steps.find((s) => s.id === selected);
+  const flagged =
+    selectedEvent && isAlert(selectedEvent.kind)
+      ? selectedEvent
+      : selected === null || latest?.step_id === selected
+        ? latest
+        : undefined;
   return (
     <>
       <div className="workstation">
         <section className="viewer panel" aria-label="Procedure playback">
           <div className="panel-meta">
-            <span>{synthetic ? 'SIMULATED SCENE' : 'UPLOADED RECORDING'}</span>
+            <span>{synthetic ? 'Example animation' : 'Your recording'}</span>
             <button className="text-button" onClick={() => setMasks(!masks)}>
               {masks ? <Eye size={14} /> : <EyeOff size={14} />}{' '}
               {masks ? 'Overlays on' : 'Overlays off'}
@@ -150,6 +169,9 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
                 ref={video}
                 src={mediaUrl || undefined}
                 onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+                onLoadedMetadata={(e) => {
+                  e.currentTarget.currentTime = time;
+                }}
                 onEnded={() => setPlaying(false)}
               />
               {masks && (
@@ -199,10 +221,10 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
                 {markers.map((e, i) => (
                   <button
                     key={i}
-                    title={`${label(e.kind)} at ${timecode(e.t)}`}
-                    aria-label={`Seek to ${label(e.kind)}`}
+                    title={`${e.kind} at ${timecode(e.t)}`}
+                    aria-label={`Seek to ${friendlyEventLabel(e.kind)}`}
                     style={{ left: `${(100 * e.t) / run.duration}%` }}
-                    onClick={() => seek(e.t)}
+                    onClick={() => inspect(e)}
                   />
                 ))}
               </div>
@@ -233,7 +255,7 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
         </section>
         <aside className="protocol panel">
           <h2>
-            Protocol <span>/ {String(run.protocol.steps.length).padStart(2, '0')} steps</span>
+            Checklist <span>/ {String(run.protocol.steps.length).padStart(2, '0')} steps</span>
           </h2>
           <div className="steps">
             {run.protocol.steps.map((s, i) => {
@@ -242,7 +264,14 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
                 <button
                   key={s.id}
                   className={`step ${state.toLowerCase()} ${selected === s.id ? 'selected' : ''}`}
-                  onClick={() => setSelected(selected === s.id ? null : s.id)}
+                  onClick={() => {
+                    setSelected(s.id);
+                    const event = [...run.events]
+                      .reverse()
+                      .find((event) => event.step_id === s.id && isAlert(event.kind));
+                    setSelectedEvent(event ?? null);
+                    if (event) inspect(event);
+                  }}
                   aria-expanded={selected === s.id}
                 >
                   <span className="step-number">
@@ -257,43 +286,52 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
               );
             })}
           </div>
+          {flagged ? (
+            <section className="why-flagged" aria-label="Why this was flagged">
+              <h3>Why this was flagged</h3>
+              <strong title={flagged.kind}>{friendlyEventLabel(flagged.kind)}</strong>
+              <p>{flagReason(flagged)}</p>
+              <details>
+                <summary>Show details</summary>
+                <p>{flagged.detail}</p>
+              </details>
+              {selectedStep && (
+                <p>
+                  <span className="muted">Expected:</span>{' '}
+                  {selectedStep.narration_hint || selectedStep.title}
+                </p>
+              )}
+              <button className="text-button" onClick={() => inspect(flagged)}>
+                View at {timecode(flagged.t)} <ChevronRight size={13} />
+              </button>
+              <small>Checked by: {checkedBy(flagged.tier, run.metrics.open_tier_label)}</small>
+            </section>
+          ) : (
+            <div className="observation" role="status">
+              <span className="status-dot" />
+              <div>
+                <strong>{playing ? 'Playing the recording' : 'Ready — press play'}</strong>
+                <p>
+                  {synthetic
+                    ? 'This is an animated example, not real video.'
+                    : 'Select a step or play the recording to review it.'}
+                </p>
+              </div>
+            </div>
+          )}
           {selectedStep && (
-            <div className="predicate-detail">
-              <span>RULE / {selectedStep.id}</span>
+            <details className="results-advanced predicate-detail">
+              <summary>Advanced: rules for this step</summary>
               <pre>
                 {JSON.stringify({ action: selectedStep.action, post: selectedStep.post }, null, 2)}
               </pre>
-              <p>Only observed predicates can complete this step.</p>
-            </div>
+              <p>Only visible rule evidence can complete this step.</p>
+              <p>
+                Timing: {selectedStep.min_dwell_s}–{selectedStep.max_dwell_s} seconds.{' '}
+                {selectedStep.group ? `Unordered group: ${selectedStep.group}` : 'Ordered step.'}
+              </p>
+            </details>
           )}
-          <div className={latest ? 'alert' : 'observation'} role="status" aria-live="polite">
-            {latest ? (
-              <>
-                <span className="alert-icon">
-                  <AlertTriangle size={19} />
-                </span>
-                <div>
-                  <strong>{label(latest.kind)}</strong>
-                  <p>{latest.detail}</p>
-                  <button className="text-button" onClick={() => seek(latest.t)}>
-                    Inspect at {timecode(latest.t)} <ChevronRight size={13} />
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <span className="status-dot" />
-                <div>
-                  <strong>{playing ? 'Observing procedure' : 'Ready to observe'}</strong>
-                  <p>
-                    {synthetic
-                      ? 'Play the replay or seek to an event.'
-                      : 'Play the recording to inspect decisions.'}
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
           <p className="advisory">
             {synthetic
               ? 'Model tiers are not exercised in synthetic replay.'
@@ -301,13 +339,14 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
           </p>
         </aside>
       </div>
-      <section className="ledger panel">
+      <details className="ledger panel results-advanced">
+        <summary>Advanced: what happened</summary>
         <div className="section-heading">
           <h2>
-            Evidence ledger <span>/ {events.length} events</span>
+            What happened <span>/ {events.length} events</span>
           </h2>
           <button className="text-button" onClick={onAudit}>
-            Open audit <ChevronRight size={15} />
+            Open integrity check <ChevronRight size={15} />
           </button>
         </div>
         <div className="table-scroll">
@@ -315,16 +354,16 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
             <thead>
               <tr>
                 <th>Time</th>
-                <th>Observation</th>
-                <th>Decision</th>
-                <th>Source</th>
+                <th>What was seen</th>
+                <th>Result</th>
+                <th>Checked by</th>
               </tr>
             </thead>
             <tbody>
               {events.length === 0 ? (
                 <tr>
                   <td>{timecode(0)}</td>
-                  <td>Scene initialized. Play to observe the procedure.</td>
+                  <td>Ready — press play.</td>
                   <td>Awaiting evidence</td>
                   <td>{synthetic ? 'Synthetic masks' : 'Video + masks'}</td>
                 </tr>
@@ -335,14 +374,14 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
                     event={e}
                     synthetic={synthetic}
                     openTierLabel={run.metrics.open_tier_label ?? 'glimmer'}
-                    onSeek={() => seek(e.t)}
+                    onSeek={() => inspect(e)}
                   />
                 ))
               )}
             </tbody>
           </table>
         </div>
-      </section>
+      </details>
       <div className="footnote">
         <span>Models propose. Pixels ground. Code decides.</span>
         <span>Observable handling only · contact does not prove a pour.</span>
@@ -369,9 +408,11 @@ function EvidenceRow({
         </button>
       </td>
       <td>{e.detail}</td>
-      <td className="decision">{label(e.kind)}</td>
+      <td className="decision" title={e.kind}>
+        {friendlyEventLabel(e.kind)}
+      </td>
       <td>
-        <span className="tier">{e.tier === 'glimmer' ? openTierLabel : e.tier}</span>
+        <span className="tier">{checkedBy(e.tier, openTierLabel)}</span>
         <small className="source-note">{synthetic ? 'synthetic masks' : 'recorded evidence'}</small>
       </td>
     </tr>

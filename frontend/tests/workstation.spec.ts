@@ -6,16 +6,24 @@ test('skip replay, inspect predicate and verify audit', async ({ page }) => {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/#/workspace?sample=skipped-cap&view=Supervise');
   await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Seek to skipped', exact: true }).click();
+  await page.getByRole('button', { name: 'Seek to Step skipped', exact: true }).click();
   await expect(page.locator('.step.skipped')).toContainText('Cap tube 1');
+  await page.locator('.ledger > summary').click();
   await expect(page.locator('.ledger')).toContainText('Later action label observed first.');
+  await page.locator('.predicate-detail summary').click();
+  await expect(page.locator('.predicate-detail pre')).toBeVisible();
   await expect(page.locator('.predicate-detail')).toContainText('touching');
-  await page.getByRole('button', { name: 'Open audit', exact: true }).first().click();
+  await page.getByRole('tab', { name: 'Integrity', exact: true }).click();
+  await page.locator('.integrity-advanced > summary').click();
   await page.getByRole('button', { name: 'Verify chain', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('Chain matches this root');
+  await expect(page.getByRole('status').filter({ hasText: 'Chain matches' })).toContainText(
+    'Chain matches this root',
+  );
   await page.getByLabel('Expected root hash').fill('0'.repeat(64));
   await page.getByRole('button', { name: 'Verify chain', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('Verification failed');
+  await expect(page.getByRole('status').filter({ hasText: 'Verification failed' })).toContainText(
+    'Verification failed',
+  );
   expect(errors).toEqual([]);
 });
 
@@ -38,10 +46,10 @@ test('clean sample completes all steps and playback resets', async ({ page }) =>
 });
 
 for (const [name, expected] of [
-  ['wrong-tube', 'wrong object'],
-  ['swapped-order', 'out of order'],
-  ['slow-action', 'dwell exceeded'],
-  ['occlusion', 'uncertain'],
+  ['wrong-tube', 'Wrong item used'],
+  ['swapped-order', 'Done out of order'],
+  ['slow-action', 'Took too long'],
+  ['occlusion', 'Needs a human look'],
 ]) {
   test(`${name} shows its rule deviation`, async ({ page }) => {
     await page.goto('/#/workspace?sample=skipped-cap&view=Supervise');
@@ -61,6 +69,7 @@ for (const [name, expected] of [
     await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
     await page.getByRole('slider', { name: 'Replay position' }).focus();
     await page.keyboard.press('End');
+    await page.locator('.ledger > summary').click();
     await expect(page.locator('.ledger')).toContainText(expected, { ignoreCase: true });
   });
 }
@@ -83,11 +92,12 @@ test('Teach keeps plain narration private across navigation and examples readabl
 
 test('report is standalone and chain export downloads', async ({ page }) => {
   await page.goto('/#/workspace?sample=skipped-cap&view=Supervise');
-  await page.getByRole('button', { name: 'Open audit', exact: true }).first().click();
+  await page.getByRole('tab', { name: 'Integrity', exact: true }).click();
+  await page.locator('.integrity-advanced > summary').click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export chain', exact: true }).click();
   expect((await download).suggestedFilename()).toBe('sample-skipped-cap-chain.json');
-  const url = await page.getByRole('link', { name: 'HTML report' }).getAttribute('href');
+  const url = await page.getByRole('link', { name: 'Download report (HTML)' }).getAttribute('href');
   const response = await page.request.get(url!);
   expect(response.ok()).toBeTruthy();
   expect(await response.text()).toContain('Provenance: synthetic');

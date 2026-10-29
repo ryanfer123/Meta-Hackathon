@@ -13,7 +13,7 @@ test('Home explains the product and reaches a paused alert in one click', async 
   await page.getByRole('button', { name: 'See it catch a mistake (30 seconds)' }).click();
   await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
   await expect(page.getByRole('slider', { name: 'Replay position' })).not.toHaveValue('0');
-  await expect(page.locator('.alert')).toBeVisible();
+  await expect(page.locator('.why-flagged')).toBeVisible();
   await expect(page.locator('.predicate-detail')).toBeVisible();
 });
 

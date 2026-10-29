@@ -1,0 +1,164 @@
+.results-page {
+  min-width: 0;
+}
+.results-provenance {
+  background: #edf2fb;
+  color: #183967;
+  padding: 14px 18px;
+  border-radius: 8px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.results-accuracy {
+  margin: 9px 0 18px;
+  font-size: 14px;
+}
+.results-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid #d5dde7;
+  margin: 20px 0 24px;
+}
+.results-tabs button {
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  padding: 12px 20px;
+  color: #53657b;
+  font: inherit;
+  font-weight: 600;
+}
+.results-tabs button[aria-selected='true'] {
+  color: #062b8a;
+  border-color: #062b8a;
+}
+.models-used {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  margin: 16px 0;
+  font-size: 14px;
+}
+.result-chip {
+  border: 1px solid #d8e1ed;
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: #fff;
+}
+.why-flagged {
+  margin: 16px 16px 10px;
+  border-left: 3px solid #bc4334;
+  border-radius: 4px;
+  padding: 16px;
+  background: #fff1ed;
+  line-height: 1.5;
+}
+.why-flagged h3 {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.why-flagged > strong {
+  display: block;
+  color: #a83b2c;
+  font-size: 19px;
+}
+.why-flagged p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+.why-flagged small {
+  display: block;
+  margin-top: 10px;
+  color: #59667a;
+}
+.results-advanced {
+  margin-top: 18px;
+}
+.results-advanced > summary {
+  cursor: pointer;
+  color: #324e74;
+  font-weight: 500;
+  padding: 10px 0;
+  line-height: 1.5;
+}
+.results-advanced[open] > summary {
+  margin-bottom: 15px;
+}
+.results-advanced pre {
+  overflow: auto;
+  max-width: 100%;
+}
+.results-integrity {
+  display: grid;
+  gap: 20px;
+}
+.integrity-summary {
+  padding: 26px;
+}
+.integrity-summary > p {
+  max-width: 790px;
+  line-height: 1.6;
+}
+.integrity-verdict {
+  font-size: 25px;
+  font-weight: 600;
+  margin: 20px 0 12px;
+}
+.integrity-verdict.unchanged {
+  color: #1e674d;
+}
+.integrity-verdict.changed {
+  color: #aa352d;
+}
+.integrity-summary .integrity-note {
+  font-size: 15px;
+  background: #f1f4f8;
+  padding: 13px 16px;
+  border-radius: 6px;
+  color: #42556d;
+  margin-top: 16px;
+}
+.integrity-summary .actions {
+  margin-top: 23px;
+}
+.integrity-advanced {
+  padding: 18px 26px;
+}
+.integrity-advanced h3 {
+  font-size: 18px;
+  margin: 18px 0 12px;
+}
+.integrity-manual {
+  max-width: 780px;
+}
+.integrity-manual textarea {
+  width: 100%;
+  font-family: monospace;
+  resize: vertical;
+  overflow-wrap: anywhere;
+}
+.integrity-manual .chain-upload {
+  display: block;
+  margin: 15px 0;
+}
+.integrity-advanced .ledger {
+  margin-top: 24px;
+}
+@media (max-width: 620px) {
+  .integrity-summary,
+  .integrity-advanced {
+    padding: 19px;
+  }
+  .integrity-verdict {
+    font-size: 21px;
+  }
+  .results-tabs button {
+    padding: 11px 17px;
+  }
+  .why-flagged {
+    margin: 12px;
+    padding: 13px;
+  }
+}

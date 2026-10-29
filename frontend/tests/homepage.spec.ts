@@ -94,6 +94,6 @@ test('first visit explains the workflow and opens a sample without an account', 
   await expect(page.locator('.home-note').first()).toContainText('not a real recording');
   await page.getByRole('button', { name: 'Try the sample', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Play replay', exact: true })).toBeVisible();
-  await expect(page.getByRole('note')).toContainText('Synthetic sample');
+  await expect(page.getByRole('note')).toContainText('Example run');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
