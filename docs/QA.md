@@ -9,3 +9,8 @@ Three specifically authorized diagnostic requests reserved $0.0625 total against
 The photographed source is OpenCV's public sample, used only as a diagnostic. It is not Apprentice procedure footage and is not offered as a competition result. No frozen-test metric exists yet. Next work is consented expert A/B and labelled dev/test footage; feature work must not substitute for that evidence.
 
 Commands are in the README. Commit history retains earlier QA notes and their scope.
+
+
+## T6 first-visit UX - October 30, 2026
+
+Home → selected, paused alert works in two clicks with `/api` blocked. Desktop/mobile checks cover aliases, guided Teach, confirmed video timings, stale-response rejection, read-only examples, actual-count model chips, unknown verification failures, clipboard export and the unified private list. Product previews were recaptured from current animated views; no model accuracy is implied. 275 Python tests and 118 desktop/mobile browser checks passed, along with lint/format, strict typing and the production build. T7 remains pending consented footage.

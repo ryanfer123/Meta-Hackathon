@@ -194,3 +194,12 @@ test('an open-model request without a saved shadow opinion shows calls only', as
   await expect(surface.getByLabel('Models used')).toContainText('Open model (spark-open) · 1 call');
   await expect(surface.getByLabel('Models used')).not.toContainText('second opinions');
 });
+
+test('copy root copies the current public sample fingerprint', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const surface = await mountResults(page, { tab: 'Integrity' });
+  await surface.getByRole('button', { name: 'Copy root', exact: true }).click();
+  await expect(surface.getByRole('button', { name: 'Root copied', exact: true })).toBeVisible();
+  const root = await page.evaluate(() => navigator.clipboard.readText());
+  expect(root).toMatch(/^[a-f0-9]{64}$/);
+});

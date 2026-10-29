@@ -1741,3 +1741,8 @@ hr {
   background: #eef3fb;
   font-size: 12px;
 }
+
+.overview-feature > img {
+  object-fit: contain;
+  border-radius: 20px;
+}

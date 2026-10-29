@@ -94,3 +94,8 @@ Rechecked [overview](https://dev.meta.ai/docs/sam/overview), [prompt guide](http
 Image mode remains default until procedure footage works. At application level a completed, diagnostic-free native result with zero masks is a logged tracking failure and invokes a separately budgeted image fallback once per concept. Partial/diagnostic output does not trigger that fallback. Private native diagnostic bodies are retained before handling an empty result; old empty caches also route to fallback.
 
 Narration timing proposals require explicit confirmation (`ranges_confirmed=true`) before validation. Active recovery may refine a noun phrase for the same missing object and re-query one frame; only deterministic rule replay can change completion. Neither behavior was exercised by the three paid probes.
+
+
+## T6 application inputs - October 30, 2026
+
+The application accepts optional `narration_text` (at most4,000 characters). Nonempty timestamped narration JSON takes precedence; otherwise plain text becomes one turn spanning the measured full recording before the existing compiler. Validation requires confirmed, complete ranges inside actual duration and rejects the all-(0,1) placeholder. These are internal input guards, not new Meta request shapes. T6 ran no paid requests; model chips use recorded per-run calls/available shadow opinions, and response medians are computed only from recorded call latencies.

@@ -18,7 +18,12 @@ async function mountTeach(page: Page, withProcedure = false, replayMode = false)
     import '/src/styles.css';
     const run=await (await fetch('/samples/skipped-cap.json')).json();
     const initialJob=${withProcedure ? "{id:'mock-procedure',result:{protocol:run.protocol,boundary_suggestions:{approach:{start:0,end:2}}}}" : 'null'};
-    client.createRoot(document.getElementById('root')).render(React.createElement(Learn,{run,health:{replay_mode:${String(replayMode)},live_configured:true,glimmer_configured:false},onRun:()=>{},initialJob,onNavigateCheck:()=>{},onProtocolReady:(value)=>{document.documentElement.dataset.procedureId=value.id}}));
+    function Harness() {
+      const [source,setSource]=React.useState(null);
+      window.__setTeachSource=setSource;
+      return React.createElement(Learn,{run,health:{replay_mode:${String(replayMode)},live_configured:true,glimmer_configured:false},onRun:()=>{},initialJob,source,onNavigateCheck:()=>{},onProtocolReady:(value)=>{document.documentElement.dataset.procedureId=value.id}});
+    }
+    client.createRoot(document.getElementById('root')).render(React.createElement(Harness));
   </script></body></html>`,
     }),
   );
@@ -111,13 +116,11 @@ test('changing the teaching video clears the old procedure and validation contro
   await mountTeach(page, true);
   await expect(page.locator('html')).toHaveAttribute('data-procedure-id', 'mock-procedure');
   await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
-  await page
-    .getByLabel('Teaching video', { exact: true })
-    .setInputFiles({
-      name: 'replacement.mp4',
-      mimeType: 'video/mp4',
-      buffer: Buffer.from('mock-video'),
-    });
+  await page.getByLabel('Teaching video', { exact: true }).setInputFiles({
+    name: 'replacement.mp4',
+    mimeType: 'video/mp4',
+    buffer: Buffer.from('mock-video'),
+  });
   await expect(page.locator('html')).toHaveAttribute('data-procedure-id', '');
   await expect(page.getByRole('button', { name: 'Run the checks' })).toHaveCount(0);
   await expect(
@@ -136,4 +139,140 @@ test('changing the teaching description also requires creating the steps again',
   await expect(page.locator('html')).toHaveAttribute('data-procedure-id', '');
   await expect(page.getByRole('button', { name: 'Run the checks' })).toHaveCount(0);
   await expect(page.locator('.step-timeline')).toHaveCount(0);
+});
+
+async function nextPaint(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+}
+async function changeSource(page: Page, kind: 'expert' | 'held_out') {
+  await page.evaluate((sourceKind) => {
+    const target = window as unknown as {
+      __setTeachSource: (source: { file: File; kind: string }) => void;
+    };
+    target.__setTeachSource({
+      file: new File(['replacement'], 'replacement.mp4', { type: 'video/mp4' }),
+      kind: sourceKind,
+    });
+  }, kind);
+}
+
+test('a stale compile response cannot reinstall a protocol after the teaching source changes', async ({
+  page,
+}) => {
+  await mountTeach(page);
+  const sample = await (await page.request.get('/samples/skipped-cap.json')).json();
+  let observed!: () => void;
+  let release!: () => void;
+  const requested = new Promise<void>((resolve) => {
+    observed = resolve;
+  });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/api/protocols', (route) =>
+    route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({ protocol_id: 'old-job' }),
+    }),
+  );
+  await page.route('**/api/protocols/old-job', async (route) => {
+    observed();
+    await gate;
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'ready', protocol: sample.protocol }),
+    });
+  });
+  await page
+    .getByLabel('Teaching video', { exact: true })
+    .setInputFiles({ name: 'first.mp4', mimeType: 'video/mp4', buffer: Buffer.from('mock-video') });
+  await page.getByRole('button', { name: 'Create the steps' }).click();
+  await requested;
+  await changeSource(page, 'expert');
+  await expect(page.getByRole('button', { name: 'Create the steps' })).toBeEnabled();
+  const responded = page.waitForResponse((response) =>
+    response.url().endsWith('/api/protocols/old-job'),
+  );
+  release();
+  await responded;
+  await nextPaint(page);
+  await expect(page.locator('html')).toHaveAttribute('data-procedure-id', '');
+  await expect(page.getByRole('button', { name: 'Create the steps' })).toBeVisible();
+  await expect(page.locator('.protocol-cards')).toHaveCount(0);
+});
+
+test('changing a second video discards pending validation and clears previous check badges', async ({
+  page,
+}) => {
+  await mountTeach(page, true);
+  const sample = await (await page.request.get('/samples/skipped-cap.json')).json();
+  const result = {
+    status: 'ready',
+    protocol: { ...sample.protocol, verified: true },
+    validation: {
+      checks: { discriminative: true, compile_replay: true, held_out: true, counterfactual: true },
+      verified: true,
+      repair_rounds: 0,
+      scope: 'Mocked checks, no models called.',
+    },
+  };
+  let observed!: () => void;
+  let release!: () => void;
+  const requested = new Promise<void>((resolve) => {
+    observed = resolve;
+  });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let hold = true;
+  await page.route('**/api/protocols/mock-procedure/validate', (route) =>
+    route.fulfill({ status: 202, contentType: 'application/json', body: '{}' }),
+  );
+  await page.route('**/api/protocols/mock-procedure', async (route) => {
+    if (hold) {
+      observed();
+      await gate;
+    }
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(result) });
+  });
+  await page.locator('.teaching-player').evaluate((video) => {
+    Object.defineProperty(video, 'duration', { value: 12, configurable: true });
+    video.dispatchEvent(new Event('loadedmetadata'));
+  });
+  await page
+    .getByLabel('Second video (same procedure, different take)', { exact: true })
+    .setInputFiles({
+      name: 'second.mp4',
+      mimeType: 'video/mp4',
+      buffer: Buffer.from('mock-video'),
+    });
+  await page
+    .getByRole('checkbox', { name: 'I checked every start and end against the teaching video' })
+    .check();
+  await page.getByRole('button', { name: 'Run the checks' }).click();
+  await requested;
+  await changeSource(page, 'held_out');
+  await expect(page.getByRole('button', { name: 'Run the checks' })).toBeEnabled();
+  const responded = page.waitForResponse((response) =>
+    response.url().endsWith('/api/protocols/mock-procedure'),
+  );
+  release();
+  await responded;
+  await nextPaint(page);
+  await expect(page.locator('.validation-checks')).toHaveCount(0);
+  await expect(page.locator('html')).toHaveAttribute('data-procedure-id', 'mock-procedure');
+  hold = false;
+  await page.getByRole('button', { name: 'Run the checks' }).click();
+  await expect(page.getByLabel('Check results')).toBeVisible();
+  await page
+    .getByLabel('Second video (same procedure, different take)', { exact: true })
+    .setInputFiles({ name: 'third.mp4', mimeType: 'video/mp4', buffer: Buffer.from('mock-video') });
+  await expect(page.locator('.validation-checks')).toHaveCount(0);
+  await expect(page.locator('html')).toHaveAttribute('data-procedure-id', 'mock-procedure');
 });

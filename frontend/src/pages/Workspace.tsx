@@ -309,7 +309,9 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                       ? 'Review flagged steps, download the report, and check that its event log is unchanged.'
                       : view === 'Run library'
                         ? 'Keep the source recordings and the useful results.'
-                        : 'Start with an observation. Go as deep as you need.'}
+                        : view === 'Check'
+                          ? 'Compare a new recording with the steps you taught.'
+                          : 'Watch an example, then try your own recording.'}
               </p>
             </div>
           </div>
@@ -324,6 +326,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                       aria-pressed={scenario === id}
                       onClick={() => chooseScenario(id)}
                     >
+                      {scenario === id && <span aria-hidden="true">✓ </span>}
                       {title}
                     </button>
                   ))}

@@ -64,13 +64,21 @@ export function Learn({
   const [error, setError] = useState<unknown>(null);
   const [repair, setRepair] = useState(false);
   const player = useRef<HTMLVideoElement>(null);
+  const taskGeneration = useRef(0);
+
+  useEffect(
+    () => () => {
+      taskGeneration.current += 1;
+    },
+    [],
+  );
 
   useEffect(() => {
     if (source?.kind === 'expert') {
       invalidateTeaching();
       setTeaching(source.file);
     } else if (source?.kind === 'held_out') {
-      setSecond(source.file);
+      replaceSecond(source.file);
       setStage(2);
     }
   }, [source]);
@@ -78,6 +86,7 @@ export function Learn({
     if (!initialJob?.result.protocol) return;
     const result = initialJob.result as ProtocolStatus;
     const loaded = result.protocol!;
+    invalidateTask();
     setTeaching(null);
     setDescription('');
     setSecond(null);
@@ -184,24 +193,25 @@ export function Learn({
                   : !confirmed
                     ? 'Review every timing, then confirm below.'
                     : '';
-  async function task(message: string, action: () => Promise<void>) {
+  async function task(message: string, action: (generation: number) => Promise<void>) {
     if (readOnly) {
       onSignIn?.();
       return;
     }
+    const generation = ++taskGeneration.current;
     setBusy(message);
     setError(null);
     try {
-      await action();
+      await action(generation);
     } catch (caught) {
-      setError(caught);
+      if (generation === taskGeneration.current) setError(caught);
     } finally {
-      setBusy('');
+      if (generation === taskGeneration.current) setBusy('');
     }
   }
   async function createSteps() {
     if (!teaching || createReason) return;
-    await task('Reading the video and writing the steps…', async () => {
+    await task('Reading the video and writing the steps…', async (generation) => {
       const form = new FormData();
       form.set('video', teaching);
       form.set('narration_text', description.trim());
@@ -209,7 +219,9 @@ export function Learn({
         method: 'POST',
         body: form,
       });
+      if (generation !== taskGeneration.current) return;
       const result = await poll<ProtocolStatus>(`/api/protocols/${created.protocol_id}`);
+      if (generation !== taskGeneration.current) return;
       if (!result.protocol)
         throw new Error('The steps were not returned. Please reopen this task.');
       setId(created.protocol_id);
@@ -224,14 +236,16 @@ export function Learn({
   }
   async function checkSteps() {
     if (!second || checkReason) return;
-    await task('Checking both videos and deliberate mistakes…', async () => {
+    await task('Checking both videos and deliberate mistakes…', async (generation) => {
       const form = new FormData();
       form.set('heldout', second);
       form.set('ranges', JSON.stringify(ranges));
       form.set('ranges_confirmed', String(confirmed));
       form.set('repair', String(repair));
       await json(`/api/protocols/${id}/validate`, { method: 'POST', body: form });
+      if (generation !== taskGeneration.current) return;
       const result = await poll<ProtocolStatus>(`/api/protocols/${id}`);
+      if (generation !== taskGeneration.current) return;
       if (result.protocol) {
         setProtocol(result.protocol);
         onProtocolReady?.({ id, protocol: result.protocol });
@@ -239,7 +253,18 @@ export function Learn({
       setValidation(result.validation ?? undefined);
     });
   }
+  function invalidateTask() {
+    taskGeneration.current += 1;
+    setBusy('');
+    setError(null);
+  }
+  function replaceSecond(file: File | null) {
+    invalidateTask();
+    setSecond(file);
+    setValidation(undefined);
+  }
   function invalidateTeaching() {
+    invalidateTask();
     setId('');
     setValidation(undefined);
     setRanges({});
@@ -251,6 +276,7 @@ export function Learn({
     onProtocolReady?.({ id: '', protocol: run.protocol });
   }
   function chooseExample() {
+    invalidateTask();
     setProtocol(run.protocol);
     setExample(true);
     setId('');
@@ -469,7 +495,7 @@ export function Learn({
                   <FileInput
                     label="Second video (same procedure, different take)"
                     file={second}
-                    onFile={setSecond}
+                    onFile={replaceSecond}
                     disabled={!!busy}
                   />
                   <button

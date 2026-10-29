@@ -151,6 +151,27 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
         : undefined;
   return (
     <>
+      {flagged && (
+        <section className="why-flagged" aria-label="Why this was flagged">
+          <h3>Why this was flagged{selectedStep ? ` — ${selectedStep.title}` : ''}</h3>
+          <strong title={flagged.kind}>{friendlyEventLabel(flagged.kind)}</strong>
+          <p>{flagReason(flagged)}</p>
+          <details>
+            <summary>Show details</summary>
+            <p>{flagged.detail}</p>
+          </details>
+          {selectedStep && (
+            <p>
+              <span className="muted">Expected:</span>{' '}
+              {selectedStep.narration_hint || selectedStep.title}
+            </p>
+          )}
+          <button className="text-button" onClick={() => inspect(flagged)}>
+            View at {timecode(flagged.t)} <ChevronRight size={13} />
+          </button>
+          <small>Checked by: {checkedBy(flagged.tier, run.metrics.open_tier_label)}</small>
+        </section>
+      )}
       <div className="workstation">
         <section className="viewer panel" aria-label="Procedure playback">
           <div className="panel-meta">
@@ -286,27 +307,7 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
               );
             })}
           </div>
-          {flagged ? (
-            <section className="why-flagged" aria-label="Why this was flagged">
-              <h3>Why this was flagged</h3>
-              <strong title={flagged.kind}>{friendlyEventLabel(flagged.kind)}</strong>
-              <p>{flagReason(flagged)}</p>
-              <details>
-                <summary>Show details</summary>
-                <p>{flagged.detail}</p>
-              </details>
-              {selectedStep && (
-                <p>
-                  <span className="muted">Expected:</span>{' '}
-                  {selectedStep.narration_hint || selectedStep.title}
-                </p>
-              )}
-              <button className="text-button" onClick={() => inspect(flagged)}>
-                View at {timecode(flagged.t)} <ChevronRight size={13} />
-              </button>
-              <small>Checked by: {checkedBy(flagged.tier, run.metrics.open_tier_label)}</small>
-            </section>
-          ) : (
+          {!flagged && (
             <div className="observation" role="status">
               <span className="status-dot" />
               <div>
@@ -334,8 +335,8 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
           )}
           <p className="advisory">
             {synthetic
-              ? 'Model tiers are not exercised in synthetic replay.'
-              : 'Model opinions are advisory. Rules decide completion.'}
+              ? 'No models ran for this animated example.'
+              : 'Models give a second opinion. Rules decide whether a step was observed.'}
           </p>
         </aside>
       </div>
