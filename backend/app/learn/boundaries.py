@@ -1,5 +1,6 @@
 """Conservative narration-based timing proposals, never visual ground truth."""
 
+import math
 import re
 from collections import Counter
 
@@ -78,3 +79,23 @@ def suggest_boundaries(
         if step_id != other_id and value.start <= other.end and other.start <= value.end
     }
     return {step: value for step, value in ranges.items() if step not in conflicting}
+
+
+def validate_step_ranges(
+    protocol: Protocol, ranges: dict[str, StepRange], duration: float | None = None
+) -> None:
+    """Reject incomplete, placeholder or impossible timings before paid tracking."""
+    if set(ranges) != {step.id for step in protocol.steps}:
+        raise ValueError("Confirm a valid start/end range for every protocol step")
+    if ranges and all(value.start == 0 and value.end == 1 for value in ranges.values()):
+        raise ValueError("Replace the 0–1 second placeholders with reviewed timings for every step")
+    if duration is not None and (not math.isfinite(duration) or duration <= 0):
+        raise ValueError("Cannot establish the original recording duration")
+    for step in protocol.steps:
+        value = ranges[step.id]
+        if value.start >= value.end:
+            raise ValueError(f"Step '{step.title}': start must be before end")
+        if duration is not None and value.end > duration:
+            raise ValueError(
+                f"Step '{step.title}': end must be at or before the original recording's {duration:g} seconds"
+            )

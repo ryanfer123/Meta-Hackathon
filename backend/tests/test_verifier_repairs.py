@@ -279,7 +279,14 @@ def test_validation_repairs_only_failed_step_and_stops_early(tmp_path, monkeypat
     monkeypatch.setattr(service, "track_video", lambda *a: tracked("video"))
     monkeypatch.setattr(service, "validate_protocol", validate)
     monkeypatch.setattr(service, "repair_step", repair)
-    service.process_validation(cfg(tmp_path, sam_mode=sam_mode), job, {}, True)
+    from app.learn.validate import StepRange
+
+    monkeypatch.setattr(service, "probe_video", lambda *_: {"duration_s": 30.0})
+    ranges = {
+        step.id: StepRange(start=float(index * 5), end=float(index * 5 + 3))
+        for index, step in enumerate(protocol.steps)
+    }
+    service.process_validation(cfg(tmp_path, sam_mode=sam_mode), job, ranges, True)
     assert routed == [sam_mode, sam_mode]
     result = json.loads((folder / "self_check.json").read_text())
     if case == "no-failures":

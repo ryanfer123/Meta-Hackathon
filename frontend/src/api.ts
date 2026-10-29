@@ -1,3 +1,18 @@
+export function friendlyError(error: unknown): { message: string; details: string } {
+  const details = error instanceof Error ? error.message : String(error ?? '');
+  const lower = details.toLowerCase();
+  const message = /budget|cost.*cap|call cap|reservation.*cap/.test(lower)
+    ? 'This analysis reached its spending limit. Try a shorter recording or review the limit.'
+    : /ambiguous|missing object|no objects|zero masks|cannot.*identif/.test(lower)
+      ? 'Some objects could not be identified clearly. Check the lighting and camera view.'
+      : /decode|undecodable|cannot.*recording|video.*codec|invalid.*video/.test(lower)
+        ? 'This video could not be read. Try an H.264 MP4 or MOV file.'
+        : /expired|unauthori[sz]ed|sign in|jwt|401/.test(lower)
+          ? 'Your session needs a fresh sign-in. Sign in and try again.'
+          : details || 'The request could not finish. Try again.';
+  return { message, details };
+}
+
 import { supabase } from './lib/supabase';
 import type { ChainEntry, Health, Run } from './types';
 export async function json<T>(url: string, init?: RequestInit): Promise<T> {

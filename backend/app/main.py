@@ -26,12 +26,14 @@ from app.audit.chain import verify_entries
 from app.auth import authenticate
 from app.cloud import CloudJobs
 from app.config import Settings
+from app.learn.boundaries import validate_step_ranges
 from app.learn.validate import StepRange
 from app.replay_cache import atomic_json
 from app.sample_access import SampleRateLimiter, is_public_sample
 from app.samples import SAMPLES, sample_run
 from app.schemas import Protocol, TranscriptTurn
 from app.service import finalize_run, process_learn, process_run, process_validation
+from app.track.native_video import probe_video
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -282,6 +284,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         request: Request,
         video: Annotated[UploadFile, File()],
         narration: Annotated[str, Form()] = "[]",
+        narration_text: Annotated[str, Form(max_length=4000)] = "",
     ) -> dict[str, str]:
         live()
         try:
@@ -292,7 +295,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         folder = job_folder(job, request, create=True)
         await save_job_upload(request, job, "learn", video, folder / "original.mp4")
         atomic_json(folder / "status.json", {"id": job, "status": "processing"})
-        tasks.add_task(execute_job, request, job, "learn", process_learn, turns)
+        tasks.add_task(execute_job, request, job, "learn", process_learn, turns, narration_text)
         return {"protocol_id": job, "status": "processing"}
 
     @app.get("/api/protocols/{job}")
@@ -320,10 +323,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             parsed = TypeAdapter(dict[str, StepRange]).validate_json(ranges)
         except ValidationError as exc:
             raise HTTPException(422, "Invalid step ranges") from exc
-        if set(parsed) != {step.id for step in protocol.steps} or any(
-            value.start >= value.end for value in parsed.values()
-        ):
-            raise HTTPException(422, "Confirm a valid start/end range for every protocol step")
+        try:
+            validate_step_ranges(protocol, parsed)
+            duration = float(probe_video(folder / "original.mp4")["duration_s"])
+            validate_step_ranges(protocol, parsed, duration)
+        except (ValueError, RuntimeError) as exc:
+            raise HTTPException(422, str(exc)) from exc
         atomic_json(
             folder / "boundary_confirmation.json",
             {

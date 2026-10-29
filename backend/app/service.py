@@ -11,7 +11,7 @@ from app.audit.report import render_report
 from app.budget import BudgetExceeded
 from app.config import Settings
 from app.glimmer_client import GlimmerClient
-from app.learn.boundaries import suggest_boundaries
+from app.learn.boundaries import suggest_boundaries, validate_step_ranges
 from app.learn.compile import compile_protocol, repair_step
 from app.learn.frames import extract_audio, file_hash, keyframes, sample
 from app.learn.transcribe import transcribe
@@ -22,6 +22,7 @@ from app.samples import wire_frame
 from app.schemas import Opinion, Protocol, TranscriptTurn
 from app.supervise.verifier import Verifier
 from app.track.geometry import FrameState
+from app.track.native_video import probe_video
 from app.track.recovery import recover_once
 from app.track.sam import track, track_video
 
@@ -38,12 +39,19 @@ def error_name(exc: Exception) -> str:
     return "Processing failed; inspect local server diagnostics."
 
 
-def process_learn(settings: Settings, job: str, turns: list[TranscriptTurn]) -> None:
+def process_learn(
+    settings: Settings, job: str, turns: list[TranscriptTurn], narration_text: str = ""
+) -> None:
     folder = settings.data_dir / "jobs" / job
     client = MetaClient(settings, job)
     try:
         video = folder / "original.mp4"
+        if len(narration_text) > 4000:
+            raise ValueError("Narration text must be at most 4000 characters")
         frames = sample(video, folder / "frames")
+        if not turns and narration_text.strip():
+            duration = float(probe_video(video)["duration_s"])
+            turns = [TranscriptTurn(start=0, end=duration, text=narration_text.strip())]
         if not turns:
             audio = folder / "audio.wav"
             extract_audio(video, audio)
@@ -305,6 +313,9 @@ def process_validation(
         a_hash, b_hash = file_hash(folder / "original.mp4"), file_hash(folder / "heldout.mp4")
         if a_hash == b_hash:
             raise ValueError("Held-out recording must differ from the compile recording")
+        validate_step_ranges(protocol, ranges)
+        duration = float(probe_video(folder / "original.mp4")["duration_s"])
+        validate_step_ranges(protocol, ranges, duration)
         a_paths = sample(folder / "original.mp4", folder / "frames")
         b_paths = sample(folder / "heldout.mp4", folder / "heldout-frames")
         if settings.sam_mode == "video":
