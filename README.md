@@ -147,7 +147,7 @@ cp frontend/.env.example frontend/.env.local
 
 Follow [database setup](supabase/README.md) and [deployment configuration](docs/DEPLOYMENT.md) before enabling cloud jobs. Never place a model key, backend budget secret or service-role key in a `VITE_` variable or Git.
 
-Default reservations allow **3,000 SAM image calls**, **6,000 native-video billed frames**, **40 Spark calls/job**, **$8/job** and **$10/day** locally and on the hosted cost/frame settings. These are configurable refusal limits, not expected prices or provider billing guarantees. Cloud SAM and model requests transmit selected images to their providers; the pipeline is not offline.
+Default reservations allow **3,000 SAM image calls**, **6,000 native-video billed frames**, **40 Spark calls/job**, **$8/job** and **$10/day** locally and on the hosted cost/frame settings. Open-tier attempts reserve $0.05 each against the same cost caps, including retries. These are configurable refusal limits, not expected prices or provider billing guarantees. Cloud SAM and model requests transmit selected images to their providers; the pipeline is not offline.
 
 ## Development and verification
 

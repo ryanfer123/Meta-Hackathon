@@ -64,3 +64,8 @@ For a seeded noisy-mask stress case representing 90 seconds at 2 fps (180 observ
 The production tracker can submit a CFR 4 fps H.264 MP4 (long side <=640, no audio) once per distinct prompt. Original 2 fps JPEGs remain the evidence source. Prepared clips and raw completed model text have hash/transcode-keyed caches. Official video parsing supplies source indices and mask identities; diagnostic/empty/ambiguous output remains unknown, confidence stays 0.5 when absent, and scene completeness stays false. Left-to-right name bindings never follow a new ID by centroid guess after ambiguity.
 
 SAM usage reports billed frames, with a minimum 50/request, not an actual output sampling rate. Frame reservations replace image-call counting for video requests and share one job budget across both expert takes. The approved local cap is 6,000 frames; hosted limits remain independently configurable. The private SQL ledger serializes reservations and unexpected-billing reconciliations using its existing backend-secret gate.
+
+
+## Open-model reservation guard
+
+Every configured open-tier request reserves $0.05 before network I/O, including schema retries, through the same `Budget` ledger as Meta calls. Hosted reservations use routing kind `glimmer`, independent of the displayed provider label; they share the job/day cost caps and retain failed-attempt reservations. The reservation is a refusal threshold, not a provider pricing claim.

@@ -99,3 +99,8 @@ Narration timing proposals require explicit confirmation (`ranges_confirmed=true
 ## T6 application inputs - October 30, 2026
 
 The application accepts optional `narration_text` (at most4,000 characters). Nonempty timestamped narration JSON takes precedence; otherwise plain text becomes one turn spanning the measured full recording before the existing compiler. Validation requires confirmed, complete ranges inside actual duration and rejects the all-(0,1) placeholder. These are internal input guards, not new Meta request shapes. T6 ran no paid requests; model chips use recorded per-run calls/available shadow opinions, and response medians are computed only from recorded call latencies.
+
+
+## Real-video website diagnostic preparation — October 30, 2026
+
+Preparing one user-authorized private diagnostic with a $1 reservation ceiling. A preflight review found that the optional open-model client logged calls without reserving them. It now reserves $0.05 before each attempt in the same local/hosted ledger as Meta calls; refusals precede transport and failed attempts retain their reservation. This is an accounting limit, not a measured provider price. The probe wrapper no longer double-reserves. A backward-compatible SQL change permits the `glimmer` routing kind while retaining the existing secret, user, locking and cost checks. Real-video outcomes remain pending until the browser flow completes.

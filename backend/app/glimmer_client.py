@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 import httpx
 from pydantic import ValidationError
 
+from app.budget import Budget
 from app.config import Settings
 from app.meta_client import image_url
 from app.model_output import ModelOutputIncomplete, ensure_complete, json_object_text
@@ -35,8 +36,11 @@ class GlimmerClient:
             raise RuntimeError("Glimmer endpoint is not configured")
         host = urlparse(self.settings.glimmer_base_url).hostname
         is_local = host in ("localhost", "127.0.0.1", "::1")
+        budget = Budget(self.settings)
         feedback = ""
         for attempt in range(max_attempts):
+            # A reservation is a refusal threshold, not a provider price quote.
+            budget.reserve(self.run_id, "glimmer", 0.05)
             start = time.perf_counter()
             status = "error"
             usage: dict[str, Any] = {}
@@ -104,6 +108,7 @@ class GlimmerClient:
                                 "error_type": error_type,
                                 "usage": usage,
                                 "cost_estimate_usd": None,
+                                "reserved_usd": 0.05,
                                 "cloud_frames": 0 if is_local else len(frames[:3]),
                                 "local_frames": len(frames[:3]) if is_local else 0,
                             }

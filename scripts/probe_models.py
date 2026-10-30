@@ -83,7 +83,6 @@ def main() -> None:
             )
         else:
             # One request, no malformed-answer retry, and a conservative local reservation.
-            client.budget.reserve(args.run_id, "open-tier-probe", 0.05)
             opinion = GlimmerClient(settings, args.run_id).opinion(
                 "Describe the visible objects and their colors. completed only means the image is readable.",
                 [args.image],
