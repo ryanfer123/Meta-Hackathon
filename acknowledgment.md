@@ -23,3 +23,10 @@ Apprentice's MIT source licence does not extend to Science Buddies' material. Th
 ## OpenCV photographic diagnostic sample
 
 A local three-second excerpt of [OpenCV samples/data/vtest.avi](https://github.com/opencv/opencv/blob/4.x/samples/data/vtest.avi) was used for the October29 SAM/Baseten connectivity control. Source repository: OpenCV, whose [license](https://github.com/opencv/opencv/blob/4.x/LICENSE) is Apache2.0. No video or frame is redistributed in Apprentice. Small provider-response geometry fixtures retain their observed provenance and identify this source. This outdoor sample is not our procedure demonstration or labelled evaluation data.
+
+
+## Private real-video diagnostic: Trefoil knot
+
+The October30,2026 private website diagnostic uses [Trefoil knot](https://commons.wikimedia.org/wiki/File:Trefoil_knot.webm), credited as **Matemateca (IME/USP)/Rodrigo Tetsuo Argenton**, under [CC BY-SA4.0](https://creativecommons.org/licenses/by-sa/4.0/). The exhibit is credited to Estes Objethos Atelier on the source page. For this test, the13.35-second recording was transcoded to H.264 at640px long side and its audio removed. These are changes to the source recording. No endorsement is implied.
+
+The clip, extracted frames and generated artifacts remain private and ignored by Git; no public sample is exported. This is third-party footage, not Apprentice-owned teaching/evaluation data. Replaying the same clip used for compilation is a pipeline diagnostic, not a held-out test or an accuracy result.

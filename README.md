@@ -139,7 +139,7 @@ cp frontend/.env.example frontend/.env.local
 
 | Configuration | Purpose |
 | --- | --- |
-| Backend: `REPLAY_MODE=false`, `MODEL_API_KEY` | Enables paid Meta processing. Keep the key server-side. |
+| Backend: `REPLAY_MODE=false`, `MODEL_API_KEY`, optional `SPARK_MAX_OUTPUT_TOKENS` | Enables paid Meta processing. The bounded response limit defaults to 12,000 tokens. Keep the key server-side. |
 | Backend and frontend: Supabase URL + publishable key | Connects confirmed accounts, owner-scoped records and private storage. Names are in the respective example files. |
 | Frontend: `VITE_STATIC_REPLAY=false`, optional `VITE_API_BASE_URL` | Connects private actions to the Python service; blank API URL uses the same origin. |
 | Optional backend: `GLIMMER_BASE_URL`, `GLIMMER_API_KEY`, `GLIMMER_MODEL`, `OPEN_TIER_LABEL` | Configures the open-model advisory tier. Baseten uses `meta-models/muse-spark-open-1026`; without an open endpoint, Spark handles advisory review. |

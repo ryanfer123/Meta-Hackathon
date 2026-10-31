@@ -29,3 +29,20 @@ test('plain backend error objects retain their message and friendly explanation'
   expect(mapped.message).toContain('spending limit');
   expect(mapped.details).toBe('run cost reservation cap reached');
 });
+
+test('model response limits are distinct from spending and sign-in limits', async ({ page }) => {
+  await page.goto('/');
+  const mapped = await page.evaluate(async () => {
+    const { friendlyError } = await import('/src/api.ts');
+    return [
+      'Model output was incomplete or exhausted its token budget',
+      'run cost reservation cap reached',
+      'JWT token expired',
+    ].map((raw) => ({ raw, ...friendlyError(new Error(raw)) }));
+  });
+  expect(mapped[0].message).toContain('did not finish its response');
+  expect(mapped[0].message).not.toContain('spending');
+  expect(mapped[1].message).toContain('spending limit');
+  expect(mapped[2].message).toContain('fresh sign-in');
+  for (const result of mapped) expect(result.details).toBe(result.raw);
+});

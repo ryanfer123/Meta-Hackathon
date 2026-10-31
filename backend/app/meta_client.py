@@ -158,7 +158,7 @@ class MetaClient:
                 "muse-spark-1.3",
                 {
                     "model": "muse-spark-1.3",
-                    "max_output_tokens": 6000,
+                    "max_output_tokens": self.settings.spark_max_output_tokens,
                     "input": [{"role": "user", "content": content}],
                 },
                 len(images or []),

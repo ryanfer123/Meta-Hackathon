@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     glimmer_api_key: SecretStr = SecretStr("")
     glimmer_model: str = "muse-glimmer"
     glimmer_max_tokens: int = Field(default=3000, ge=1, le=32768)
+    spark_max_output_tokens: int = Field(default=12000, ge=512, le=24000)
     open_tier_label: str = Field(default="glimmer", pattern=r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$")
     data_dir: Path = Path("data")
     sam_mode: Literal["video", "image"] = "image"
