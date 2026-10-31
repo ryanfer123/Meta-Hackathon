@@ -23,6 +23,12 @@ export const checkedBy = (tier: string, openTierLabel = 'glimmer') =>
         ? 'Spark'
         : tier;
 export function flagReason(event: Event): string {
+  if (event.tier !== 'rules')
+    return 'A model reviewed this step. Its opinion cannot confirm completion or override the rules.';
+  if (event.kind === 'uncertain' && event.detail.startsWith('Could not confirm this step'))
+    return event.detail;
+  if (event.kind === 'uncertain' && event.detail === 'Recording ended before completion.')
+    return 'Could not confirm this step before the recording ended. This does not establish that the action was missed.';
   const reasons: Record<string, string> = {
     skipped: 'A later step was observed before this step was confirmed.',
     out_of_order: 'This action was observed before an earlier required step was confirmed.',

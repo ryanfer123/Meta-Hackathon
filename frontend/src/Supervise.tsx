@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { EventDetail } from './EventDetail';
 import {
   Check,
   ChevronRight,
@@ -409,7 +410,9 @@ function EvidenceRow({
           {timecode(e.t)}
         </button>
       </td>
-      <td>{e.detail}</td>
+      <td>
+        <EventDetail event={e} />
+      </td>
       <td className="decision" aria-description={e.kind}>
         {friendlyEventLabel(e.kind)}
         <small className="source-note">
@@ -418,7 +421,13 @@ function EvidenceRow({
       </td>
       <td>
         <span className="tier">{checkedBy(e.tier, openTierLabel)}</span>
-        <small className="source-note">{synthetic ? 'synthetic masks' : 'recorded evidence'}</small>
+        <small className="source-note">
+          {e.tier !== 'rules'
+            ? 'advisory opinion'
+            : synthetic
+              ? 'synthetic masks'
+              : 'tracked evidence'}
+        </small>
       </td>
     </tr>
   );

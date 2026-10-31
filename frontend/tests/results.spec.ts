@@ -10,6 +10,7 @@ async function mountResults(
     noMetrics?: boolean;
     openCall?: boolean;
     cryptoUnavailable?: boolean;
+    advisory?: boolean;
   } = {},
 ) {
   await page.route('**/api/**', (route) => route.abort());
@@ -18,6 +19,16 @@ async function mountResults(
     .get('/samples/skipped-cap.json')
     .then((response) => response.json())) as Run;
   if (options.changeEvent) run.events[0].detail = 'Changed report text';
+  if (options.advisory)
+    run.events.push({
+      t: 17,
+      step_id: 'cap',
+      kind: 'uncertain',
+      tier: 'glimmer',
+      confidence: 0.9,
+      evidence_frame: null,
+      detail: 'The final shape proves all steps happened in order.',
+    });
   if (options.live) {
     run.provenance = 'live-recording';
     Object.assign(
@@ -209,4 +220,29 @@ test('copy root copies the current public sample fingerprint', async ({ page, co
   await expect(surface.getByRole('button', { name: 'Root copied', exact: true })).toBeVisible();
   const root = await page.evaluate(() => navigator.clipboard.readText());
   expect(root).toMatch(/^[a-f0-9]{64}$/);
+});
+
+test('model paragraphs are collapsed and labelled as opinions in replay history', async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  const surface = await mountResults(page, { advisory: true });
+  await surface.getByText('Advanced: what happened', { exact: true }).click();
+  const row = surface
+    .locator('tr')
+    .filter({ hasText: 'Model opinion only. Rules remain unchanged.' });
+  await expect(row).toHaveCount(1);
+  await expect(row.getByText('advisory opinion', { exact: true })).toBeVisible();
+  await expect(
+    row.getByText('The final shape proves all steps happened in order.'),
+  ).not.toBeVisible();
+  await row.getByText('Read model opinion', { exact: true }).click();
+  await expect(row.getByText('The final shape proves all steps happened in order.')).toBeVisible();
+  await row.getByText('Read model opinion', { exact: true }).click();
+  await expect(page).toHaveTitle(/Apprentice/);
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+  expect(errors).toEqual([]);
+  if (process.env.APPRENTICE_UI_CAPTURE)
+    await surface.screenshot({ path: `/tmp/apprentice-opinions-${testInfo.project.name}.png` });
 });

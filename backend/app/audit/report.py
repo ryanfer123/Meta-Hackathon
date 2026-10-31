@@ -9,9 +9,22 @@ def render_report(run: dict[str, Any], root: str, evidence: dict[str, bytes] | N
         return html.escape(str(value))
 
     open_label = run.get("metrics", {}).get("open_tier_label", "glimmer")
+
+    def detail(event: dict[str, Any]) -> str:
+        text = esc(event["detail"])
+        if event["tier"] != "rules":
+            return (
+                "Model opinion only. Rules remain unchanged."
+                "<details><summary>Read model opinion</summary><p>" + text + "</p></details>"
+            )
+        return text.replace(
+            "Recording ended before completion.",
+            "Could not confirm this step before the recording ended.",
+        )
+
     rows = "".join(
         f"<tr><td>{e['t']:.2f}s</td><td>{esc(e['step_id'])}</td><td>{esc(e['kind'])}</td>"
-        f"<td>{esc(open_label if e['tier'] == 'glimmer' else e['tier'])}</td><td>{esc(e['detail'])}</td></tr>"
+        f"<td>{esc(open_label if e['tier'] == 'glimmer' else e['tier'])}</td><td>{detail(e)}</td></tr>"
         for e in run["events"]
     )
     images = "".join(

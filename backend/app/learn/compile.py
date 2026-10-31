@@ -10,6 +10,11 @@ condition. Use only present, absent, inside, touching, near, count, moved, order
 for hand/object interactions where observable. Consistent names; hand is implicit. Independent steps
 share a contiguous group. Geometry cannot prove liquid transfer, concentration, volume or sterility.
 Only describe visible handling; do not infer hidden properties. Verified MUST be false.
+Use independently identifiable physical objects, not overlapping names for parts of one object.
+Do not invent left/right rope segments or indistinguishable end identities as separate objects.
+Avoid moved on a deforming whole object: its centroid can stay still while its shape changes.
+If a procedure cannot be represented by these predicates, return only directly checkable handling
+steps; never invent predicates that certify topology or infer action order from a finished shape.
 """
 
 

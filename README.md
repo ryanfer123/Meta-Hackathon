@@ -92,6 +92,7 @@ flowchart TB
 ```
 
 - **Public replay stays separate from private analysis.** Bundled runs and browser verification work with `/api` blocked. Uploads, paid processing, saved work and My runs require a confirmed account; the API checks ownership independently.
+- **Reviews explain uncertainty.** Unfinished steps name the blocking evidence or earlier step. Model reviews use the target step and timestamped measurements; long opinions are collapsed and explicitly advisory. These changes are tested offline, not a measured accuracy improvement.
 - **Model opinions cannot complete a step.** Pydantic validates proposed protocols and replies; windowed predicates and the state machine determine completion. A bounded recovery action can refine one ambiguous SAM query, then replay the rules on the new evidence.
 - **Tracking defaults to SAM image mode.** Native-video tracking is experimental. A completed zero-mask video response triggers a logged, separately budgeted image fallback; missing or ambiguous geometry remains unknown.
 - **Calls have limits and provenance.** Clients reserve budgets before requests, cache SAM outputs, and record usage and latency. Cloud jobs use durable Supabase reservations; local work uses SQLite. The optional open-model tier uses the configured provider label rather than calling every reply “Glimmer”.

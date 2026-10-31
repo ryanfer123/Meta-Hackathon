@@ -24,3 +24,7 @@ Scenario metadata selects each example’s headline finding without changing its
 ## Private real-video website check — October 31, 2026
 
 Signed-in Teach → Check → My runs → Results was exercised with a licensed rope clip. Real playback/overlays/seeking, actual SAM and Spark Open usage chips, browser chain verification and HTML download worked. The browser poll expired before the slow image job completed; My runs recovered the result. Zero of five unverified steps completed, despite advisory model suggestions. Native single-concept tracking returned masks; a full native batch stopped at its advisory cap. No accuracy result or public real sample is claimed; details and reservations are in the API notes.
+
+## Evidence-specific uncertainty and advisory presentation — October 31, 2026
+
+Offline tests cover missing evidence, blocked predecessors, vacuous completion conditions, step-only prompts, timestamped measurements, bounded temporal frame selection and escaped/collapsed HTML opinions. Desktop/mobile replay tests verify that model prose starts collapsed, opens on request and is labelled advisory. Historical hashes and decisions are retained; no new provider accuracy claim or paid probe is included.

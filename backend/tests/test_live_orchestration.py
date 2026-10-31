@@ -49,6 +49,8 @@ def test_recorded_run_orchestration_shadows_every_completion(tmp_path, monkeypat
 
     def glimmer(self, prompt, images):
         seen.append(images)
+        assert "target_step" in prompt and "measurements" in prompt
+        assert "frame_timestamps_s" in prompt and "Do not infer" in prompt
         assert all(p.name.startswith("review_") for p in images)
         assert all(cv2.imread(str(p)).shape[1] < 640 for p in images)
         return Opinion(completed=True, confidence=0.9, reason="mocked observation")

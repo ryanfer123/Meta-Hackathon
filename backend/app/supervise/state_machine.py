@@ -152,7 +152,26 @@ class Supervisor:
         if self.window:
             for step in self.protocol.steps:
                 if self.states[step.id].status not in ("DONE", "SKIPPED"):
+                    state = self.states[step.id]
+                    earlier = self.earlier(step)
+                    post, _, reason = stable(step.post, self.window, self.smoothing)
+                    if earlier:
+                        why = (
+                            "An earlier required step was not confirmed: " + earlier[0].title + "."
+                        )
+                    elif not post:
+                        why = "Completion checks were not stably satisfied: " + reason + "."
+                    elif not state.baseline:
+                        why = "No clear before-to-after change was established. Review the teaching steps."
+                    elif not state.action_seen:
+                        why = "The required action was not observed with its preconditions."
+                    else:
+                        why = "The required preconditions were not confirmed."
                     self.emit(
-                        self.window[-1], step, "uncertain", "Recording ended before completion.", 0
+                        self.window[-1],
+                        step,
+                        "uncertain",
+                        "Could not confirm this step before the recording ended. " + why,
+                        0,
                     )
         return self.events[before:]

@@ -4,6 +4,7 @@ import { download, verifyChain, exportReport } from './api';
 import { checkedBy, friendlyEventLabel } from './eventLabels';
 import { isAlert, timecode, type ChainEntry, type Event, type Run } from './types';
 import './styles/results.css';
+import { EventDetail } from './EventDetail';
 
 const eventFields = (event: Event) => [
   event.t,
@@ -271,7 +272,9 @@ export function Audit({
                     <td className="decision" title={event.kind}>
                       {friendlyEventLabel(event.kind)}
                     </td>
-                    <td>{event.detail}</td>
+                    <td>
+                      <EventDetail event={event} />
+                    </td>
                     <td>
                       <span className="tier">
                         {checkedBy(event.tier, run.metrics.open_tier_label)}

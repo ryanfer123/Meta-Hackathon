@@ -20,6 +20,7 @@ from app.meta_client import MetaClient
 from app.replay_cache import atomic_json
 from app.samples import wire_frame
 from app.schemas import Opinion, Protocol, TranscriptTurn
+from app.supervise.review_context import review_prompt, review_window
 from app.supervise.verifier import Verifier
 from app.track.geometry import FrameState
 from app.track.native_video import probe_video
@@ -210,7 +211,8 @@ def run_recording(
             events.append(event)
             if event.kind not in ("step_completed", "uncertain"):
                 continue
-            nearby = [p for t, p in paths if event.t - 1 <= t <= event.t][-3:]
+            selected = review_window(paths, supervisor.events, event)
+            nearby = [p for _, p in selected]
             review_full = [folder / ("evidence_" + p.name) for p in nearby]
             review_crops: list[Path] = []
             step = next((s for s in protocol.steps if s.id == event.step_id), None)
@@ -241,12 +243,9 @@ def run_recording(
                 crop = folder / ("review_" + str(event.step_id) + "_" + raw_path.name)
                 cv2.imwrite(str(crop), image)
                 review_crops.append(crop)
-            prompt = (
-                "Review only observable completion. "
-                + protocol.model_dump_json()
-                + "\n"
-                + event.model_dump_json()
-            )
+            if step is None:
+                continue
+            prompt = review_prompt(step, event, frames, [t for t, _ in selected])
             events.extend(
                 verifier.review(event, prompt, review_crops, shadow=event.kind == "step_completed")
             )
