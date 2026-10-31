@@ -29,7 +29,7 @@ and jump straight to the frame that explains each finding.
 
 No account, model key or backend is needed for bundled replay. Try **Clean procedure**, **Wrong tube**, **Swapped order**, **Excessive dwell** and **Partial occlusion** to see other rule outcomes. Sign in to teach a procedure, check your own recordings and save private work.
 
-> **Current evidence:** the public demo contains six synthetic scenarios. Provider connectivity has been probed, but accuracy on real physical procedures has not been measured. A real-footage replay and three-minute submission video are pending. See [evaluation status](eval/results.md).
+> **Current evidence:** the public demo contains six synthetic scenarios. A private real-video website diagnostic completed upload, protocol generation, tracking, replay and report verification; none of its five proposed steps was confirmed. Accuracy on real physical procedures has not been measured. A real-footage replay and three-minute submission video are pending. See [evaluation status](eval/results.md).
 
 ## From one demonstration to a reviewable report
 

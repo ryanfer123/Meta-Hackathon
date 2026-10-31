@@ -110,3 +110,18 @@ The first real-clip Teach request was submitted through the signed-in deployed U
 
 
 On October31, the durable ledger contained two failed Teach attempts from October30, each reserved at$0.25 with the same incomplete-output status. Their combined$0.50 is counted against the original diagnostic approval; the remaining hosted job/day cost ceiling was reduced to$0.50 so the UTC date change cannot reset the allowance. No protocol or successful real procedure check is claimed for those attempts.
+
+
+## Real-video website diagnostic outcome — October 31, 2026
+
+The user authorized additional bounded spending. A private 13.35-second H.264 adaptation of [Trefoil knot](https://commons.wikimedia.org/wiki/File:Trefoil_knot.webm) (Matemateca/Rodrigo Tetsuo Argenton, CC BY-SA 4.0; attribution in acknowledgment.md) was submitted through the signed-in deployed Teach and Check screens. The same clip was used twice: this is a pipeline diagnostic, not held-out evaluation. No footage was exported as a public sample.
+
+After the incomplete-output fix, Teach produced five steps/seven objects with a 12,000-output-token limit; the protocol remained unverified. Hosted image-mode Check reached ready after 182 SAM requests and five Baseten Spark Open advisory requests. Median individual call latency: SAM 1,199.1 ms; Spark Open 12,231.3 ms. These are provider-call medians, not detection or end-to-end latency. The browser poll timed out and correctly directed the user to My runs, where the completed result opened. Base tracking alone was still processing more than 16 minutes after submission; an exact completion timestamp was not retained.
+
+Real video playback, seeking, stored-contour overlays, model chips, automatic browser chain verification and a 1.3 MB HTML report download were checked in the deployed UI. The rules completed zero steps (first ACTIVE, remaining four PENDING), emitting uncertainty at the last sampled timestamp, 12.5 s. Relative rope segments and near-identical tips were difficult proposed objects. Five advisory replies suggested completion, but did not override the rules. No completed steps means no completed-step shadow agreement metric. Recovery was skipped because no nearby referenced object was missing. All 197 counted frame transmissions went to cloud providers, including advisory crops.
+
+The hosted run reserved $0.705 ($0.455 SAM, $0.25 open tier). Its SAM usage estimate is $0.455; open-tier dollar estimates are absent, so total billed spend is not claimed. Including two earlier failed Teach attempts and the successful Teach, hosted diagnostic reservations total $1.455. Temporary hosted limits remain $2.25/job and $2.50/UTC day.
+
+A separate 4-fps native-video control on the same photographed rope, prompt `blue braided rope`, returned 53 masks on frames 0–52 with one recurring ID, no parser diagnostics, 53 billed frames, 11,107.4 ms wall latency, and $0.0106 estimated/reserved cost. Three actual overlays were inspected; this is not labelled mask accuracy or proof of identity through occlusion. Full raw JSON is retained privately.
+
+A separate API-only native batch completed seven SAM video calls but stopped at its $1 advisory reservation cap after 248.25 s; it exported no evaluation prediction. Reservations were $0.8242; the batch printed a $0.111754 usage estimate. The capped batch correctly refused an unknown-priced remote open tier before calls, so Spark handled its advisory path. This is not a successful end-to-end native batch or a like-for-like speed benchmark. Combined diagnostic reservations were $2.2898. Image mode remains the default; real protocol validation and frozen-test evaluation remain pending.

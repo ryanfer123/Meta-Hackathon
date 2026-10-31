@@ -19,3 +19,8 @@ Home → selected, paused alert works in two clicks with `/api` blocked. Desktop
 ## T6.1 headline alerts - October 30, 2026
 
 Scenario metadata selects each example’s headline finding without changing its chronological events or integrity root. Skipped cap opens paused on “Step skipped” at 00:17 on Home and the landing comparison; the earlier same-step time warning stays in the timeline and reason panel. Shared-helper tests cover all six samples, stale metadata, step order and severity; desktop/mobile first-visit checks run with `/api` blocked. 281 Python tests and 136 desktop/mobile browser checks passed, plus lint/format, strict typing and the build. T7 remains pending a consented real run.
+
+
+## Private real-video website check — October 31, 2026
+
+Signed-in Teach → Check → My runs → Results was exercised with a licensed rope clip. Real playback/overlays/seeking, actual SAM and Spark Open usage chips, browser chain verification and HTML download worked. The browser poll expired before the slow image job completed; My runs recovered the result. Zero of five unverified steps completed, despite advisory model suggestions. Native single-concept tracking returned masks; a full native batch stopped at its advisory cap. No accuracy result or public real sample is claimed; details and reservations are in the API notes.
