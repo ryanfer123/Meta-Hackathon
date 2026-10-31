@@ -2,7 +2,9 @@ import base64
 import json
 import mimetypes
 import time
+from collections.abc import Callable
 from pathlib import Path
+from threading import Lock
 from typing import Any, TypeVar
 
 import httpx
@@ -49,6 +51,8 @@ class MetaClient:
         self, settings: Settings, run_id: str, transport: httpx.BaseTransport | None = None
     ) -> None:
         self.settings, self.run_id = settings, run_id
+        self.tracking_progress: Callable[[int, int, str], None] | None = None
+        self.log_lock = Lock()
         self.budget = Budget(settings)
         self.cache = ReplayCache(settings.data_dir / "cache")
         self.http = httpx.Client(
@@ -104,7 +108,7 @@ class MetaClient:
             return raw
         finally:
             # Never record headers, raw error bodies, request images, or secrets.
-            with self.budget.log_path(self.run_id).open("ab") as log:
+            with self.log_lock, self.budget.log_path(self.run_id).open("ab") as log:
                 log.write(
                     canonical(
                         {

@@ -3,6 +3,7 @@ import { ArrowRight, Upload } from 'lucide-react';
 import { json } from '../api';
 import { pollJob } from '../lib/analysis';
 import { ErrorNotice } from '../components/ErrorNotice';
+import { AnalysisProgress, type JobProgress } from '../components/AnalysisProgress';
 import type { Health, Protocol, Run } from '../types';
 export type TaughtProcedure = { id: string; protocol: Protocol };
 interface Props {
@@ -27,6 +28,7 @@ export function CheckRecording({
 }: Props) {
   const [file, setFile] = useState<File | null>(source ?? null);
   const [busy, setBusy] = useState('');
+  const [progress, setProgress] = useState<JobProgress>();
   const [error, setError] = useState<unknown>('');
   useEffect(() => {
     if (source) setFile(source);
@@ -71,15 +73,16 @@ export function CheckRecording({
     if (!file || !procedure?.id || !live || busy) return;
     setError('');
     setBusy('Uploading the recording…');
+    setProgress(undefined);
     try {
       const form = new FormData();
       form.set('video', file);
       form.set('protocol_id', procedure.id);
       const started = await json<{ run_id: string }>('/api/runs', { method: 'POST', body: form });
       setBusy('Checking the objects and steps…');
-      const result = await pollJob<Run & { status?: string; error?: string }>(
-        `/api/runs/${started.run_id}`,
-      );
+      const result = await pollJob<
+        Run & { status?: string; error?: string; progress?: JobProgress }
+      >(`/api/runs/${started.run_id}`, (update) => setProgress(update.progress));
       onRun(result);
     } catch (e) {
       setError(e);
@@ -126,6 +129,7 @@ export function CheckRecording({
         {reason || 'The recording will be checked against your reviewed steps.'}
       </p>
       <ErrorNotice error={error} />
+      {busy && <AnalysisProgress message={busy} progress={progress} />}
     </section>
   );
 }

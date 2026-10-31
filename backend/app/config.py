@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     open_tier_label: str = Field(default="glimmer", pattern=r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$")
     data_dir: Path = Path("data")
     sam_mode: Literal["video", "image"] = "image"
+    sam_image_workers: int = Field(default=3, ge=1, le=4)
     sam_video_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1, le=50_000_000)
     max_sam_video_frames: int = Field(default=6000, ge=1)
     hosted_max_sam_video_frames: int = Field(default=6000, ge=1)

@@ -276,3 +276,59 @@ test('changing a second video discards pending validation and clears previous ch
   await expect(page.locator('.validation-checks')).toHaveCount(0);
   await expect(page.locator('html')).toHaveAttribute('data-procedure-id', 'mock-procedure');
 });
+
+test('processing replaces disabled forms with measured stage progress and an honest ETA', async ({
+  page,
+}, testInfo) => {
+  await mountTeach(page);
+  await page.route('**/api/protocols', (route) =>
+    route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({ protocol_id: 'progress-job' }),
+    }),
+  );
+  let stage = 'Finding objects in the teaching video';
+  let updated = Date.now() / 1000;
+  await page.route('**/api/protocols/progress-job', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'processing',
+        progress: {
+          stage,
+          completed: 6,
+          total: 24,
+          unit: 'frames',
+          started_at: Date.now() / 1000 - 40,
+          updated_at: updated,
+          eta_seconds: 120,
+          estimate_scope: 'current-stage',
+        },
+      }),
+    }),
+  );
+  await page
+    .getByLabel('Teaching video', { exact: true })
+    .setInputFiles({
+      name: 'teaching.mp4',
+      mimeType: 'video/mp4',
+      buffer: Buffer.from('mock-video'),
+    });
+  await page.getByRole('button', { name: 'Create the steps' }).click();
+  const panel = page.getByRole('region', { name: 'Analysis progress' });
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole('heading')).toHaveText(stage);
+  await expect(panel).toContainText('6 of 24 frames processed');
+  await expect(panel).toContainText('About 2 min for this stage');
+  await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '6');
+  await expect(page.locator('.teach-stage:visible')).toHaveCount(0);
+  await expect(page.getByText('Processing on the server.')).toHaveCount(0);
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+  if (process.env.APPRENTICE_UI_CAPTURE)
+    await panel.screenshot({ path: `/tmp/apprentice-progress-${testInfo.project.name}.png` });
+  stage = 'Finding objects in the second video';
+  await expect(panel.getByRole('heading')).toHaveText(stage);
+  updated = Date.now() / 1000 - 60;
+  await expect(panel).toContainText('Waiting for a fresh update');
+});

@@ -6,6 +6,7 @@ import type { AnalysisJob } from './lib/workspace';
 import type { Health, Protocol, Run, Validation } from './types';
 import './styles/teach.css';
 import { ErrorNotice } from './components/ErrorNotice';
+import { AnalysisProgress, type JobProgress } from './components/AnalysisProgress';
 
 const checks: [string, string, string][] = [
   [
@@ -19,6 +20,7 @@ const checks: [string, string, string][] = [
 ];
 type Range = { start: number | null; end: number | null };
 type ProtocolStatus = {
+  progress?: JobProgress;
   status: string;
   error?: string;
   protocol?: Protocol;
@@ -61,6 +63,7 @@ export function Learn({
   const [ranges, setRanges] = useState<Record<string, Range>>({});
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState('');
+  const [progress, setProgress] = useState<JobProgress>();
   const [error, setError] = useState<unknown>(null);
   const [repair, setRepair] = useState(false);
   const player = useRef<HTMLVideoElement>(null);
@@ -200,6 +203,7 @@ export function Learn({
     }
     const generation = ++taskGeneration.current;
     setBusy(message);
+    setProgress(undefined);
     setError(null);
     try {
       await action(generation);
@@ -220,7 +224,12 @@ export function Learn({
         body: form,
       });
       if (generation !== taskGeneration.current) return;
-      const result = await poll<ProtocolStatus>(`/api/protocols/${created.protocol_id}`);
+      const result = await poll<ProtocolStatus>(
+        `/api/protocols/${created.protocol_id}`,
+        (update) => {
+          if (generation === taskGeneration.current) setProgress(update.progress);
+        },
+      );
       if (generation !== taskGeneration.current) return;
       if (!result.protocol)
         throw new Error('The steps were not returned. Please reopen this task.');
@@ -244,7 +253,9 @@ export function Learn({
       form.set('repair', String(repair));
       await json(`/api/protocols/${id}/validate`, { method: 'POST', body: form });
       if (generation !== taskGeneration.current) return;
-      const result = await poll<ProtocolStatus>(`/api/protocols/${id}`);
+      const result = await poll<ProtocolStatus>(`/api/protocols/${id}`, (update) => {
+        if (generation === taskGeneration.current) setProgress(update.progress);
+      });
       if (generation !== taskGeneration.current) return;
       if (result.protocol) {
         setProtocol(result.protocol);
@@ -294,7 +305,7 @@ export function Learn({
     setConfirmed(false);
   }
   return (
-    <div className="teach-flow">
+    <div className={`teach-flow${busy ? ' is-processing' : ''}`}>
       <ol className="teach-progress" aria-label="Teaching progress">
         {['Show the right way', 'Check the steps', 'Try a new recording'].map((title, index) => (
           <li key={title} aria-current={stage === index + 1 ? 'step' : undefined}>
@@ -303,6 +314,7 @@ export function Learn({
           </li>
         ))}
       </ol>
+      {busy && <AnalysisProgress message={busy} progress={progress} />}
       <section className="panel teach-stage" aria-label="Show the right way">
         <div className="section-heading">
           <h2>1 Show the right way</h2>
@@ -614,15 +626,6 @@ export function Learn({
               : 'Open Check from the sidebar to continue.'}
           </p>
         </section>
-      )}
-      {busy && (
-        <div className="notice" role="status">
-          <p>{busy}</p>
-          <p className="field-help">
-            Processing on the server. The current internal stage and completion time are not
-            available.
-          </p>
-        </div>
       )}
       <ErrorNotice error={error} />
     </div>

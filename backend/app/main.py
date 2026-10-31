@@ -28,6 +28,7 @@ from app.cloud import CloudJobs
 from app.config import Settings
 from app.learn.boundaries import validate_step_ranges
 from app.learn.validate import StepRange
+from app.progress import with_progress
 from app.replay_cache import atomic_json
 from app.sample_access import SampleRateLimiter, is_public_sample
 from app.samples import SAMPLES, sample_run
@@ -186,7 +187,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "status": "error",
                     "error": "The worker restarted before this job finished. Re-upload the recording to retry.",
                 }
-            return row["result"]
+            result = row["result"]
+            if active and re.fullmatch(r"[a-f0-9]{32}", job):
+                return with_progress(result, config.data_dir / "jobs" / job)
+            return result
         finally:
             db.close()
 
@@ -302,7 +306,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def get_protocol(job: str, request: Request) -> Any:
         if config.cloud_jobs:
             return cloud_status(request, job)
-        return read(job_folder(job, request) / "status.json")
+        folder = job_folder(job, request)
+        return with_progress(read(folder / "status.json"), folder)
 
     @app.post("/api/protocols/{job}/validate", status_code=202)
     async def validate(
@@ -363,7 +368,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ensure_sample(job)
         if config.cloud_jobs and not job.startswith("sample-"):
             return cloud_status(request, job)
-        return read(job_folder(job, request) / "run.json")
+        folder = job_folder(job, request)
+        return with_progress(read(folder / "run.json"), folder)
 
     @app.get("/api/runs/{job}/report", response_class=HTMLResponse)
     def report(job: str, request: Request) -> str:

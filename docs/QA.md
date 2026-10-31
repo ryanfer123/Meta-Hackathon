@@ -28,3 +28,7 @@ Signed-in Teach → Check → My runs → Results was exercised with a licensed 
 ## Evidence-specific uncertainty and advisory presentation — October 31, 2026
 
 Offline tests cover missing evidence, blocked predecessors, vacuous completion conditions, step-only prompts, timestamped measurements, bounded temporal frame selection and escaped/collapsed HTML opinions. Desktop/mobile replay tests verify that model prose starts collapsed, opens on request and is labelled advisory. Historical hashes and decisions are retained; no new provider accuracy claim or paid probe is included.
+
+## Bounded image concurrency and progress — October 31, 2026
+
+Mocked transports compare serial/parallel masks and ordering, bound admitted work, retain per-request logs and refuse excess reservations before transport. Local and mocked hosted status tests check private progress and peer refusal. Desktop/mobile tests cover measured progress, stage changes, stale estimates and replacement of inactive form controls. The small paid one-frame control is separately documented in API notes; it is not an end-to-end benchmark.

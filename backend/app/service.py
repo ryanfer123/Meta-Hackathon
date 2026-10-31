@@ -17,6 +17,7 @@ from app.learn.frames import extract_audio, file_hash, keyframes, sample
 from app.learn.transcribe import transcribe
 from app.learn.validate import StepRange, replay, validate_protocol
 from app.meta_client import MetaClient
+from app.progress import JobProgress
 from app.replay_cache import atomic_json
 from app.samples import wire_frame
 from app.schemas import Opinion, Protocol, TranscriptTurn
@@ -45,6 +46,8 @@ def process_learn(
 ) -> None:
     folder = settings.data_dir / "jobs" / job
     client = MetaClient(settings, job)
+    progress = JobProgress(folder)
+    progress.update("Preparing your teaching video")
     try:
         video = folder / "original.mp4"
         if len(narration_text) > 4000:
@@ -54,9 +57,11 @@ def process_learn(
             duration = float(probe_video(video)["duration_s"])
             turns = [TranscriptTurn(start=0, end=duration, text=narration_text.strip())]
         if not turns:
+            progress.update("Reading the narration")
             audio = folder / "audio.wav"
             extract_audio(video, audio)
             turns = transcribe(client, audio)
+        progress.update("Writing the steps")
         protocol = compile_protocol(client, keyframes(frames), turns)
         atomic_json(folder / "protocol.json", protocol.model_dump(by_alias=True))
         atomic_json(folder / "narration.json", [turn.model_dump() for turn in turns])
@@ -173,12 +178,18 @@ def run_recording(
     folder.mkdir(parents=True, exist_ok=True)
     client = MetaClient(settings, job)
     try:
+        progress = JobProgress(folder)
+        progress.update("Preparing your recording")
         paths = sample(video, folder / "frames")
+        client.tracking_progress = lambda done, total, unit: progress.update(
+            "Finding objects in your recording", done, total, unit
+        )
         frames = (
             track_video(client, protocol, video, paths, file_hash(video), color_fallback)
             if settings.sam_mode == "video"
             else track(client, protocol, paths, file_hash(video), color_fallback)
         )
+        progress.update("Checking the observed steps")
         supervisor = replay(protocol, frames)
         recovery = recover_once(
             client, protocol, frames, paths, supervisor.events, file_hash(video)
@@ -206,6 +217,9 @@ def run_recording(
             api_only=not bool(settings.glimmer_base_url),
             open_tier_label=settings.open_tier_label,
         )
+        review_total = sum(e.kind in ("step_completed", "uncertain") for e in supervisor.events)
+        reviewed = 0
+        progress.update("Reviewing uncertain and completed steps", 0, review_total, "step reviews")
         events = []
         for event in supervisor.events:
             events.append(event)
@@ -248,6 +262,10 @@ def run_recording(
             prompt = review_prompt(step, event, frames, [t for t, _ in selected])
             events.extend(
                 verifier.review(event, prompt, review_crops, shadow=event.kind == "step_completed")
+            )
+            reviewed += 1
+            progress.update(
+                "Reviewing uncertain and completed steps", reviewed, review_total, "step reviews"
             )
             if fail_on_budget_exhaustion and budget_blocked:
                 raise budget_blocked[-1]
@@ -308,6 +326,8 @@ def process_validation(
     folder = settings.data_dir / "jobs" / job
     client = MetaClient(settings, job + "-validation")
     try:
+        progress = JobProgress(folder)
+        progress.update("Preparing both videos")
         protocol = Protocol.model_validate_json((folder / "protocol.json").read_text())
         a_hash, b_hash = file_hash(folder / "original.mp4"), file_hash(folder / "heldout.mp4")
         if a_hash == b_hash:
@@ -317,12 +337,22 @@ def process_validation(
         validate_step_ranges(protocol, ranges, duration)
         a_paths = sample(folder / "original.mp4", folder / "frames")
         b_paths = sample(folder / "heldout.mp4", folder / "heldout-frames")
+        client.tracking_progress = lambda done, total, unit: progress.update(
+            "Finding objects in the teaching video", done, total, unit
+        )
         if settings.sam_mode == "video":
             a = track_video(client, protocol, folder / "original.mp4", a_paths, a_hash)
+            client.tracking_progress = lambda done, total, unit: progress.update(
+                "Finding objects in the second video", done, total, unit
+            )
             b = track_video(client, protocol, folder / "heldout.mp4", b_paths, b_hash)
         else:
             a = track(client, protocol, a_paths, a_hash)
+            client.tracking_progress = lambda done, total, unit: progress.update(
+                "Finding objects in the second video", done, total, unit
+            )
             b = track(client, protocol, b_paths, b_hash)
+        progress.update("Testing the steps and deliberate mistakes")
         result = validate_protocol(protocol, a, b, ranges)
         history: list[dict[str, object]] = [
             {
@@ -340,6 +370,9 @@ def process_validation(
             if not failed:
                 break
             changed: list[str] = []
+            repair_stage = f"Improving unclear steps (round {round_idx})"
+            progress.update(repair_stage, 0, len(failed), "steps")
+            repaired_count = 0
             for i, step in enumerate(protocol.steps):
                 if step.id not in failed:
                     continue
@@ -349,6 +382,8 @@ def process_validation(
                 if fixed != step:
                     changed.append(step.id)
                     protocol.steps[i] = fixed
+                repaired_count += 1
+                progress.update(repair_stage, repaired_count, len(failed), "steps")
             if changed:
                 protocol = Protocol.model_validate(protocol.model_dump(by_alias=True))
                 result = validate_protocol(protocol, a, b, ranges)

@@ -1,5 +1,7 @@
 import re
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Lock
 
 import cv2
 import httpx
@@ -55,24 +57,38 @@ def track(
     color_fallback: bool = False,
 ) -> list[FrameState]:
     states: list[FrameState] = []
+    callback = getattr(client, "tracking_progress", None)
+    if callback:
+        callback(0, len(frames), "frames")
     for idx, (t, path) in enumerate(frames):
         image = cv2.imread(str(path))
         if image is None:
             raise ValueError("Cannot decode sampled frame")
         h, w = image.shape[:2]
         objects: dict[str, Detection | None] = {}
-        for obj in protocol.objects:
+        prompt_locks = {obj.sam_prompt: Lock() for obj in protocol.objects}
+
+        def detect(obj: ObjectSpec) -> tuple[str, Detection | None]:
             if color_fallback and obj.hsv_lower is not None:
-                objects[obj.name] = segment_color(image.astype(np.uint8), obj)
-                continue
-            candidates = decode(client.segment(path, obj.sam_prompt, video_hash, idx), w, h)
+                return obj.name, segment_color(image.astype(np.uint8), obj)
+            # Preserve the existing cache's single call per repeated frame/prompt key.
+            with prompt_locks[obj.sam_prompt]:
+                candidates = decode(client.segment(path, obj.sam_prompt, video_hash, idx), w, h)
             if len(candidates) == 1:
                 d = candidates[0]
-                objects[obj.name] = Detection(d.mask, d.score, obj.obj_class)
-            else:
-                # Image-keyframe identity is unsafe for identical candidates. Require distinct props.
-                objects[obj.name] = None
+                return obj.name, Detection(d.mask, d.score, obj.obj_class)
+            # Image-keyframe identity is unsafe for identical candidates. Require distinct props.
+            return obj.name, None
+
+        workers = getattr(client.settings, "sam_image_workers", 1)
+        # Batches bound both in-flight work and the calls already admitted if one fails.
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for offset in range(0, len(protocol.objects), workers):
+                batch = protocol.objects[offset : offset + workers]
+                objects.update(pool.map(detect, batch))
         states.append(FrameState(t, objects, w, h, str(path), complete=False))
+        if callback:
+            callback(idx + 1, len(frames), "frames")
     return states
 
 
@@ -200,7 +216,10 @@ def track_video(
         return track(client, protocol, frames, video_hash, color_fallback)
     if prepared.source_sha256 != video_hash:
         raise ValueError("Prepared SAM video does not match recording hash")
-    for prompt, objects in groups.items():
+    callback = getattr(client, "tracking_progress", None)
+    if callback:
+        callback(0, len(groups), "object prompts")
+    for group_index, (prompt, objects) in enumerate(groups.items()):
         if len(objects) > 16:
             client.tracking_notice(
                 "native_video_unknown",
@@ -237,4 +256,6 @@ def track_video(
         if not parsed.valid:
             client.tracking_notice("native_video_unknown", parsed.reason)
         _map_native_group(parsed, objects, prepared, states)
+        if callback:
+            callback(group_index + 1, len(groups), "object prompts")
     return states
