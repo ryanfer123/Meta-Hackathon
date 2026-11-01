@@ -5,18 +5,26 @@ import { AuthDialog } from './components/AuthDialog';
 import { Brand } from './components/Brand';
 import { scenarios } from './types';
 import { HomePage } from './pages/HomePage';
+import { ThemeProvider } from './hooks/ThemeContext';
+import { ThemeToggle } from './components/ThemeToggle';
+import { motionTokens } from './lib/motion-tokens';
 const loadMotion = () => import('./motionFeatures').then((module) => module.default);
 const Workspace = lazy(() => import('./pages/Workspace'));
 
 export function App() {
   return (
-    <LazyMotion features={loadMotion} strict>
-      <MotionConfig reducedMotion="user" transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
-        <AccountProvider>
-          <Routes />
-        </AccountProvider>
-      </MotionConfig>
-    </LazyMotion>
+    <ThemeProvider>
+      <LazyMotion features={loadMotion} strict>
+        <MotionConfig
+          reducedMotion="user"
+          transition={{ duration: motionTokens.duration.normal, ease: motionTokens.easing.smooth }}
+        >
+          <AccountProvider>
+            <Routes />
+          </AccountProvider>
+        </MotionConfig>
+      </LazyMotion>
+    </ThemeProvider>
   );
 }
 function Routes() {
@@ -67,7 +75,10 @@ function Routes() {
           <a href="#" aria-label="Apprentice home">
             <Brand />
           </a>
-          <a href="#">Back to home</a>
+          <div className="auth-header-actions">
+            <ThemeToggle compact />
+            <a href="#">Back to home</a>
+          </div>
         </header>
         <main>
           <div className="auth-story">

@@ -1,6 +1,6 @@
 .analysis-progress {
-  background: #fff;
-  border: 1px solid #d9e2ef;
+  background: var(--panel);
+  border: 1px solid var(--line);
   border-radius: 16px;
   padding: clamp(22px, 4vw, 40px);
   box-shadow: 0 8px 30px #17345406;
@@ -14,8 +14,8 @@
   align-items: center;
 }
 .analysis-icon {
-  background: #edf2ff;
-  color: #103490;
+  background: var(--surface-raised);
+  color: var(--accent);
   border-radius: 12px;
   display: grid;
   place-items: center;
@@ -28,7 +28,7 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 600;
-  color: #5c7290;
+  color: var(--muted);
   margin: 0 0 6px;
 }
 .analysis-heading h2 {
@@ -41,7 +41,7 @@
   align-items: center;
   gap: 7px;
   margin-left: auto;
-  color: #36575d;
+  color: var(--success);
   font-size: 13px;
   white-space: nowrap;
 }
@@ -49,7 +49,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #28695a;
+  background: var(--success);
 }
 .analysis-meter {
   margin: 32px 0 26px;
@@ -58,12 +58,12 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  color: #57708b;
+  color: var(--muted);
   font-size: 14px;
   margin-bottom: 12px;
 }
 .analysis-count strong {
-  color: #103490;
+  color: var(--accent);
 }
 .analysis-meter progress {
   appearance: none;
@@ -72,14 +72,14 @@
   border: none;
   border-radius: 8px;
   overflow: hidden;
-  background: #e8edf5;
-  accent-color: #103490;
+  background: var(--surface-raised);
+  accent-color: var(--accent);
 }
 .analysis-meter progress::-webkit-progress-bar {
-  background: #e8edf5;
+  background: var(--surface-raised);
 }
 .analysis-meter progress::-webkit-progress-value {
-  background: #103490;
+  background: var(--accent);
   border-radius: 8px;
 }
 .analysis-meter progress:indeterminate {
@@ -88,26 +88,26 @@
 .analysis-facts {
   display: grid;
   grid-template-columns: 1fr 2fr;
-  border-top: 1px solid #e5eaf2;
+  border-top: 1px solid var(--line);
   padding-top: 22px;
   gap: 24px;
 }
 .analysis-facts > div {
   display: flex;
   gap: 10px;
-  color: #5c7290;
+  color: var(--muted);
   font-size: 13px;
 }
 .analysis-facts strong {
   display: block;
-  color: #19344c;
+  color: var(--ink);
   font-size: 18px;
   font-weight: 600;
   margin-top: 5px;
 }
 .analysis-explainer {
   font-size: 13px;
-  color: #647a91;
+  color: var(--muted);
   line-height: 1.6;
   margin: 22px 0;
 }
@@ -116,9 +116,9 @@
   align-items: flex-start;
   gap: 8px;
   padding: 16px;
-  background: #f3f6fa;
+  background: var(--surface-raised);
   border-radius: 8px;
-  color: #4d6880;
+  color: var(--muted);
   font-size: 13px;
 }
 .teach-flow.is-processing > .teach-stage {

@@ -4,19 +4,13 @@
 @import '@fontsource/jost/latin-700.css';
 @import './styles/home.css';
 @import './styles/workspace.css';
+@import './styles/themes.css';
 
 :root {
   font-family: 'Jost', sans-serif;
   font-synthesis: none;
-  color: #17283b;
-  background: #f5f7fa;
-  --sand: #eef3f8;
-  --sand-deep: #dce6f1;
-  --blue: #143f8f;
-  --ink: #17283b;
-  --muted: #627184;
-  --surface: #f3f5f7;
-  --coral: #c84035;
+  color: var(--ink);
+  background: var(--surface);
 }
 * {
   box-sizing: border-box;
@@ -62,7 +56,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid #2e60d5;
+  outline: 3px solid var(--focus);
 }
 h1,
 h2,
@@ -100,7 +94,7 @@ svg {
   top: -100px;
   left: 20px;
   padding: 12px 20px;
-  background: #143f8f;
+  background: var(--accent);
   color: white;
   z-index: 100;
 }
@@ -126,10 +120,10 @@ svg {
   gap: 9px;
   min-height: 42px;
   padding: 10px 17px;
-  border: 1px solid #dce2e8;
+  border: 1px solid var(--line);
   border-radius: 5px;
-  color: #253951;
-  background: #fff;
+  color: var(--ink);
+  background: var(--panel);
   font-size: 14px;
   font-weight: 500;
   line-height: 1.3;
@@ -139,23 +133,23 @@ svg {
   white-space: nowrap;
 }
 .button:hover:not(:disabled) {
-  background: #edf2fb;
+  background: var(--surface-raised);
 }
 .button:active:not(:disabled) {
   transform: translateY(1px);
 }
 .button.primary {
-  background: #143f8f;
-  border-color: #143f8f;
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--panel);
 }
 .button.primary:hover:not(:disabled) {
-  background: #1647ac;
+  background: var(--accent-hover);
 }
 .button.danger {
   color: white;
-  background: #b72e29;
-  border-color: #b72e29;
+  background: var(--danger);
+  border-color: var(--danger);
 }
 .full {
   width: 100%;
@@ -173,14 +167,14 @@ svg {
   padding: 0;
   border: 0;
   background: none;
-  color: #234c98;
+  color: var(--accent);
   font-size: 14px;
   font-weight: 500;
   line-height: 1.5;
   text-align: left;
 }
 .text-button:hover {
-  color: #143f8f;
+  color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -197,13 +191,13 @@ svg {
   color: inherit;
 }
 .icon-button:hover {
-  background: #e8edf3;
+  background: var(--surface-raised);
 }
 .spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid #d4ddec;
-  border-top-color: #143f8f;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
   display: inline-block;
   border-radius: 50%;
   flex-shrink: 0;
@@ -220,16 +214,16 @@ svg {
   justify-content: center;
   align-items: center;
   gap: 14px;
-  background: #f3f5f7;
-  color: #17283b;
+  background: var(--surface);
+  color: var(--ink);
 }
 .dialog {
   border: 0;
   border-radius: 10px;
   width: min(520px, calc(100% - 32px));
   padding: 30px;
-  color: #17283b;
-  background: #fff;
+  color: var(--ink);
+  background: var(--panel);
   max-height: 90dvh;
   overflow: auto;
   box-shadow: 0 20px 80px #10223f30;
@@ -252,7 +246,7 @@ svg {
 .dialog-description,
 .provenance-copy p {
   font-size: 16px;
-  color: #5b6d81;
+  color: var(--muted);
   margin-bottom: 18px;
 }
 .auth-form {
@@ -269,10 +263,10 @@ svg {
   display: flex;
   align-items: center;
   gap: 12px;
-  border: 1px solid #d5dfe9;
+  border: 1px solid var(--line);
   border-radius: 5px;
   padding: 0 13px;
-  color: #7a8ca1;
+  color: var(--muted);
 }
 .input-with-icon input {
   border: 0;
@@ -280,13 +274,13 @@ svg {
   width: 100%;
   padding: 13px 0;
   background: transparent;
-  color: #17283b;
+  color: var(--ink);
   min-width: 0;
   font-size: 15px;
 }
 .input-with-icon:focus-within {
-  border-color: #143f8f;
-  outline: 2px solid #dbe7ff;
+  border-color: var(--accent);
+  outline: 2px solid var(--surface-raised);
 }
 .auth-form .button {
   margin-top: 16px;
@@ -299,13 +293,13 @@ svg {
   display: flex;
   margin: 14px auto 0;
   font-weight: 400;
-  color: #66758b;
+  color: var(--muted);
 }
 .notice {
   padding: 14px 16px;
-  background: #edf3fa;
+  background: var(--surface-raised);
   border-radius: 6px;
-  color: #3c5c80;
+  color: var(--muted);
   font-size: 14px;
   line-height: 1.55;
   margin: 14px 0;
@@ -315,9 +309,9 @@ svg {
 }
 .error-message {
   padding: 14px 16px;
-  background: #fff0ee;
+  background: var(--danger-soft);
   border-radius: 6px;
-  color: #a3332d;
+  color: var(--danger);
   font-size: 14px;
   line-height: 1.5;
   margin: 14px 0;
@@ -334,8 +328,8 @@ svg {
   align-items: center;
   gap: 24px;
   padding: 15px 19px;
-  background: #153a34;
-  color: #fff;
+  background: var(--success);
+  color: var(--panel);
   font-size: 15px;
   border-radius: 7px;
   box-shadow: 0 10px 35px #10223f20;
@@ -343,7 +337,7 @@ svg {
   max-width: calc(100% - 32px);
 }
 .toast .icon-button:hover {
-  background: #2e5148;
+  background: var(--success);
 }
 @media (max-width: 600px) {
   .brand {
@@ -418,7 +412,7 @@ svg {
   margin-top: 25px;
 }
 .auth-card {
-  background: #fff;
+  background: var(--panel);
   color: var(--ink);
   padding: 38px;
   border-radius: 10px;

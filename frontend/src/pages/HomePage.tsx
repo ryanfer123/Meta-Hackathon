@@ -1,5 +1,5 @@
 import * as m from 'motion/react-m';
-import { useReducedMotion } from 'motion/react';
+import { useReducedMotion, useScroll, useSpring } from 'motion/react';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -10,6 +10,10 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Brand } from '../components/Brand';
+import { ThemeToggle } from '../components/ThemeToggle';
+import { MotionPreview } from '../components/MotionPreview';
+import { useTheme } from '../hooks/ThemeContext';
+import { motionTokens, springs } from '../lib/motion-tokens';
 
 interface Props {
   onOpen: (scenario?: string, view?: string) => void;
@@ -36,14 +40,36 @@ const steps = [
 ];
 export function HomePage({ onOpen }: Props) {
   const reduced = useReducedMotion();
+  const { theme } = useTheme();
+  const suffix = theme === 'dark' ? '-dark' : '';
+  const { scrollYProgress } = useScroll();
+  const reading = useSpring(scrollYProgress, springs.gentle);
+  const entrance = {
+    hidden: {},
+    visible: { transition: { staggerChildren: motionTokens.stagger } },
+  };
+  const item = {
+    hidden: { opacity: 0, y: reduced ? 0 : motionTokens.distance.md },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: motionTokens.duration.slow, ease: motionTokens.easing.smooth },
+    },
+  };
   const reveal = {
-    initial: reduced ? (false as const) : { opacity: 0, y: 20 },
+    initial: reduced ? (false as const) : { opacity: 0, y: motionTokens.distance.lg },
     whileInView: { opacity: 1, y: 0 },
     viewport: { once: true, amount: 0.15 },
+    transition: { duration: motionTokens.duration.slow, ease: motionTokens.easing.smooth },
   };
   const teach = () => onOpen(undefined, 'Teach');
   return (
     <div className="home-page">
+      <m.div
+        className="page-read-progress"
+        style={{ scaleX: reduced ? scrollYProgress : reading }}
+        aria-hidden="true"
+      />
       <a className="skip-link" href="#home-main">
         Skip to main content
       </a>
@@ -54,8 +80,9 @@ export function HomePage({ onOpen }: Props) {
         <nav aria-label="Main navigation">
           <a href="#how-it-works">How it works</a>
           <a href="#workspace-preview">The workspace</a>
-          <button onClick={() => onOpen()}>
-            Open Apprentice <ArrowUpRight size={17} />
+          <ThemeToggle />
+          <button className="nav-open" aria-label="Open Apprentice" onClick={() => onOpen()}>
+            <span className="nav-open-label">Open Apprentice</span> <ArrowUpRight size={17} />
           </button>
         </nav>
       </header>
@@ -63,44 +90,64 @@ export function HomePage({ onOpen }: Props) {
         <section className="home-hero">
           <m.div
             className="hero-copy"
-            initial={reduced ? false : { opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={reduced ? false : 'hidden'}
+            animate="visible"
+            variants={entrance}
           >
-            <p className="home-eyebrow">Video → procedure → evidence</p>
-            <h1>
-              Show it once.
-              <br />
-              Check each step.
-            </h1>
-            <p>
+            <m.p variants={item} className="home-eyebrow">
+              Video → procedure → evidence
+            </m.p>
+            <m.h1 aria-label="Show it once. Check each step." variants={entrance}>
+              {['Show it once.', 'Check each step.'].map((line) => (
+                <span className="hero-line" key={line}>
+                  <m.span
+                    variants={{
+                      hidden: { y: reduced ? 0 : motionTokens.distance.heroLine, opacity: 0 },
+                      visible: {
+                        y: 0,
+                        opacity: 1,
+                        transition: {
+                          duration: motionTokens.duration.slow,
+                          ease: motionTokens.easing.smooth,
+                        },
+                      },
+                    }}
+                  >
+                    {line}
+                  </m.span>
+                </span>
+              ))}
+            </m.h1>
+            <m.p variants={item}>
               Turn a teaching video into a step-by-step checklist. Check later recordings for missed
               steps, then review the evidence behind each finding.
-            </p>
-            <div className="hero-actions">
-              <button className="home-button" onClick={teach}>
+            </m.p>
+            <m.div variants={item} className="hero-actions">
+              <m.button
+                whileHover={reduced ? undefined : { y: -motionTokens.distance.sm / 2 }}
+                whileTap={reduced ? undefined : { scale: motionTokens.scale.press }}
+                transition={springs.snappy}
+                className="home-button"
+                onClick={teach}
+              >
                 Teach a procedure <ArrowRight size={19} />
-              </button>
+              </m.button>
               <a className="home-secondary" href="#how-it-works">
                 See how it works
               </a>
-            </div>
-            <span className="hero-privacy">
+            </m.div>
+            <m.span variants={item} className="hero-privacy">
               <LockKeyhole size={15} /> Your recordings stay in your private workspace.
-            </span>
+            </m.span>
           </m.div>
-          <m.div
-            className="hero-product"
-            initial={reduced ? false : { opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65 }}
-          >
+          <MotionPreview>
             <div className="product-window-bar">
               <span className="window-dot" />
               <span>Apprentice / Teach</span>
               <span>Workspace</span>
             </div>
             <img
-              src={`${import.meta.env.BASE_URL}images/product-learn.png?v=recordings-20261031`}
+              src={`${import.meta.env.BASE_URL}images/product-learn${suffix}.png?v=themes-20261101`}
               width="1505"
               height="1045"
               alt="Current Apprentice Teach workspace with a teaching-video upload and optional description"
@@ -111,7 +158,7 @@ export function HomePage({ onOpen }: Props) {
               <span>Start with your own recording.</span>
               <ArrowUpRight size={17} />
             </div>
-          </m.div>
+          </MotionPreview>
         </section>
         <section className="home-method" id="how-it-works">
           <div className="home-section-heading">
@@ -125,8 +172,15 @@ export function HomePage({ onOpen }: Props) {
             </m.p>
           </div>
           <div className="method-stages">
-            {steps.map(({ n, title, copy, icon: Icon }) => (
-              <m.article {...reveal} key={n}>
+            {steps.map(({ n, title, copy, icon: Icon }, index) => (
+              <m.article
+                {...reveal}
+                transition={{
+                  ...reveal.transition,
+                  delay: reduced ? 0 : index * motionTokens.stagger,
+                }}
+                key={n}
+              >
                 <div className="method-number">
                   <span>{n}</span>
                   <Icon size={24} />
@@ -157,7 +211,7 @@ export function HomePage({ onOpen }: Props) {
               aria-label="Open Teach"
             >
               <img
-                src={`${import.meta.env.BASE_URL}images/product-learn.png?v=recordings-20261031`}
+                src={`${import.meta.env.BASE_URL}images/product-learn${suffix}.png?v=themes-20261101`}
                 width="1505"
                 height="1045"
                 alt="Current teaching-video upload screen"
@@ -174,7 +228,7 @@ export function HomePage({ onOpen }: Props) {
               aria-label="Open Check"
             >
               <img
-                src={`${import.meta.env.BASE_URL}images/product-check.png?v=recordings-20261031`}
+                src={`${import.meta.env.BASE_URL}images/product-check${suffix}.png?v=themes-20261101`}
                 width="1505"
                 height="1045"
                 alt="Current Check screen guiding users to teach a procedure before checking another recording"

@@ -16,8 +16,15 @@ and review each finding alongside its visible evidence.
 </div>
 
 <a href="https://apprentice-meta.onrender.com">
-  <img src="frontend/public/images/product-home.png?rev=recordings-20261031" alt="Current Apprentice homepage introducing the teaching-video workflow and private workspace" width="100%" />
+  <img src="frontend/public/images/product-home.png?rev=themes-20261101" alt="Current Apprentice homepage introducing the teaching-video workflow and private workspace" width="100%" />
 </a>
+
+Beige is the default. Use the theme switch to choose a near-black workspace; the preference stays in your browser. Motion respects the device's reduced-motion setting.
+
+<details>
+<summary>View dark mode</summary>
+<img src="frontend/public/images/product-home-dark.png?rev=themes-20261101" alt="Current Apprentice homepage in near-black mode with warm beige controls" width="100%" />
+</details>
 
 ## Start with your procedure
 
@@ -33,11 +40,11 @@ Your recordings, checklists and results belong to your account. A new workspace 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="frontend/public/images/product-learn.png?rev=recordings-20261031" alt="Current Teach screen with a teaching-video upload, recording tips and an optional plain-language description" width="100%" />
+      <img src="frontend/public/images/product-learn.png?rev=themes-20261101" alt="Current Teach screen with a teaching-video upload, recording tips and an optional plain-language description" width="100%" />
       <br /><strong>Teach</strong><br />Start with a recording of the right way.
     </td>
     <td width="50%" valign="top">
-      <img src="frontend/public/images/product-check.png?rev=recordings-20261031" alt="Current Check screen guiding a new workspace to teach its first procedure" width="100%" />
+      <img src="frontend/public/images/product-check.png?rev=themes-20261101" alt="Current Check screen guiding a new workspace to teach its first procedure" width="100%" />
       <br /><strong>Check</strong><br />Compare the next take with the reviewed checklist.
     </td>
   </tr>
@@ -153,7 +160,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Latest local verification: **302 Python tests** and **142 desktop/mobile browser checks** passed, together with lint, formatting, strict typing and the production build. The two documentation-capture cases run only with the explicit capture flag. The [Checks workflow](https://github.com/ryanfer123/Meta-Hackathon/actions/workflows/checks.yml) is the source for current CI status. Tests use synthetic masks and mocked transports, not paid provider requests. Diagnostic scripts require an explicit `--allow-paid-calls` opt-in.
+Latest local verification: **302 Python tests** and **149 desktop/mobile browser checks** passed, together with lint, formatting, strict typing and the production build. The two documentation-capture cases run only with the explicit capture flag; pointer tilt is intentionally disabled for touch devices. The [Checks workflow](https://github.com/ryanfer123/Meta-Hackathon/actions/workflows/checks.yml) is the source for current CI status. Tests use synthetic masks and mocked transports, not paid provider requests. Diagnostic scripts require an explicit `--allow-paid-calls` opt-in.
 
 | Area | What is checked |
 | --- | --- |

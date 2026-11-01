@@ -1,5 +1,5 @@
 import * as m from 'motion/react-m';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, useReducedMotion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import {
   BookOpen,
@@ -27,6 +27,8 @@ import { Overview } from './Overview';
 import { CheckRecording, type TaughtProcedure } from './Check';
 import { RunLibrary } from './RunLibrary';
 import { scenarios, type Run, type Health } from '../types';
+import { ThemeToggle } from '../components/ThemeToggle';
+import { motionTokens, springs } from '../lib/motion-tokens';
 
 const navigation = [
   { name: 'Home', view: 'Overview', icon: House },
@@ -73,6 +75,7 @@ function routeParams(view: string, sample?: string) {
   });
 }
 export default function Workspace({ readOnly = false }: { readOnly?: boolean }) {
+  const reduced = useReducedMotion();
   const [sampleMode, setSampleMode] = useState(() =>
     new URLSearchParams(location.hash.split('?')[1]).has('sample'),
   );
@@ -234,6 +237,14 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                 view === target || (target === 'Supervise' && view === 'Audit') ? 'page' : undefined
               }
             >
+              {(view === target || (target === 'Supervise' && view === 'Audit')) && (
+                <m.span
+                  className="nav-indicator"
+                  layoutId={reduced ? undefined : 'workspace-active-view'}
+                  transition={reduced ? { duration: 0 } : springs.snappy}
+                  aria-hidden="true"
+                />
+              )}
               <Icon size={20} />
               {name}
             </button>
@@ -288,6 +299,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
             </span>
           </div>
           <div>
+            <ThemeToggle compact />
             <span className="cloud-status">
               <Cloud size={18} />
               {session ? 'Private workspace' : 'Sample workspace'}
@@ -364,91 +376,102 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
               </button>
             </p>
           )}
-          <m.div
-            key={view}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28 }}
-          >
-            {view === 'Overview' ? (
-              <Overview onView={startOwnView} onSignIn={() => setAuth(true)} signedIn={!!session} />
-            ) : view === 'Check' ? (
-              <CheckRecording
-                procedure={procedure}
-                health={health}
-                readOnly={readOnly}
-                source={source?.kind === 'novice' ? source.file : null}
-                onTeach={() => goView('Learn')}
-                onSample={sampleMode ? () => chooseScenario('skipped-cap') : undefined}
-                onSignIn={() => setAuth(true)}
-                onRun={(result) => {
-                  setRun(result);
-                  setSampleMode(false);
-                  goView('Supervise', false);
-                }}
-              />
-            ) : view === 'Run library' ? (
-              <RunLibrary
-                userId={session?.user.id}
-                onSignIn={() => setAuth(true)}
-                onOpen={(r) => {
-                  setRun(r);
-                  setSampleMode(false);
-                  goView('Supervise', false);
-                }}
-                refreshKey={refreshKey}
-                onUse={(file, kind) => {
-                  if (kind === 'expert') {
-                    setLearnJob(null);
-                    setProcedure(null);
-                  }
-                  setSource({ file, kind });
-                  goView(kind === 'novice' ? 'Check' : 'Learn');
-                }}
-                onResume={(job) => {
-                  if (job.kind === 'run') {
-                    setRun(job.result as unknown as Run);
+          <AnimatePresence mode="wait" initial={false}>
+            <m.div
+              className="workspace-view"
+              key={view}
+              initial={reduced ? false : { opacity: 0, y: motionTokens.distance.sm }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduced ? { opacity: 0 } : { opacity: 0, y: -motionTokens.distance.sm }}
+              transition={{
+                duration: reduced ? motionTokens.duration.fast : motionTokens.duration.normal,
+                ease: motionTokens.easing.smooth,
+              }}
+            >
+              {view === 'Overview' ? (
+                <Overview
+                  onView={startOwnView}
+                  onSignIn={() => setAuth(true)}
+                  signedIn={!!session}
+                />
+              ) : view === 'Check' ? (
+                <CheckRecording
+                  procedure={procedure}
+                  health={health}
+                  readOnly={readOnly}
+                  source={source?.kind === 'novice' ? source.file : null}
+                  onTeach={() => goView('Learn')}
+                  onSample={sampleMode ? () => chooseScenario('skipped-cap') : undefined}
+                  onSignIn={() => setAuth(true)}
+                  onRun={(result) => {
+                    setRun(result);
                     setSampleMode(false);
                     goView('Supervise', false);
-                  } else {
-                    setSource(null);
-                    setLearnJob(job);
-                    goView('Learn');
-                  }
-                }}
-              />
-            ) : !run && !sampleMode && ['Supervise', 'Audit'].includes(view) ? (
-              <section className="workspace-empty">
-                <FileCheck2 size={36} />
-                <h2>Your results will appear here</h2>
-                <p>
-                  Check a recording to see its playback, step findings, and report. You can also
-                  open a saved result from My runs.
-                </p>
-                <button className="button primary" onClick={() => goView('Check')}>
-                  Check a recording <Play size={17} />
-                </button>
-              </section>
-            ) : view === 'Learn' ? null : loading || !run ? (
-              <div className="loading" role="status">
-                <span className="spinner" />
-                Loading the procedure…
-              </div>
-            ) : (
-              <>
-                {['Supervise', 'Audit'].includes(view) && (
-                  <Results
-                    key={run.id}
-                    run={run}
-                    initialTab={view === 'Audit' ? 'Integrity' : 'Replay'}
-                    onTabChange={(tab) => goView(tab === 'Integrity' ? 'Audit' : 'Supervise')}
-                    readOnly={readOnly}
-                    onSignIn={() => setAuth(true)}
-                  />
-                )}
-              </>
-            )}
-          </m.div>
+                  }}
+                />
+              ) : view === 'Run library' ? (
+                <RunLibrary
+                  userId={session?.user.id}
+                  onSignIn={() => setAuth(true)}
+                  onOpen={(r) => {
+                    setRun(r);
+                    setSampleMode(false);
+                    goView('Supervise', false);
+                  }}
+                  refreshKey={refreshKey}
+                  onUse={(file, kind) => {
+                    if (kind === 'expert') {
+                      setLearnJob(null);
+                      setProcedure(null);
+                    }
+                    setSource({ file, kind });
+                    goView(kind === 'novice' ? 'Check' : 'Learn');
+                  }}
+                  onResume={(job) => {
+                    if (job.kind === 'run') {
+                      setRun(job.result as unknown as Run);
+                      setSampleMode(false);
+                      goView('Supervise', false);
+                    } else {
+                      setSource(null);
+                      setLearnJob(job);
+                      goView('Learn');
+                    }
+                  }}
+                />
+              ) : !run && !sampleMode && ['Supervise', 'Audit'].includes(view) ? (
+                <section className="workspace-empty">
+                  <FileCheck2 size={36} />
+                  <h2>Your results will appear here</h2>
+                  <p>
+                    Check a recording to see its playback, step findings, and report. You can also
+                    open a saved result from My runs.
+                  </p>
+                  <button className="button primary" onClick={() => goView('Check')}>
+                    Check a recording <Play size={17} />
+                  </button>
+                </section>
+              ) : view === 'Learn' ? null : loading || !run ? (
+                <div className="loading" role="status">
+                  <span className="spinner" />
+                  Loading the procedure…
+                </div>
+              ) : (
+                <>
+                  {['Supervise', 'Audit'].includes(view) && (
+                    <Results
+                      key={run.id}
+                      run={run}
+                      initialTab={view === 'Audit' ? 'Integrity' : 'Replay'}
+                      onTabChange={(tab) => goView(tab === 'Integrity' ? 'Audit' : 'Supervise')}
+                      readOnly={readOnly}
+                      onSignIn={() => setAuth(true)}
+                    />
+                  )}
+                </>
+              )}
+            </m.div>
+          </AnimatePresence>
           {!loading && (
             <m.div
               hidden={view !== 'Learn'}

@@ -3,7 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f8fafc" />
+    <meta name="theme-color" content="#e6dbc7" />
+    <script>
+      try {
+        document.documentElement.dataset.theme =
+          localStorage.getItem('apprentice-theme') === 'dark' ? 'dark' : 'light';
+      } catch {
+        document.documentElement.dataset.theme = 'light';
+      }
+    </script>
     <meta
       name="description"
       content="Teach a hands-on procedure from a video. Check later recordings, review step findings with visible evidence, and keep your results in a private workspace."

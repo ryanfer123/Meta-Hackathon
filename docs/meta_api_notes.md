@@ -143,3 +143,5 @@ Private status endpoints now expose atomic progress while their worker is active
 ## Presentation revision — October 31, 2026
 
 Normal frontend routes now start with the user's recording workflow; prior animated samples are reachable only through explicit compatibility links. Screenshots show current empty interface states with mocked authentication/configuration, not model output. No provider endpoint, budget, rule threshold or paid-call behavior changed, and no paid calls were made for this revision.
+
+November 1 theme/motion revision is frontend-only. It adds no provider requests, model configuration changes or new model observations; screenshots remain interface captures rather than analysis evidence.

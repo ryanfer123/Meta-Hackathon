@@ -2,8 +2,8 @@
   min-width: 0;
 }
 .results-provenance {
-  background: #edf2fb;
-  color: #183967;
+  background: var(--surface-raised);
+  color: var(--ink);
   padding: 14px 18px;
   border-radius: 8px;
   font-weight: 500;
@@ -16,7 +16,7 @@
 .results-tabs {
   display: flex;
   gap: 6px;
-  border-bottom: 1px solid #d5dde7;
+  border-bottom: 1px solid var(--line);
   margin: 20px 0 24px;
 }
 .results-tabs button {
@@ -24,13 +24,13 @@
   border-bottom: 3px solid transparent;
   background: transparent;
   padding: 12px 20px;
-  color: #53657b;
+  color: var(--muted);
   font: inherit;
   font-weight: 600;
 }
 .results-tabs button[aria-selected='true'] {
-  color: #062b8a;
-  border-color: #062b8a;
+  color: var(--accent);
+  border-color: var(--accent);
 }
 .models-used {
   display: flex;
@@ -41,17 +41,17 @@
   font-size: 14px;
 }
 .result-chip {
-  border: 1px solid #d8e1ed;
+  border: 1px solid var(--line);
   padding: 6px 10px;
   border-radius: 20px;
-  background: #fff;
+  background: var(--panel);
 }
 .why-flagged {
   margin: 16px 16px 10px;
-  border-left: 3px solid #bc4334;
+  border-left: 3px solid var(--danger);
   border-radius: 4px;
   padding: 16px;
-  background: #fff1ed;
+  background: var(--danger-soft);
   line-height: 1.5;
 }
 .why-flagged h3 {
@@ -61,7 +61,7 @@
 }
 .why-flagged > strong {
   display: block;
-  color: #a83b2c;
+  color: var(--danger);
   font-size: 19px;
 }
 .why-flagged p {
@@ -71,14 +71,14 @@
 .why-flagged small {
   display: block;
   margin-top: 10px;
-  color: #59667a;
+  color: var(--muted);
 }
 .results-advanced {
   margin-top: 18px;
 }
 .results-advanced > summary {
   cursor: pointer;
-  color: #324e74;
+  color: var(--ink);
   font-weight: 500;
   padding: 10px 0;
   line-height: 1.5;
@@ -107,17 +107,17 @@
   margin: 20px 0 12px;
 }
 .integrity-verdict.unchanged {
-  color: #1e674d;
+  color: var(--success);
 }
 .integrity-verdict.changed {
-  color: #aa352d;
+  color: var(--danger);
 }
 .integrity-summary .integrity-note {
   font-size: 15px;
-  background: #f1f4f8;
+  background: var(--surface-raised);
   padding: 13px 16px;
   border-radius: 6px;
-  color: #42556d;
+  color: var(--muted);
   margin-top: 16px;
 }
 .integrity-summary .actions {
