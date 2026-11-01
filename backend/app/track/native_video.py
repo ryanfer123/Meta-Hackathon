@@ -12,9 +12,11 @@ from typing import Any
 import cv2
 import numpy as np
 from meta_sam_parser import CompletedOutcome, decode_mask_to_raster, video_segmentation_format
+from pydantic import Field, TypeAdapter
 
 from app.learn.frames import file_hash
 from app.replay_cache import digest
+from app.schemas import StrictModel
 from app.track.geometry import Detection
 
 PROCESSED_FPS = 4
@@ -64,6 +66,50 @@ class ParsedVideo:
     frames: dict[int, dict[str, Detection]]
     valid: bool
     reason: str = ""
+
+
+class CachedNativeMask(StrictModel):
+    frame: int = Field(ge=0)
+    identity: str = Field(min_length=1)
+    score: float = Field(ge=0, le=1)
+    packed_hex: str
+
+
+def pack_video_result(parsed: ParsedVideo) -> list[dict[str, Any]]:
+    """Persist exact bit-packed masks, never inferred or interpolated geometry."""
+    return [
+        CachedNativeMask(
+            frame=index,
+            identity=identity,
+            score=detection.score,
+            packed_hex=detection.packed_mask.hex(),
+        ).model_dump()
+        for index, objects in parsed.frames.items()
+        for identity, detection in objects.items()
+        if detection.packed_mask is not None
+    ]
+
+
+def unpack_video_result(payload: Any, video: PreparedVideo) -> ParsedVideo:
+    records = TypeAdapter(list[CachedNativeMask]).validate_python(payload)
+    frames: dict[int, dict[str, Detection]] = {}
+    area = video.width * video.height
+    for record in records:
+        if record.frame >= video.frame_count or len(record.packed_hex) != 2 * ((area + 7) // 8):
+            raise ValueError("Stored native geometry has invalid timing or mask size")
+        packed = bytes.fromhex(record.packed_hex)
+        if len(packed) != (area + 7) // 8:
+            raise ValueError("Stored native geometry has invalid packed bytes")
+        objects = frames.setdefault(record.frame, {})
+        if record.identity in objects:
+            raise ValueError("Stored native geometry has repeated identities")
+        mask = (
+            np.unpackbits(np.frombuffer(packed, dtype=np.uint8), count=area)
+            .reshape(video.height, video.width)
+            .astype(np.bool_)
+        )
+        objects[record.identity] = Detection(mask, record.score)
+    return ParsedVideo(frames, True)
 
 
 def probe_video(path: Path) -> dict[str, Any]:

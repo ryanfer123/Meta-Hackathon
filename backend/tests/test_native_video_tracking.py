@@ -21,6 +21,7 @@ from app.track.geometry import Detection, FrameState, centroid
 from app.track.native_video import (
     NativeVideoNoMatches,
     NativeVideoTooLarge,
+    ParsedVideo,
     PreparedVideo,
     parse_video_masks,
     prepare_video,
@@ -509,10 +510,16 @@ def test_completed_empty_client_preserves_raw_body_and_requests_fallback_only_wh
         ],
         "usage": {"video_frames_processed": 50},
     }
+    requests = []
+
+    def respond(request):
+        requests.append(request)
+        return httpx.Response(200, json=raw)
+
     client = MetaClient(
         settings(tmp_path),
         "empty-body",
-        httpx.MockTransport(lambda request: httpx.Response(200, json=raw)),
+        httpx.MockTransport(respond),
     )
     try:
         if expect_fallback:
@@ -521,9 +528,13 @@ def test_completed_empty_client_preserves_raw_body_and_requests_fallback_only_wh
             saved = list((tmp_path / "runs/empty-body").glob("*.response.json"))
             assert len(saved) == 1 and json.loads(saved[0].read_text()) == raw
             assert saved[0].stat().st_mode & 0o777 == 0o600
-            assert not list((tmp_path / "cache/sam-video").glob("*.json"))
+            assert len(list((tmp_path / "cache/sam-video").glob("*.json"))) == 1
+            with pytest.raises(NativeVideoNoMatches, match="Cached completed"):
+                client.segment_video(source, "tube", file_hash(source))
+            assert len(requests) == 1
         else:
             client.segment_video(source, "tube", file_hash(source))
+            assert not list((tmp_path / "cache/sam-video").glob("*.json"))
     finally:
         client.close()
 
@@ -559,3 +570,105 @@ def test_observed_photographic_response_has_real_masks_and_explicit_frame_ids(tm
     assert sum(len(objects) for objects in parsed.frames.values()) == 50
     assert set(parsed.frames[0]) & set(parsed.frames[11])
     assert fixture["response"]["usage"]["video_frames_processed"] == 50
+
+
+def test_native_decode_is_shared_by_response_check_and_tracker(tmp_path, monkeypatch):
+    source = tmp_path / "original.mp4"
+    source.write_bytes(b"test-source")
+    video = prepared(tmp_path, file_hash(source))
+    monkeypatch.setattr(meta_client, "prepare_video", lambda *args: video)
+    original = meta_client.parse_video_masks
+    decodes = []
+
+    def counted(text, prepared):
+        decodes.append(text)
+        return original(text, prepared)
+
+    monkeypatch.setattr(meta_client, "parse_video_masks", counted)
+    text = wire({i: [(1, 5)] for i in range(8)})
+    client = MetaClient(
+        settings(tmp_path),
+        "decode-once",
+        httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json={
+                    "status": "completed",
+                    "output": [{"content": [{"type": "output_text", "text": text}]}],
+                    "usage": {"video_frames_processed": 50},
+                },
+            )
+        ),
+    )
+    try:
+        returned = client.segment_video(source, "tube", file_hash(source))
+        first = client.parse_video_result(returned, video)
+        assert first.valid
+        assert len(decodes) == 1
+        assert client.parse_video_result(returned, video) is first
+        other = PreparedVideo(video.path, video.source_sha256, 128, 128, 8, 2, 4)
+        client.parse_video_result(returned, other)
+        assert len(decodes) == 2
+    finally:
+        client.close()
+    assert client._decoded_video is None
+
+
+def test_native_decoded_cache_does_not_retain_more_than_eight_mib(tmp_path, monkeypatch):
+    detection = Detection(np.ones((4096, 4096), dtype=np.bool_), 0.5)
+    parsed = ParsedVideo({0: {i: detection for i in range(5)}}, True)
+    monkeypatch.setattr(meta_client, "parse_video_masks", lambda *_: parsed)
+    client = MetaClient(
+        settings(tmp_path),
+        "large-cache",
+        httpx.MockTransport(lambda request: pytest.fail("no network")),
+    )
+    try:
+        assert client.parse_video_result("large", prepared(tmp_path)) is parsed
+        assert client._decoded_video is None
+    finally:
+        client.close()
+
+
+def test_native_geometry_disk_cache_preserves_masks_without_decoding_again(tmp_path, monkeypatch):
+    source = prepared(tmp_path)
+    text = wire({i: [(1, 5)] for i in range(8)})
+    client = MetaClient(settings(tmp_path), "first-parse")
+    try:
+        first = client.parse_video_result(text, source)
+    finally:
+        client.close()
+    monkeypatch.setattr(
+        meta_client, "parse_video_masks", lambda *_: pytest.fail("must reuse geometry")
+    )
+    client = MetaClient(settings(tmp_path), "second-parse")
+    try:
+        again = client.parse_video_result(text, source)
+        assert again.valid and first.frames.keys() == again.frames.keys()
+        for index, objects in first.frames.items():
+            for identity, detection in objects.items():
+                restored = again.frames[index][identity]
+                assert restored.score == detection.score
+                assert restored.packed_mask == detection.packed_mask
+                assert restored.mask_shape == detection.mask_shape
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize("change", ["timing", "size", "duplicate", "confidence"])
+def test_native_geometry_cache_rejects_invalid_records(tmp_path, change):
+    from app.track.native_video import pack_video_result, unpack_video_result
+
+    video = prepared(tmp_path)
+    parsed = parse_video_masks(wire({0: [(1, 5)]}), video)
+    payload = pack_video_result(parsed)
+    if change == "timing":
+        payload[0]["frame"] = video.frame_count
+    elif change == "size":
+        payload[0]["packed_hex"] = "ff"
+    elif change == "confidence":
+        payload[0]["score"] = 1.5
+    else:
+        payload.append(payload[0])
+    with pytest.raises(ValueError):
+        unpack_video_result(payload, video)

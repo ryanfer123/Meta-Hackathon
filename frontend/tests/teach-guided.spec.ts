@@ -308,13 +308,11 @@ test('processing replaces disabled forms with measured stage progress and an hon
       }),
     }),
   );
-  await page
-    .getByLabel('Teaching video', { exact: true })
-    .setInputFiles({
-      name: 'teaching.mp4',
-      mimeType: 'video/mp4',
-      buffer: Buffer.from('mock-video'),
-    });
+  await page.getByLabel('Teaching video', { exact: true }).setInputFiles({
+    name: 'teaching.mp4',
+    mimeType: 'video/mp4',
+    buffer: Buffer.from('mock-video'),
+  });
   await page.getByRole('button', { name: 'Create the steps' }).click();
   const panel = page.getByRole('region', { name: 'Analysis progress' });
   await expect(panel).toBeVisible();
@@ -331,4 +329,36 @@ test('processing replaces disabled forms with measured stage progress and an hon
   await expect(panel.getByRole('heading')).toHaveText(stage);
   updated = Date.now() / 1000 - 60;
   await expect(panel).toContainText('Waiting for a fresh update');
+});
+
+test('Teach sends the faster tracking choice for both validation videos', async ({ page }) => {
+  await mountTeach(page, true);
+  await page.locator('.teaching-player').evaluate((video) => {
+    Object.defineProperty(video, 'duration', { value: 12, configurable: true });
+    video.dispatchEvent(new Event('loadedmetadata'));
+  });
+  await page
+    .getByLabel('Second video (same procedure, different take)', { exact: true })
+    .setInputFiles({
+      name: 'second.mp4',
+      mimeType: 'video/mp4',
+      buffer: Buffer.from('mock-video'),
+    });
+  await page
+    .getByRole('checkbox', { name: 'I checked every start and end against the teaching video' })
+    .check();
+  const faster = page.getByRole('checkbox', { name: 'Faster video tracking (preview)' });
+  await expect(faster).not.toBeChecked();
+  await faster.check();
+  const request = page.waitForRequest('**/api/protocols/mock-procedure/validate');
+  await page.route('**/api/protocols/mock-procedure/validate', (route) =>
+    route.fulfill({ status: 202, json: {} }),
+  );
+  await page.route('**/api/protocols/mock-procedure', (route) =>
+    route.fulfill({ json: { status: 'ready' } }),
+  );
+  await page.getByRole('button', { name: 'Run the checks', exact: true }).click();
+  expect(
+    (await request).postDataBuffer()?.includes(Buffer.from('name="tracking_mode"\r\n\r\nvideo')),
+  ).toBeTruthy();
 });

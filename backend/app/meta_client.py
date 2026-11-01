@@ -19,8 +19,12 @@ from app.track.native_video import (
     TRANSCODE_SETTINGS,
     NativeVideoNoMatches,
     NativeVideoTooLarge,
+    ParsedVideo,
+    PreparedVideo,
+    pack_video_result,
     parse_video_masks,
     prepare_video,
+    unpack_video_result,
 )
 
 # A conservative local cap on serialized inline requests; provider docs instead
@@ -52,6 +56,7 @@ class MetaClient:
     ) -> None:
         self.settings, self.run_id = settings, run_id
         self.tracking_progress: Callable[[int, int, str], None] | None = None
+        self._decoded_video: tuple[str, PreparedVideo, ParsedVideo] | None = None
         self.log_lock = Lock()
         self.budget = Budget(settings)
         self.cache = ReplayCache(settings.data_dir / "cache")
@@ -63,7 +68,53 @@ class MetaClient:
         )
 
     def close(self) -> None:
+        self._decoded_video = None
         self.http.close()
+
+    def parse_video_result(self, text: str, prepared: PreparedVideo) -> ParsedVideo:
+        """Share one decoded concept between response checks and identity mapping.
+
+        Keep at most 8 MiB of packed masks, scoped to this job's client. The
+        tracker reads these immutable detections; it never edits the parsed maps.
+        """
+        key = digest(
+            [
+                "native-geometry-v1",
+                digest(text),
+                prepared.source_sha256,
+                prepared.width,
+                prepared.height,
+                prepared.frame_count,
+                prepared.fps,
+                prepared.duration_s,
+            ]
+        )
+        if self._decoded_video is not None:
+            old_key, old_prepared, parsed = self._decoded_video
+            if old_key == key and old_prepared == prepared:
+                return parsed
+        self._decoded_video = None
+        cached = self.cache.get("sam-video-geometry", key)
+        parsed = (
+            unpack_video_result(cached["payload"], prepared)
+            if cached is not None
+            else parse_video_masks(text, prepared)
+        )
+        stored = sum(
+            len(detection.packed_mask or b"")
+            for objects in parsed.frames.values()
+            for detection in objects.values()
+        )
+        if stored <= 8 * 1024 * 1024:
+            self._decoded_video = (key, prepared, parsed)
+            if cached is None and parsed.valid:
+                self.cache.put(
+                    "sam-video-geometry",
+                    key,
+                    pack_video_result(parsed),
+                    "derived-from-validated-native-sam-masks",
+                )
+        return parsed
 
     def call(
         self,
@@ -237,7 +288,7 @@ class MetaClient:
         cached = self.cache.get("sam-video", key)
         if cached is not None:
             text = str(cached["payload"])
-            parsed = parse_video_masks(text, prepared)
+            parsed = self.parse_video_result(text, prepared)
             if parsed.valid and not any(parsed.frames.values()):
                 raise NativeVideoNoMatches("Cached completed video has zero masks")
             return text
@@ -278,9 +329,12 @@ class MetaClient:
             )
             return ""
         text = response_text(raw)
-        parsed = parse_video_masks(text, prepared)
+        parsed = self.parse_video_result(text, prepared)
         if parsed.valid and not any(parsed.frames.values()):
             self.save_raw_response(raw, "sam-video-zero-" + key[:16])
+            # Cache the completed negative outcome, not mask evidence. On reuse the
+            # branch above raises the same fallback signal without paying again.
+            self.cache.put("sam-video", key, text, "live-meta-sam-3.1-video-no-matches")
             raise NativeVideoNoMatches(
                 "Completed video has zero masks; raw response retained privately"
             )

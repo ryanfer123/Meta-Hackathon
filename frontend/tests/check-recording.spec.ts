@@ -42,12 +42,18 @@ test('Check explains its prerequisite without an upload', async ({ page }) => {
   await expect(page.locator('.check-page input[type=file]')).toHaveCount(0);
 });
 
-test('Check exposes a disabled reason and uses the shared upload/poll path', async ({ page }) => {
+test('Check exposes a disabled reason and sends the per-run faster tracking choice', async ({
+  page,
+}) => {
   let uploaded = false;
   await page.route('**/api/runs', (route) => {
     uploaded =
       route.request().method() === 'POST' &&
-      !!route.request().postDataBuffer()?.includes(Buffer.from('mock-procedure'));
+      !!route.request().postDataBuffer()?.includes(Buffer.from('mock-procedure')) &&
+      !!route
+        .request()
+        .postDataBuffer()
+        ?.includes(Buffer.from('name="tracking_mode"\r\n\r\nvideo'));
     return route.fulfill({ json: { run_id: 'mock-run' } });
   });
   await page.route('**/api/runs/mock-run', (route) => route.fulfill({ json: { status: 'ready' } }));
@@ -55,6 +61,10 @@ test('Check exposes a disabled reason and uses the shared upload/poll path', asy
   const button = target.getByRole('button', { name: 'Check this recording' });
   await expect(button).toBeDisabled();
   await expect(button).toHaveAccessibleDescription('Add a recording to continue.');
+  const faster = target.getByRole('checkbox', { name: 'Faster video tracking (preview)' });
+  await expect(faster).not.toBeChecked();
+  await expect(faster).toHaveAccessibleDescription(/same spending limit/);
+  await faster.check();
   await target.getByLabel('New recording', { exact: true }).setInputFiles({
     name: 'new.mp4',
     mimeType: 'video/mp4',
@@ -62,6 +72,11 @@ test('Check exposes a disabled reason and uses the shared upload/poll path', asy
   });
   await button.click();
   await expect(target).toHaveAttribute('data-finished', 'yes');
+  await expect(faster).toBeChecked();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBeFalsy();
+  await page.screenshot({
+    path: `/tmp/apprentice-tracking-choice-${test.info().project.name}.png`,
+  });
   expect(uploaded).toBeTruthy();
 });
 

@@ -69,3 +69,7 @@ SAM usage reports billed frames, with a minimum 50/request, not an actual output
 ## Open-model reservation guard
 
 Every configured open-tier request reserves $0.05 before network I/O, including schema retries, through the same `Budget` ledger as Meta calls. Hosted reservations use routing kind `glimmer`, independent of the displayed provider label; they share the job/day cost caps and retain failed-attempt reservations. The reservation is a refusal threshold, not a provider pricing claim.
+
+### Bounded native decoding reuse
+
+A job client shares the last decoded native concept between response validation and identity mapping. The cache keeps at most 8 MiB of packed masks, checks the response digest and complete prepared-video metadata, discards the previous concept on a miss and clears on close. Larger results are decoded normally without retention. Parser-valid concepts within that bound are also stored as checksum-verified packed geometry under `cache/sam-video-geometry/`, keyed by the exact response digest, source hash and prepared timing/dimensions. Repeated checks reconstruct the exact bits with NumPy instead of running the Python mask codec again; cache records are strictly validated, and invalid geometry fails closed. This avoids redundant rasterization without changing mask coordinates, confidence or identity policy. Completed zero-mask native outcomes are separately cached as fallback signals; incomplete/malformed responses remain uncached.

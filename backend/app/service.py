@@ -274,6 +274,7 @@ def run_recording(
             "name": "Uploaded recording",
             "status": "ready",
             "provenance": "live-recording",
+            "tracking_mode": settings.sam_mode,
             "video_sha256": file_hash(video),
             "protocol": protocol.model_dump(by_alias=True),
             "frames": [wire_frame(f) for f in frames],
@@ -403,6 +404,7 @@ def process_validation(
         result["repair_history"] = history
         result["compile_video_sha256"] = a_hash
         result["held_out_video_sha256"] = b_hash
+        result["tracking_mode"] = settings.sam_mode
         atomic_json(folder / "self_check.json", result)
         atomic_json(folder / "protocol.json", protocol.model_dump(by_alias=True))
         atomic_json(

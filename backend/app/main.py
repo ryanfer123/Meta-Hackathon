@@ -6,7 +6,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import (
     BackgroundTasks,
@@ -106,9 +106,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     def execute_job(
-        request: Request, job: str, kind: str, operation: Callable[..., None], *args: Any
+        request: Request,
+        job: str,
+        kind: str,
+        operation: Callable[..., None],
+        *args: Any,
+        tracking_mode: Literal["image", "video"] | None = None,
     ) -> None:
         settings = job_settings(request)
+        if tracking_mode is not None:
+            settings = settings.model_copy(update={"sam_mode": tracking_mode})
         try:
             operation(settings, job, *args)
             if config.cloud_jobs:
@@ -318,6 +325,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ranges: Annotated[str, Form()],
         repair: Annotated[bool, Form()] = False,
         ranges_confirmed: Annotated[bool, Form()] = False,
+        tracking_mode: Annotated[Literal["image", "video"] | None, Form()] = None,
     ) -> dict[str, str]:
         live()
         folder = job_folder(job, request)
@@ -343,7 +351,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         await save_job_upload(request, job, "learn", heldout, folder / "heldout.mp4", existing=True)
         atomic_json(folder / "status.json", {"id": job, "status": "validating"})
-        tasks.add_task(execute_job, request, job, "learn", process_validation, parsed, repair)
+        tasks.add_task(
+            execute_job,
+            request,
+            job,
+            "learn",
+            process_validation,
+            parsed,
+            repair,
+            tracking_mode=tracking_mode,
+        )
         return {"protocol_id": job, "status": "validating"}
 
     @app.post("/api/runs", status_code=202)
@@ -353,6 +370,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         video: Annotated[UploadFile, File()],
         protocol_id: Annotated[str, Form()],
         color_fallback: Annotated[bool, Form()] = False,
+        tracking_mode: Annotated[Literal["image", "video"] | None, Form()] = None,
     ) -> dict[str, str]:
         live()
         protocol = Protocol.model_validate(read(job_folder(protocol_id, request) / "protocol.json"))
@@ -360,7 +378,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         folder = job_folder(job, request, create=True)
         await save_job_upload(request, job, "run", video, folder / "original.mp4")
         atomic_json(folder / "run.json", {"id": job, "status": "processing"})
-        tasks.add_task(execute_job, request, job, "run", process_run, protocol, color_fallback)
+        tasks.add_task(
+            execute_job,
+            request,
+            job,
+            "run",
+            process_run,
+            protocol,
+            color_fallback,
+            tracking_mode=tracking_mode,
+        )
         return {"run_id": job, "status": "processing"}
 
     @app.get("/api/runs/{job}")

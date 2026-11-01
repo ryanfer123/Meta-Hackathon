@@ -268,7 +268,10 @@ def track_video(
             for state, source in zip(states, fallback, strict=True):
                 state.objects.update(source.objects)
             continue
-        parsed = parse_video_masks(text, prepared)
+        # The API adapter already decoded this concept to validate the response.
+        # Reuse its bounded per-client result instead of rasterizing every mask twice.
+        parse = getattr(client, "parse_video_result", parse_video_masks)
+        parsed = parse(text, prepared)
         if not parsed.valid:
             client.tracking_notice("native_video_unknown", parsed.reason)
         _map_native_group(parsed, objects, prepared, states)

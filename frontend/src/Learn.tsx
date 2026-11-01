@@ -7,6 +7,7 @@ import type { Health, Protocol, Run, Validation } from './types';
 import './styles/teach.css';
 import { ErrorNotice } from './components/ErrorNotice';
 import { AnalysisProgress, type JobProgress } from './components/AnalysisProgress';
+import { TrackingChoice, type TrackingMode } from './components/TrackingChoice';
 
 const checks: [string, string, string][] = [
   [
@@ -81,6 +82,7 @@ export function Learn({
   const [progress, setProgress] = useState<JobProgress>();
   const [error, setError] = useState<unknown>(null);
   const [repair, setRepair] = useState(false);
+  const [trackingMode, setTrackingMode] = useState<TrackingMode>('image');
   const player = useRef<HTMLVideoElement>(null);
   const taskGeneration = useRef(0);
 
@@ -270,6 +272,7 @@ export function Learn({
       form.set('ranges', JSON.stringify(ranges));
       form.set('ranges_confirmed', String(confirmed));
       form.set('repair', String(repair));
+      form.set('tracking_mode', trackingMode);
       await json(`/api/protocols/${id}/validate`, { method: 'POST', body: form });
       if (generation !== taskGeneration.current) return;
       const result = await poll<ProtocolStatus>(`/api/protocols/${id}`, (update) => {
@@ -543,6 +546,11 @@ export function Learn({
                     label="Second video (same procedure, different take)"
                     file={second}
                     onFile={replaceSecond}
+                    disabled={!!busy}
+                  />
+                  <TrackingChoice
+                    value={trackingMode}
+                    onChange={setTrackingMode}
                     disabled={!!busy}
                   />
                   <button

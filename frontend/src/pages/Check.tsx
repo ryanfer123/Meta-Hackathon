@@ -4,6 +4,7 @@ import { json } from '../api';
 import { pollJob } from '../lib/analysis';
 import { ErrorNotice } from '../components/ErrorNotice';
 import { AnalysisProgress, type JobProgress } from '../components/AnalysisProgress';
+import { TrackingChoice, type TrackingMode } from '../components/TrackingChoice';
 import type { Health, Protocol, Run } from '../types';
 export type TaughtProcedure = { id: string; protocol: Protocol };
 interface Props {
@@ -30,6 +31,7 @@ export function CheckRecording({
   const [busy, setBusy] = useState('');
   const [progress, setProgress] = useState<JobProgress>();
   const [error, setError] = useState<unknown>('');
+  const [trackingMode, setTrackingMode] = useState<TrackingMode>('image');
   useEffect(() => {
     if (source) setFile(source);
   }, [source]);
@@ -83,6 +85,7 @@ export function CheckRecording({
       const form = new FormData();
       form.set('video', file);
       form.set('protocol_id', procedure.id);
+      form.set('tracking_mode', trackingMode);
       const started = await json<{ run_id: string }>('/api/runs', { method: 'POST', body: form });
       setBusy('Checking the objects and steps…');
       const result = await pollJob<
@@ -121,6 +124,9 @@ export function CheckRecording({
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </label>
+      )}
+      {!readOnly && (
+        <TrackingChoice value={trackingMode} onChange={setTrackingMode} disabled={!!busy} />
       )}
       <button
         className="button primary"
