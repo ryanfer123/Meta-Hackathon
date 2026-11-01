@@ -8,6 +8,7 @@ import httpx
 import numpy as np
 from meta_sam_parser import CompletedOutcome, decode_mask_to_raster, image_segmentation_format
 
+from app.budget import BudgetExceeded
 from app.meta_client import MetaClient
 from app.schemas import ObjectSpec, Protocol
 from app.track.fallback_color import segment_color
@@ -85,7 +86,22 @@ def track(
         with ThreadPoolExecutor(max_workers=workers) as pool:
             for offset in range(0, len(protocol.objects), workers):
                 batch = protocol.objects[offset : offset + workers]
-                objects.update(pool.map(detect, batch))
+                futures = [pool.submit(detect, obj) for obj in batch]
+                results: list[tuple[str, Detection | None]] = []
+                failures: list[Exception] = []
+                for future in futures:
+                    try:
+                        results.append(future.result())
+                    except Exception as exc:
+                        failures.append(exc)
+                if failures:
+                    # A refused sibling reservation must not hide a real provider/parser
+                    # failure merely because threads reserved in a different order.
+                    raise next(
+                        (exc for exc in failures if not isinstance(exc, BudgetExceeded)),
+                        failures[0],
+                    )
+                objects.update(results)
         states.append(FrameState(t, objects, w, h, str(path), complete=False))
         if callback:
             callback(idx + 1, len(frames), "frames")

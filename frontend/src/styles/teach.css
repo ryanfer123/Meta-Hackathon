@@ -178,3 +178,22 @@
     grid-template-columns: 1fr;
   }
 }
+.recording-tips {
+  margin: 16px 0 22px;
+  font-size: 14px;
+  color: #617c95;
+}
+.recording-tips summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+.recording-tips p {
+  line-height: 1.7;
+  margin-top: 12px;
+  max-width: 720px;
+}
+.auth-workflow {
+  border-top: 1px solid #d8e2ec;
+  padding-top: 24px;
+  font-size: 16px !important;
+}

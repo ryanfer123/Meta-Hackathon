@@ -95,7 +95,8 @@ test('account saves, reopens and deletes a run; private upload is retained', asy
     'Cloud client not configured in this standalone installation',
   );
   await signin.click();
-  await view(page, 'Results');
+  // Explicit fixture entry: ordinary workspaces no longer auto-populate a run.
+  await page.goto('/#/workspace?view=Supervise&sample=skipped-cap');
   await expect(save).toBeEnabled();
   await save.click();
   await expect(page.locator('.toast')).toContainText('Run saved');
@@ -106,7 +107,7 @@ test('account saves, reopens and deletes a run; private upload is retained', asy
   await view(page, 'Run library');
   await page.getByRole('button', { name: `Delete ${snapshot.name}`, exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Delete run', exact: true }).click();
-  await expect(page.getByText('No runs or recordings yet.', { exact: false })).toBeVisible();
+  await expect(page.getByText('Your workspace is ready.', { exact: false })).toBeVisible();
   await page.getByText('Add a recording', { exact: true }).click();
   await page.getByLabel('Recording file').setInputFiles({
     name: 'expert.mp4',

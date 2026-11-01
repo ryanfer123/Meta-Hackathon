@@ -53,7 +53,7 @@ function initialView() {
     ? 'Audit'
     : (aliases[view] ?? 'Overview');
 }
-function routeParams(view: string, sample: string) {
+function routeParams(view: string, sample?: string) {
   const next =
     view === 'Overview'
       ? 'Home'
@@ -66,13 +66,16 @@ function routeParams(view: string, sample: string) {
             : view;
   return new URLSearchParams({
     view: next,
-    sample,
+    ...(sample ? { sample } : {}),
     ...(['Supervise', 'Audit'].includes(view)
       ? { tab: view === 'Audit' ? 'Integrity' : 'Replay' }
       : {}),
   });
 }
 export default function Workspace({ readOnly = false }: { readOnly?: boolean }) {
+  const [sampleMode, setSampleMode] = useState(() =>
+    new URLSearchParams(location.hash.split('?')[1]).has('sample'),
+  );
   const [view, setView] = useState(initialView),
     [scenario, setScenario] = useState(
       () => new URLSearchParams(location.hash.split('?')[1]).get('sample') || 'skipped-cap',
@@ -104,6 +107,10 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
   }, [readOnly]);
   useEffect(() => {
     let active = true;
+    if (!sampleMode) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError('');
     void loadSample(scenario)
@@ -119,12 +126,13 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
     return () => {
       active = false;
     };
-  }, [scenario, sampleRevision]);
+  }, [scenario, sampleRevision, sampleMode]);
   useEffect(() => {
     const sync = () => {
       const params = new URLSearchParams(location.hash.split('?')[1]);
       setView(initialView());
       const name = params.get('sample');
+      setSampleMode(!!name);
       if (scenarios.some(([id]) => id === name)) {
         setLoading(true);
         setScenario(name!);
@@ -140,19 +148,27 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
     const id = setTimeout(() => setToast(''), 5000);
     return () => clearTimeout(id);
   }, [toast]);
-  function goView(requested: string) {
+  function goView(requested: string, useSample = sampleMode) {
     const next = aliases[requested] ?? 'Overview';
     if (readOnly && next === 'Run library') {
       setAuth(true);
       setMobileMenu(false);
       return;
     }
+    if (useSample !== sampleMode) {
+      setSampleMode(useSample);
+    }
     setView(next);
     setMobileMenu(false);
-    const params = routeParams(next, scenario);
+    const params = routeParams(next, useSample ? scenario : undefined);
     history.replaceState(null, '', `#/workspace?${params}`);
   }
+  function startOwnView(target: string) {
+    if (run?.provenance === 'synthetic') setRun(null);
+    goView(target, false);
+  }
   function chooseScenario(name: string) {
+    setSampleMode(true);
     setLoading(true);
     setSampleRevision((value) => value + 1);
     setScenario(name);
@@ -213,7 +229,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
               className={
                 view === target || (target === 'Supervise' && view === 'Audit') ? 'active' : ''
               }
-              onClick={() => goView(target)}
+              onClick={() => (view === 'Overview' ? startOwnView(target) : goView(target))}
               aria-current={
                 view === target || (target === 'Supervise' && view === 'Audit') ? 'page' : undefined
               }
@@ -224,7 +240,9 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <button onClick={() => setScope(true)}>About these examples</button>
+          {sampleMode && ['Supervise', 'Audit'].includes(view) && (
+            <button onClick={() => setScope(true)}>About these examples</button>
+          )}
           <div className="sidebar-account">
             <p>
               {session
@@ -290,7 +308,11 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
         </header>
         {readOnly && !['Supervise', 'Audit'].includes(view) && (
           <div className="sample-access-banner" role="note">
-            <span>Example mode — sign in to check your own recordings.</span>
+            <span>
+              {view === 'Overview'
+                ? 'Sign in to start a procedure with your own recordings.'
+                : 'Example mode — sign in to check your own recordings.'}
+            </span>
             <button className="text-button" onClick={() => setAuth(true)}>
               Sign in
             </button>
@@ -311,7 +333,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                         ? 'Keep the source recordings and the useful results.'
                         : view === 'Check'
                           ? 'Compare a new recording with the steps you taught.'
-                          : 'Watch an example, then try your own recording.'}
+                          : 'Teach a procedure, check another take, and review the evidence.'}
               </p>
             </div>
           </div>
@@ -349,12 +371,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
             transition={{ duration: 0.28 }}
           >
             {view === 'Overview' ? (
-              <Overview
-                onView={goView}
-                onScenario={chooseScenario}
-                onSignIn={() => setAuth(true)}
-                signedIn={!!session}
-              />
+              <Overview onView={startOwnView} onSignIn={() => setAuth(true)} signedIn={!!session} />
             ) : view === 'Check' ? (
               <CheckRecording
                 procedure={procedure}
@@ -362,11 +379,12 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                 readOnly={readOnly}
                 source={source?.kind === 'novice' ? source.file : null}
                 onTeach={() => goView('Learn')}
-                onSample={() => chooseScenario('skipped-cap')}
+                onSample={sampleMode ? () => chooseScenario('skipped-cap') : undefined}
                 onSignIn={() => setAuth(true)}
                 onRun={(result) => {
                   setRun(result);
-                  goView('Supervise');
+                  setSampleMode(false);
+                  goView('Supervise', false);
                 }}
               />
             ) : view === 'Run library' ? (
@@ -375,7 +393,8 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                 onSignIn={() => setAuth(true)}
                 onOpen={(r) => {
                   setRun(r);
-                  goView('Supervise');
+                  setSampleMode(false);
+                  goView('Supervise', false);
                 }}
                 refreshKey={refreshKey}
                 onUse={(file, kind) => {
@@ -389,7 +408,8 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                 onResume={(job) => {
                   if (job.kind === 'run') {
                     setRun(job.result as unknown as Run);
-                    goView('Supervise');
+                    setSampleMode(false);
+                    goView('Supervise', false);
                   } else {
                     setSource(null);
                     setLearnJob(job);
@@ -397,7 +417,19 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                   }
                 }}
               />
-            ) : loading || !run ? (
+            ) : !run && !sampleMode && ['Supervise', 'Audit'].includes(view) ? (
+              <section className="workspace-empty">
+                <FileCheck2 size={36} />
+                <h2>Your results will appear here</h2>
+                <p>
+                  Check a recording to see its playback, step findings, and report. You can also
+                  open a saved result from My runs.
+                </p>
+                <button className="button primary" onClick={() => goView('Check')}>
+                  Check a recording <Play size={17} />
+                </button>
+              </section>
+            ) : view === 'Learn' ? null : loading || !run ? (
               <div className="loading" role="status">
                 <span className="spinner" />
                 Loading the procedure…
@@ -417,7 +449,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
               </>
             )}
           </m.div>
-          {run && !loading && (
+          {!loading && (
             <m.div
               hidden={view !== 'Learn'}
               animate={{ opacity: view === 'Learn' ? 1 : 0 }}
@@ -429,6 +461,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                 readOnly={readOnly}
                 onSignIn={() => setAuth(true)}
                 run={run}
+                allowExamples={sampleMode}
                 health={health}
                 source={source}
                 initialJob={learnJob}
@@ -442,12 +475,19 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
         </main>
         <footer className="workspace-footer">
           <span>
-            {run?.provenance === 'live-recording' ? 'Recorded evidence' : 'Animated example'} ·{' '}
+            {run?.provenance === 'live-recording'
+              ? 'Recorded evidence'
+              : sampleMode && ['Supervise', 'Audit'].includes(view)
+                ? 'Animated example'
+                : 'Your private recordings'}{' '}
+            ·{' '}
             {session
               ? cloudConfigured
                 ? 'Private storage connected'
                 : 'Local preview'
-              : 'No account needed for examples'}
+              : sampleMode && ['Supervise', 'Audit'].includes(view)
+                ? 'No account needed for examples'
+                : 'Sign in to work with your recordings'}
           </span>
           <a
             href="https://github.com/ryanfer123/Meta-Hackathon"

@@ -9,10 +9,10 @@
   font-family: 'Jost', sans-serif;
   font-synthesis: none;
   color: #17283b;
-  background: #e6dbc7;
-  --sand: #e6dbc7;
-  --sand-deep: #ddd0b9;
-  --blue: #062b8a;
+  background: #f5f7fa;
+  --sand: #eef3f8;
+  --sand-deep: #dce6f1;
+  --blue: #143f8f;
   --ink: #17283b;
   --muted: #627184;
   --surface: #f3f5f7;
@@ -100,7 +100,7 @@ svg {
   top: -100px;
   left: 20px;
   padding: 12px 20px;
-  background: #062b8a;
+  background: #143f8f;
   color: white;
   z-index: 100;
 }
@@ -145,8 +145,8 @@ svg {
   transform: translateY(1px);
 }
 .button.primary {
-  background: #062b8a;
-  border-color: #062b8a;
+  background: #143f8f;
+  border-color: #143f8f;
   color: #fff;
 }
 .button.primary:hover:not(:disabled) {
@@ -180,7 +180,7 @@ svg {
   text-align: left;
 }
 .text-button:hover {
-  color: #062b8a;
+  color: #143f8f;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -203,7 +203,7 @@ svg {
   width: 18px;
   height: 18px;
   border: 2px solid #d4ddec;
-  border-top-color: #062b8a;
+  border-top-color: #143f8f;
   display: inline-block;
   border-radius: 50%;
   flex-shrink: 0;
@@ -285,7 +285,7 @@ svg {
   font-size: 15px;
 }
 .input-with-icon:focus-within {
-  border-color: #062b8a;
+  border-color: #143f8f;
   outline: 2px solid #dbe7ff;
 }
 .auth-form .button {

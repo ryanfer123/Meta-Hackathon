@@ -1,65 +1,47 @@
 import * as m from 'motion/react-m';
 import { useReducedMotion } from 'motion/react';
-import { useEffect, useState } from 'react';
-import { ArrowRight, Check, Play, AlertCircle, ExternalLink } from 'lucide-react';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Video,
+  ListChecks,
+  ScanLine,
+  LockKeyhole,
+  ExternalLink,
+} from 'lucide-react';
 import { Brand } from '../components/Brand';
-import { Scene } from '../Scene';
-import { loadSample } from '../api';
-import { timecode, type Run } from '../types';
-import { headlineAlert } from '../lib/alerts';
-import { friendlyEventLabel } from '../eventLabels';
 
 interface Props {
   onOpen: (scenario?: string, view?: string) => void;
 }
-const stages = [
+const steps = [
   {
-    title: 'Teach',
-    copy: 'Upload an example video with narration. Review the suggested checklist and test it with a second example.',
-    image: 'learn',
-    alt: 'Sample checklist with four checks still waiting for real example videos',
+    n: '01',
+    title: 'Teach the procedure',
+    copy: 'Upload a video showing the right way. Review the steps Apprentice creates.',
+    icon: Video,
   },
   {
-    title: 'Check',
-    copy: 'Compare another recording with the checklist. See which steps were observed, missed, or done in the wrong order.',
-    image: 'supervise',
-    alt: 'Animated sample showing a missed cap step beside the playback',
+    n: '02',
+    title: 'Check another take',
+    copy: 'Add a new recording of the same procedure. Follow its progress as objects and actions are checked.',
+    icon: ScanLine,
   },
   {
-    title: 'Results',
-    copy: 'Review the flagged moments and download a report. Sign in to save recordings and results in your private library.',
-    image: 'audit',
-    alt: 'Sample report showing observed steps, flagged events, and unmeasured model results',
+    n: '03',
+    title: 'Review the evidence',
+    copy: 'Open each finding at its timestamp. See what was confirmed, what needs review, and why.',
+    icon: ListChecks,
   },
 ];
-
 export function HomePage({ onOpen }: Props) {
-  const reducedMotion = useReducedMotion();
+  const reduced = useReducedMotion();
   const reveal = {
-    initial: reducedMotion ? (false as const) : { opacity: 0, y: 24 },
+    initial: reduced ? (false as const) : { opacity: 0, y: 20 },
     whileInView: { opacity: 1, y: 0 },
     viewport: { once: true, amount: 0.15 },
   };
-  const [comparison, setComparison] = useState<'clean' | 'skipped-cap'>('skipped-cap');
-  const [samples, setSamples] = useState<Record<string, Run>>({});
-  const [error, setError] = useState('');
-  useEffect(() => {
-    let active = true;
-    void Promise.all(['clean', 'skipped-cap'].map(loadSample))
-      .then(([clean, skipped]) => {
-        if (active) setSamples({ clean, 'skipped-cap': skipped });
-      })
-      .catch(() => {
-        if (active) setError('The replay could not load. Try the example to try again.');
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-  const run = samples[comparison];
-  const headline = run ? headlineAlert(run) : undefined;
-  const previewTime = headline?.t ?? run?.duration ?? 0;
-  const final = run?.frames.find((f) => f.t >= previewTime) ?? run?.frames.at(-1);
+  const teach = () => onOpen(undefined, 'Teach');
   return (
     <div className="home-page">
       <a className="skip-link" href="#home-main">
@@ -71,16 +53,9 @@ export function HomePage({ onOpen }: Props) {
         </a>
         <nav aria-label="Main navigation">
           <a href="#how-it-works">How it works</a>
-          <a href="#evidence">The evidence</a>
-          <a
-            href="https://github.com/ryanfer123/Meta-Hackathon"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            GitHub
-          </a>
+          <a href="#workspace-preview">The workspace</a>
           <button onClick={() => onOpen()}>
-            Open Apprentice <ArrowRight size={17} />
+            Open Apprentice <ArrowUpRight size={17} />
           </button>
         </nav>
       </header>
@@ -88,265 +63,178 @@ export function HomePage({ onOpen }: Props) {
         <section className="home-hero">
           <m.div
             className="hero-copy"
-            initial="hidden"
-            animate="visible"
-            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
+            initial={reduced ? false : { opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
           >
-            <m.h1
-              variants={{
-                hidden: { opacity: 0, y: reducedMotion ? 0 : 22 },
-                visible: { opacity: 1, y: 0 },
-              }}
-            >
+            <p className="home-eyebrow">Video → procedure → evidence</p>
+            <h1>
               Show it once.
               <br />
               Check each step.
-            </m.h1>
-            <m.p
-              variants={{
-                hidden: { opacity: 0, y: reducedMotion ? 0 : 22 },
-                visible: { opacity: 1, y: 0 },
-              }}
-            >
-              Apprentice turns an example video into a step-by-step checklist, then checks another
-              recording for missed steps and actions in the wrong order.
-            </m.p>
-            <m.button
-              variants={{
-                hidden: { opacity: 0, y: reducedMotion ? 0 : 22 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              className="home-button"
-              onClick={() => onOpen('skipped-cap', 'Supervise')}
-            >
-              <span className="play-disc">
-                <Play size={18} fill="currentColor" />
-              </span>
-              See it catch a mistake (30 seconds)
-            </m.button>
+            </h1>
+            <p>
+              Turn a teaching video into a step-by-step checklist. Check later recordings for missed
+              steps, then review the evidence behind each finding.
+            </p>
+            <div className="hero-actions">
+              <button className="home-button" onClick={teach}>
+                Teach a procedure <ArrowRight size={19} />
+              </button>
+              <a className="home-secondary" href="#how-it-works">
+                See how it works
+              </a>
+            </div>
+            <span className="hero-privacy">
+              <LockKeyhole size={15} /> Your recordings stay in your private workspace.
+            </span>
           </m.div>
           <m.div
-            className="hero-orbit"
-            initial={reducedMotion ? false : { opacity: 0, x: 48, scale: 0.97 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            className="hero-product"
+            initial={reduced ? false : { opacity: 0, y: 28 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65 }}
           >
+            <div className="product-window-bar">
+              <span className="window-dot" />
+              <span>Apprentice / Teach</span>
+              <span>Workspace</span>
+            </div>
             <img
-              src={`${import.meta.env.BASE_URL}images/procedure-studio.webp`}
-              width="1500"
-              height="1500"
-              alt="Illustrative studio arrangement of colored-water tubes and a dropper"
+              src={`${import.meta.env.BASE_URL}images/product-learn.png?v=recordings-20261031`}
+              width="1505"
+              height="1045"
+              alt="Current Apprentice Teach workspace with a teaching-video upload and optional description"
               fetchPriority="high"
             />
-          </m.div>
-          <p className="hero-caption">
-            Illustration, not camera footage. Try the animated sample without signing in.
-          </p>
-        </section>
-        <section className="home-comparison" id="evidence">
-          <div className="home-section-heading">
-            <m.h2 {...reveal} className="reveal">
-              See the difference.
-            </m.h2>
-            <m.p {...reveal} className="reveal">
-              Compare two animated examples: one follows every step; the other misses a cap. Open
-              either example to see what happened and when.
-            </m.p>
-          </div>
-          <m.div {...reveal} className="comparison-product reveal" data-ui>
-            <div className="comparison-toolbar">
-              <span>Colored-water handling</span>
-              <div className="segmented" aria-label="Compare procedure runs">
-                <button
-                  aria-pressed={comparison === 'clean'}
-                  onClick={() => setComparison('clean')}
-                >
-                  Clean run
-                </button>
-                <button
-                  aria-pressed={comparison === 'skipped-cap'}
-                  onClick={() => setComparison('skipped-cap')}
-                >
-                  Skipped cap
-                </button>
-              </div>
-            </div>
-            <m.div
-              className="comparison-layout"
-              key={comparison}
-              initial={{ opacity: reducedMotion ? 1 : 0.5 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.25 }}
-            >
-              <div className="comparison-scene">
-                {final ? (
-                  <Scene frame={final} masks />
-                ) : (
-                  <div className="comparison-loading">{error || 'Loading the replay…'}</div>
-                )}
-                <div className="comparison-clock">
-                  <Play size={14} fill="currentColor" />
-                  <span>{timecode(previewTime)}</span>
-                  <div className="comparison-track">
-                    <span />
-                  </div>
-                  <span>{timecode(run?.duration ?? 0)}</span>
-                </div>
-              </div>
-              <div className="comparison-steps">
-                <h3>Step checklist</h3>
-                {run?.protocol.steps.map((s) => {
-                  const missed = headline?.step_id === s.id;
-                  return (
-                    <div
-                      className={missed ? 'comparison-step missed' : 'comparison-step'}
-                      key={s.id}
-                    >
-                      {missed ? <AlertCircle size={22} /> : <Check size={22} />}
-                      <span>{s.title}</span>
-                      <small>{missed ? 'Skipped' : 'Observed'}</small>
-                    </div>
-                  );
-                })}
-                <p>An animated example checked by the same rules used in the app.</p>
-              </div>
-            </m.div>
-            <div className="comparison-bottom">
-              <div
-                className={
-                  comparison === 'skipped-cap'
-                    ? 'comparison-observation deviation'
-                    : 'comparison-observation'
-                }
-              >
-                <span>{timecode(previewTime)}</span>
-                <strong>
-                  {headline
-                    ? friendlyEventLabel(headline.kind)
-                    : 'All steps were observed in order.'}
-                </strong>
-              </div>
-              <button className="button primary" onClick={() => onOpen(comparison, 'Supervise')}>
-                Open this sample <ArrowRight size={17} />
-              </button>
+            <div className="product-caption">
+              <Video size={17} />
+              <span>Start with your own recording.</span>
+              <ArrowUpRight size={17} />
             </div>
           </m.div>
-          <p className="home-note">
-            Animated sample, not a real recording. Accuracy on real videos has not been measured.
-          </p>
         </section>
         <section className="home-method" id="how-it-works">
-          <m.h2 {...reveal} className="reveal">
-            From example to review.
-          </m.h2>
+          <div className="home-section-heading">
+            <m.h2 {...reveal}>
+              One procedure.
+              <br />A clearer next take.
+            </m.h2>
+            <m.p {...reveal}>
+              For work that happens away from a keyboard. Show the intended actions, check the next
+              recording, and keep a reviewable record.
+            </m.p>
+          </div>
           <div className="method-stages">
-            {stages.map((stage) => (
-              <article key={stage.title}>
-                <m.h3 {...reveal} className="reveal">
-                  {stage.title}
-                </m.h3>
-                <m.p {...reveal} className="reveal">
-                  {stage.copy}
-                </m.p>
-                <m.button
-                  {...reveal}
-                  className="method-image reveal"
-                  whileHover={{ y: -4 }}
-                  whileTap={{ scale: 0.985 }}
-                  onClick={() =>
-                    onOpen(
-                      'skipped-cap',
-                      stage.image === 'learn'
-                        ? 'Learn'
-                        : stage.image === 'audit'
-                          ? 'Audit'
-                          : 'Supervise',
-                    )
-                  }
-                  aria-label={
-                    stage.image === 'learn'
-                      ? 'Open Teach'
-                      : stage.image === 'supervise'
-                        ? 'See an example check'
-                        : 'View the sample report'
-                  }
-                >
-                  <img
-                    src={`${import.meta.env.BASE_URL}images/product-${stage.image}.png`}
-                    width="960"
-                    height="600"
-                    alt={stage.alt}
-                    loading="lazy"
-                  />
-                  <span>
-                    {stage.image === 'learn'
-                      ? 'Open Teach'
-                      : stage.image === 'supervise'
-                        ? 'See an example check'
-                        : 'View the sample report'}{' '}
-                    <ArrowRight size={17} />
-                  </span>
-                </m.button>
-              </article>
+            {steps.map(({ n, title, copy, icon: Icon }) => (
+              <m.article {...reveal} key={n}>
+                <div className="method-number">
+                  <span>{n}</span>
+                  <Icon size={24} />
+                </div>
+                <h3>{title}</h3>
+                <p>{copy}</p>
+              </m.article>
             ))}
           </div>
         </section>
-        <section className="home-evidence">
-          <div className="evidence-copy">
-            <m.h2 {...reveal} className="reveal">
-              See why a step was flagged.
-            </m.h2>
-            <m.p {...reveal} className="reveal">
-              Select an alert to jump to that moment. See what the checklist expected and what was
-              visible in the recording.
-            </m.p>
+        <section className="home-workspace" id="workspace-preview">
+          <m.div {...reveal} className="home-section-heading">
+            <h2>
+              Your videos.
+              <br />
+              Your workspace.
+            </h2>
+            <p>
+              A place to teach, check, and return to the moments that matter. Start with a short
+              recording and clearly distinguishable objects.
+            </p>
+          </m.div>
+          <div className="workspace-shots">
             <m.button
               {...reveal}
-              className="home-link reveal"
-              onClick={() => onOpen('skipped-cap', 'Audit')}
+              className="workspace-shot"
+              onClick={teach}
+              aria-label="Open Teach"
             >
-              View the sample report <ArrowRight size={21} />
+              <img
+                src={`${import.meta.env.BASE_URL}images/product-learn.png?v=recordings-20261031`}
+                width="1505"
+                height="1045"
+                alt="Current teaching-video upload screen"
+                loading="lazy"
+              />
+              <span>
+                <strong>Teach</strong> Start with the right way. <ArrowUpRight size={18} />
+              </span>
+            </m.button>
+            <m.button
+              {...reveal}
+              className="workspace-shot"
+              onClick={() => onOpen(undefined, 'Check')}
+              aria-label="Open Check"
+            >
+              <img
+                src={`${import.meta.env.BASE_URL}images/product-check.png?v=recordings-20261031`}
+                width="1505"
+                height="1045"
+                alt="Current Check screen guiding users to teach a procedure before checking another recording"
+                loading="lazy"
+              />
+              <span>
+                <strong>Check</strong> Compare the next recording. <ArrowUpRight size={18} />
+              </span>
             </m.button>
           </div>
-          <m.div {...reveal} className="evidence-example reveal" data-ui>
-            <span className="evidence-time">00:17</span>
-            <h3>Cap tube 1</h3>
-            <p className="evidence-status">
-              <AlertCircle size={20} />
-              Skipped
+          <p className="home-interface-note">
+            Current interface. Your recordings and results appear as you work.
+          </p>
+        </section>
+        <section className="home-evidence">
+          <m.div {...reveal}>
+            <span className="home-eyebrow">A result you can inspect</span>
+            <h2>See why a step was flagged.</h2>
+            <p>
+              Findings connect back to the recording. Review the expected step, inspect the visible
+              evidence, and download a report with its event history.
             </p>
-            <p>The label was placed before the cap step was observed.</p>
-            <div className="evidence-rule">
-              <span>Expected observation</span>
-              <strong>The blue cap touches tube 1.</strong>
-            </div>
-            <p className="evidence-disclosure">
-              Seeing a cap touch a tube does not prove it is tight. If the view is blocked, the
-              result stays uncertain.
-            </p>
+          </m.div>
+          <m.div {...reveal} className="evidence-principles">
+            <article>
+              <span>01</span>
+              <div>
+                <h3>Jump to the moment</h3>
+                <p>Select a finding to inspect its timestamp and object overlays.</p>
+              </div>
+            </article>
+            <article>
+              <span>02</span>
+              <div>
+                <h3>Know what needs review</h3>
+                <p>
+                  Unclear evidence stays unconfirmed. Model opinions are separate from rule
+                  decisions.
+                </p>
+              </div>
+            </article>
+            <article>
+              <span>03</span>
+              <div>
+                <h3>Keep the record</h3>
+                <p>Download the report and verify its event log against a separately saved root.</p>
+              </div>
+            </article>
           </m.div>
         </section>
         <section className="home-close">
-          <m.h2 {...reveal} className="reveal">
-            Your next run starts here.
-          </m.h2>
+          <m.h2 {...reveal}>Start with the right way.</m.h2>
           <div className="home-close-row">
-            <m.p {...reveal} className="reveal">
-              Try an animated sample with no account. Sign in when you want to upload your own
-              example and comparison recordings.
-            </m.p>
-            <m.button
-              {...reveal}
-              className="home-button reveal"
-              onClick={() => onOpen('skipped-cap', 'Supervise')}
-            >
-              Try the example <ArrowRight size={21} />
-            </m.button>
+            <p>
+              Sign in, upload your teaching video, and build the checklist for your next recording.
+            </p>
+            <button className="home-button" onClick={teach}>
+              Teach a procedure <ArrowRight size={20} />
+            </button>
           </div>
-          <m.p {...reveal} className="home-note reveal">
-            The samples demonstrate how the app works. Checks on real recordings are still being
-            evaluated; the app does not verify liquid volume, concentration, or cap tightness.
-          </m.p>
         </section>
       </main>
       <footer className="home-footer">
@@ -357,11 +245,10 @@ export function HomePage({ onOpen }: Props) {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Built in the open <ExternalLink size={16} />
+            Built in the open <ExternalLink size={15} />
           </a>
         </div>
         <p>Suggested steps. Visible evidence. Clear reasons.</p>
-        <span className="footer-word">apprentice</span>
       </footer>
     </div>
   );

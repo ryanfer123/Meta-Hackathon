@@ -149,10 +149,7 @@ export function RunLibrary({ userId, onSignIn, onOpen, refreshKey, onUse, onResu
         <div className="library-empty">
           <FolderOpen size={46} />
           <h3>Keep your work here.</h3>
-          <p>
-            Sign in to save results and upload recordings. You can try the samples without an
-            account.
-          </p>
+          <p>Sign in to save results, upload recordings, and return to your private work.</p>
           <button className="button primary" onClick={onSignIn}>
             Sign in to your workspace <ArrowRight size={17} />
           </button>
@@ -304,7 +301,7 @@ export function RunLibrary({ userId, onSignIn, onOpen, refreshKey, onUse, onResu
             ) : (
               <div className="quiet-empty">
                 <FolderOpen size={24} />
-                <p>No runs or recordings yet. Try a sample, or add a recording.</p>
+                <p>Your workspace is ready. Teach a procedure or add a recording to get started.</p>
               </div>
             )}
           </section>

@@ -30,7 +30,7 @@ function Routes() {
     window.addEventListener('hashchange', update);
     return () => window.removeEventListener('hashchange', update);
   }, []);
-  function open(scenario = 'skipped-cap', view = 'Home') {
+  function open(scenario?: string, view = 'Home') {
     const aliases: Record<string, string> = {
       Learn: 'Teach',
       Supervise: 'Results',
@@ -44,7 +44,7 @@ function Routes() {
         : view === 'Supervise' || view === 'Results'
           ? 'Replay'
           : undefined;
-    location.hash = `/workspace?${new URLSearchParams({ sample: scenario, view: aliases[view] ?? view, ...(tab ? { tab } : {}) })}`;
+    location.hash = `/workspace?${new URLSearchParams({ ...(scenario ? { sample: scenario } : {}), view: aliases[view] ?? view, ...(tab ? { tab } : {}) })}`;
   }
   const workspace = hash.startsWith('#/workspace') || hash.includes('access_token=');
   const params = new URLSearchParams(hash.split('?')[1]);
@@ -77,10 +77,9 @@ function Routes() {
               Kept private.
             </h2>
             <p>Sign in to teach a procedure, check a recording, and save your results.</p>
-            <img
-              src={`${import.meta.env.BASE_URL}images/procedure-studio.webp`}
-              alt="Illustrative colored-water procedure setup"
-            />
+            <p className="auth-workflow">
+              Teach a procedure → Check another take → Review the evidence
+            </p>
           </div>
           <AuthDialog
             inline

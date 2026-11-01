@@ -22,7 +22,7 @@ export default defineConfig({
         env: {
           VITE_SUPABASE_URL: 'https://apprentice-test.supabase.co',
           VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test_fixture',
-          VITE_STATIC_REPLAY: 'true',
+          VITE_STATIC_REPLAY: process.env.CAPTURE_PRODUCT === '1' ? 'false' : 'true',
           VITE_API_BASE_URL: '',
         },
         url: 'http://127.0.0.1:5174',

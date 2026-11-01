@@ -38,10 +38,12 @@ export function Learn({
   onSignIn,
   onProtocolReady,
   onNavigateCheck,
+  allowExamples = true,
 }: {
   readOnly?: boolean;
   onSignIn?: () => void;
-  run: Run;
+  run: Run | null;
+  allowExamples?: boolean;
   health: Health;
   onRun: (run: Run) => void;
   source?: { file: File; kind: 'expert' | 'held_out' | 'novice' } | null;
@@ -53,10 +55,23 @@ export function Learn({
   const [teaching, setTeaching] = useState<File | null>(null);
   const [second, setSecond] = useState<File | null>(null);
   const [description, setDescription] = useState('');
-  const [protocol, setProtocol] = useState<Protocol>(run.protocol);
+  const emptyProtocol: Protocol = {
+    name: 'Your procedure',
+    objects: [],
+    steps: [],
+    verified: false,
+  };
+  const [protocol, setProtocol] = useState<Protocol>(run?.protocol ?? emptyProtocol);
   const [validation, setValidation] = useState<Validation | undefined>();
   const [id, setId] = useState('');
   const [example, setExample] = useState(false);
+  useEffect(() => {
+    if (!allowExamples && example) {
+      setExample(false);
+      setProtocol(emptyProtocol);
+      setStage(1);
+    }
+  }, [allowExamples, example]);
   const [videoUrl, setVideoUrl] = useState('');
   const [videoError, setVideoError] = useState('');
   const [duration, setDuration] = useState(0);
@@ -157,7 +172,9 @@ export function Learn({
     : readOnly
       ? 'Sign in to upload your own teaching video.'
       : !health.live_configured || health.replay_mode
-        ? "Analysis isn't connected here — try the sample."
+        ? allowExamples
+          ? "Analysis isn't connected here — try the sample."
+          : 'Analysis is unavailable. Check the service connection and try again.'
         : !teaching
           ? 'Add a video to continue.'
           : '';
@@ -182,7 +199,9 @@ export function Learn({
     : example
       ? 'Example steps are read-only. Use your own teaching video to run these checks.'
       : !live
-        ? "Analysis isn't connected here — try the sample."
+        ? allowExamples
+          ? "Analysis isn't connected here — try the sample."
+          : 'Analysis is unavailable. Check the service connection and try again.'
         : !id
           ? 'Create the steps first.'
           : !second
@@ -282,11 +301,12 @@ export function Learn({
     setConfirmed(false);
     setSecond(null);
     setExample(false);
-    setProtocol(run.protocol);
+    setProtocol(run?.protocol ?? emptyProtocol);
     setStage(1);
-    onProtocolReady?.({ id: '', protocol: run.protocol });
+    onProtocolReady?.({ id: '', protocol: run?.protocol ?? emptyProtocol });
   }
   function chooseExample() {
+    if (!run) return;
     invalidateTask();
     setProtocol(run.protocol);
     setExample(true);
@@ -347,17 +367,30 @@ export function Learn({
                 Sign in to upload a recording
               </button>
             )}
-            <a
-              className="text-button"
-              href="https://www.youtube.com/watch?v=gmeCY7ANrog"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Need a sample video? <ArrowUpRight size={14} />
-            </a>
-            <p className="field-help">
-              Science Buddies reference. Upload only recordings you have permission to analyse.
-            </p>
+            {allowExamples ? (
+              <>
+                <a
+                  className="text-button"
+                  href="https://www.youtube.com/watch?v=gmeCY7ANrog"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Need a sample video? <ArrowUpRight size={14} />
+                </a>
+                <p className="field-help">
+                  Science Buddies reference. Upload only recordings you have permission to analyse.
+                </p>
+              </>
+            ) : (
+              <details className="recording-tips">
+                <summary>Recording tips</summary>
+                <p>
+                  Keep the camera steady and every object visible. Describe the intended actions and
+                  their order. Use a different take for the second video. Upload only footage you
+                  have permission to analyse.
+                </p>
+              </details>
+            )}
             <label className="field-label" htmlFor="narration">
               Describe what happens (optional)
             </label>
@@ -371,7 +404,7 @@ export function Learn({
                 setDescription(event.target.value);
               }}
               disabled={readOnly || !!busy}
-              placeholder="For example: place the dropper back, then put the cap on the blue tube."
+              placeholder="For example: pick up the part, align it with the base, then fasten the two pieces."
             />
             <p className="field-help">
               If you provide a description, it is used as narration for the whole video. Without
@@ -388,9 +421,11 @@ export function Learn({
             <p id="create-steps-reason" className="field-help">
               {createReason || 'Ready to create a checklist from your video.'}
             </p>
-            <button className="button" onClick={chooseExample} disabled={!!busy}>
-              Use the sample steps
-            </button>
+            {allowExamples && run && (
+              <button className="button" onClick={chooseExample} disabled={!!busy}>
+                Use the sample steps
+              </button>
+            )}
           </>
         )}
       </section>

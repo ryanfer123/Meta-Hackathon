@@ -32,3 +32,9 @@ Offline tests cover missing evidence, blocked predecessors, vacuous completion c
 ## Bounded image concurrency and progress — October 31, 2026
 
 Mocked transports compare serial/parallel masks and ordering, bound admitted work, retain per-request logs and refuse excess reservations before transport. Local and mocked hosted status tests check private progress and peer refusal. Desktop/mobile tests cover measured progress, stage changes, stale estimates and replacement of inactive form controls. The small paid one-frame control is separately documented in API notes; it is not an end-to-end benchmark.
+
+## Recording-first presentation — October 31, 2026
+
+The landing page and normal workspace lead to signed-in teaching/checking, never automatically loading sample data. Results stays empty until a run is selected. Existing explicit sample deep links retain static playback, honest provenance and integrity checks. Updated browser coverage checks no sample requests in ordinary flows, auth at upload entry, actual-run library reopening, responsive image loading and reduced motion. Product captures are generated from current empty workspace views with mocked authentication/configuration, not simulated analysis results; no paid calls are made. Explicit `CAPTURE_PRODUCT=1` capture refreshes documentation assets.
+
+The final pass also fixed a concurrent-error reporting race: a provider/parser failure is no longer hidden by a sibling budget refusal. Both thread orders are tested, with budget reservations retained. Final local checks:302 Python tests,142 desktop/mobile browser checks (two opt-in capture cases skipped), Ruff check/format, strict mypy and production build. Mobile homepage inspection found no horizontal overflow or runtime errors. No paid calls were made.

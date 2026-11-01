@@ -8,7 +8,7 @@
   position: fixed;
   inset: 0 auto 0 0;
   width: 222px;
-  background: #e6dbc7;
+  background: #eef3f8;
   padding: 29px 16px 22px;
   z-index: 12;
   display: flex;
@@ -47,10 +47,10 @@
   transition: background 0.18s;
 }
 .workspace-sidebar nav button:hover {
-  background: #d8cbb3;
+  background: #dfe8f2;
 }
 .workspace-sidebar nav button.active {
-  background: #062b8a;
+  background: #143f8f;
   color: white;
 }
 .sidebar-bottom {
@@ -97,7 +97,7 @@
 .sidebar-bottom .account-action {
   display: flex;
   font-size: 14px;
-  color: #062b8a;
+  color: #143f8f;
   font-weight: 500;
 }
 .workspace-body {
@@ -367,8 +367,8 @@
   border-color: #4caa7c;
 }
 .active .step-number {
-  background: #062b8a;
-  border-color: #062b8a;
+  background: #143f8f;
+  border-color: #143f8f;
   color: white;
 }
 .skipped .step-number {
@@ -679,7 +679,7 @@ textarea {
   margin: 15px 0 19px;
 }
 .checkbox input {
-  accent-color: #062b8a;
+  accent-color: #143f8f;
 }
 hr {
   border: 0;
@@ -896,7 +896,7 @@ hr {
   gap: 40px;
   align-items: center;
   padding: 37px 42px;
-  background: #e6dbc7;
+  background: #eef3f8;
   border-radius: 6px;
   overflow: hidden;
 }
@@ -905,7 +905,7 @@ hr {
   font-weight: 600;
   letter-spacing: -1.2px;
   line-height: 1.12;
-  color: #062b8a;
+  color: #143f8f;
 }
 .overview-feature p {
   font-size: 17px;
@@ -1745,4 +1745,78 @@ hr {
 .overview-feature > img {
   object-fit: contain;
   border-radius: 20px;
+}
+
+.workflow-welcome {
+  background: #fff;
+  border: 1px solid #dce5ef;
+  border-radius: 12px;
+  padding: clamp(24px, 4vw, 48px);
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 40px;
+  align-items: center;
+}
+.workflow-welcome h2 {
+  color: #183d64;
+  font-size: clamp(30px, 3vw, 46px);
+  line-height: 1.15;
+  max-width: 620px;
+  letter-spacing: -0.035em;
+}
+.workflow-welcome p {
+  line-height: 1.7;
+}
+.welcome-sequence {
+  padding: 20px;
+  background: #f4f7fb;
+  border: 1px solid #e0e8f1;
+  border-radius: 10px;
+  text-align: center;
+  color: #8296aa;
+}
+.welcome-sequence > div {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #fff;
+  padding: 18px;
+  border: 1px solid #e1e8f1;
+  border-radius: 7px;
+  color: #385673;
+  font-size: 14px;
+}
+.welcome-sequence > span {
+  display: block;
+  margin: 8px;
+}
+.workspace-empty {
+  background: #fff;
+  border: 1px solid #dce5ef;
+  border-radius: 12px;
+  padding: clamp(30px, 6vw, 80px);
+  text-align: center;
+}
+.workspace-empty > svg {
+  color: #8a9eb6;
+  margin-bottom: 20px;
+}
+.workspace-empty h2 {
+  font-size: 26px;
+  margin-bottom: 12px;
+}
+.workspace-empty p {
+  color: #71869d;
+  line-height: 1.65;
+  max-width: 470px;
+  margin: 0 auto 24px;
+}
+@media (max-width: 760px) {
+  .workflow-welcome {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+  .welcome-sequence {
+    padding: 14px;
+  }
 }

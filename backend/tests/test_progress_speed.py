@@ -221,3 +221,38 @@ def test_hosted_progress_requires_owner_and_an_active_worker(tmp_path, monkeypat
             release.set()
         assert upload.result(timeout=5).status_code == 202
         assert "progress" not in api.get(path, headers={"Authorization": "Bearer owner"}).json()
+
+
+@pytest.mark.parametrize("provider_first", [False, True])
+def test_provider_failure_is_not_hidden_by_sibling_budget_refusal(
+    tmp_path, monkeypatch, provider_first
+):
+    from threading import Event
+
+    settings, protocol, frames = tracking_setup(tmp_path, 3)
+    client = MetaClient(
+        settings, "mixed-failures", httpx.MockTransport(lambda _: pytest.fail("No HTTP expected"))
+    )
+    wire = (Path(__file__).parent / "fixtures/sam_synthetic.txt").read_text()
+    refused, failed = protocol.objects[:2]
+    sibling = Event()
+
+    def segment(path, prompt, video_hash, index):
+        if prompt == refused.sam_prompt:
+            assert sibling.wait(timeout=5)
+            if provider_first:
+                raise ValueError("provider geometry rejected")
+            raise BudgetExceeded("sibling reservation refused")
+        if prompt == failed.sam_prompt:
+            sibling.set()
+            if provider_first:
+                raise BudgetExceeded("sibling reservation refused")
+            raise ValueError("provider geometry rejected")
+        return wire
+
+    monkeypatch.setattr(client, "segment", segment)
+    try:
+        with pytest.raises(ValueError, match="provider geometry rejected"):
+            track(client, protocol, frames, "hash")
+    finally:
+        client.close()

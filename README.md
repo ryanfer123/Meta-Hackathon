@@ -2,59 +2,48 @@
 
 # Apprentice
 
-### Show it the right way once. Check every later recording.
+### Show it once. Check each step.
 
-Turn a procedure video into a checklist, catch missed or out-of-order steps,<br />
-and jump straight to the frame that explains each finding.
+Teach a hands-on procedure from video, check the next recording,<br />
+and review each finding alongside its visible evidence.
 
 [![Checks](https://github.com/ryanfer123/Meta-Hackathon/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/ryanfer123/Meta-Hackathon/actions/workflows/checks.yml)
 [![Python 3.11–3.14](https://img.shields.io/badge/Python-3.11%E2%80%933.14-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-163D64.svg)](LICENSE)
 
-**[Try the demo](https://apprentice-meta.onrender.com/#/workspace?sample=skipped-cap&view=Results&tab=Replay)** · **[Run locally](#quick-start)** · **[Architecture](#architecture)** · **[Recording guide](docs/RECORDING.md)**
+**[Open Apprentice](https://apprentice-meta.onrender.com)** · **[Run locally](#quick-start)** · **[Architecture](#architecture)** · **[Recording guide](docs/RECORDING.md)**
 
 </div>
 
-<a href="https://apprentice-meta.onrender.com/#/workspace?sample=skipped-cap&view=Results&tab=Replay">
-  <img src="frontend/public/images/product-supervise.png" alt="Apprentice Results: Step skipped at 00:17, with an explanation, animated object overlays and a checklist" width="100%" />
+<a href="https://apprentice-meta.onrender.com">
+  <img src="frontend/public/images/product-home.png?rev=recordings-20261031" alt="Current Apprentice homepage introducing the teaching-video workflow and private workspace" width="100%" />
 </a>
 
-*Actual application screenshot, displaying synthetic sample data. The public examples are animated; no models ran for them.*
+## Start with your procedure
 
-## See the result in 30 seconds
+1. **Teach.** Sign in and upload a short video showing the right way. Add narration or a written description, then review the generated steps and timings.
+2. **Validate.** Use a genuinely different take to check the protocol. Review which checks passed and which need attention.
+3. **Check.** Upload the next recording of the same procedure. Follow stage progress and its estimated time remaining.
+4. **Review.** Open the findings at their timestamps, inspect object overlays, and download the report. Unclear actions remain unconfirmed.
 
-1. **[Open the skipped-cap example](https://apprentice-meta.onrender.com/#/workspace?sample=skipped-cap&view=Results&tab=Replay).** It opens paused on **Step skipped at 00:17**.
-2. Read **Why this was flagged**, then inspect the step or seek through the recording. The earlier time warning remains visible in the event history.
-3. Switch to **Integrity** to verify the event chain in your browser and download the standalone report.
+Your recordings, checklists and results belong to your account. A new workspace starts empty; the app does not populate it with demonstration results.
 
-No account, model key or backend is needed for bundled replay. Try **Clean procedure**, **Wrong tube**, **Swapped order**, **Excessive dwell** and **Partial occlusion** to see other rule outcomes. Sign in to teach a procedure, check your own recordings and save private work.
-
-> **Current evidence:** the public demo contains six synthetic scenarios. A private real-video website diagnostic completed upload, protocol generation, tracking, replay and report verification; none of its five proposed steps was confirmed. Accuracy on real physical procedures has not been measured. A real-footage replay and three-minute submission video are pending. See [evaluation status](eval/results.md).
-
-## From one demonstration to a reviewable report
-
-| Stage | What you do | What Apprentice does |
-| --- | --- | --- |
-| **Teach** | Upload a teaching video, with narration or a written description. | Proposes a checklist and step timings for you to review. Checks it against the first video, a second take and deliberately removed/reordered segments. |
-| **Check** | Upload another recording of the same procedure. | Finds objects, evaluates their geometry over time and flags missed steps, wrong items, ordering problems or timing deviations. Unclear evidence stays uncertain. |
-| **Results** | Select a finding or open the integrity tab. | Shows the frame, expected action and reason; exports an HTML report and a verifiable event chain. |
-
-### Inside the app
+## Inside the workspace
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="frontend/public/images/product-learn.png" alt="Teach screen with numbered procedure cards and advanced details collapsed" width="100%" />
-      <br /><strong>Teach</strong><br />Review simple step cards before checking another recording.
+      <img src="frontend/public/images/product-learn.png?rev=recordings-20261031" alt="Current Teach screen with a teaching-video upload, recording tips and an optional plain-language description" width="100%" />
+      <br /><strong>Teach</strong><br />Start with a recording of the right way.
     </td>
     <td width="50%" valign="top">
-      <img src="frontend/public/images/product-audit.png" alt="Integrity screen with a verified event-chain status, download report and copy root actions" width="100%" />
-      <br /><strong>Integrity</strong><br />Verify the event log and keep its root separately.
+      <img src="frontend/public/images/product-check.png?rev=recordings-20261031" alt="Current Check screen guiding a new workspace to teach its first procedure" width="100%" />
+      <br /><strong>Check</strong><br />Compare the next take with the reviewed checklist.
     </td>
   </tr>
 </table>
 
-*Screenshots are captured from the running web app, not design mockups. These views use the bundled animated example; they do not show a validated real procedure.*
+*Fresh captures of the running application. Empty workspace shown; these images do not represent an analysed recording. Reproduce them with `CAPTURE_PRODUCT=1 npm --prefix frontend run test:e2e -- --grep 'capture current product'`.*
 
 ## Architecture
 
@@ -63,7 +52,7 @@ No account, model key or backend is needed for bundled replay. Try **Clean proce
 ```mermaid
 flowchart TB
   UI["React workspace"]
-  PUBLIC["Public replay<br/>Bundled samples + browser verification"]
+  PUBLIC["Legacy replay links<br/>Isolated compatibility examples"]
   API["FastAPI<br/>Owner checks + budget reservations"]
   DB["Supabase<br/>Auth + private records and files"]
   TEACH["Teach · Spark + Voice Transcribe<br/>Propose and validate a protocol"]
@@ -91,7 +80,7 @@ flowchart TB
   class TEACH,TRACK,REVIEW,DB provider;
 ```
 
-- **Public replay stays separate from private analysis.** Bundled runs and browser verification work with `/api` blocked. Uploads, paid processing, saved work and My runs require a confirmed account; the API checks ownership independently.
+- **The product starts with your recordings.** Uploads, paid processing, saved work and My runs require a confirmed account; the API checks ownership independently. Existing example deep links remain isolated for backwards compatibility and test coverage, with their original provenance labels. They are not linked from the normal homepage or workspace.
 - **Reviews explain uncertainty.** Unfinished steps name the blocking evidence or earlier step. Model reviews use the target step and timestamped measurements; long opinions are collapsed and explicitly advisory. These changes are tested offline, not a measured accuracy improvement.
 - **Model opinions cannot complete a step.** Pydantic validates proposed protocols and replies; windowed predicates and the state machine determine completion. A bounded recovery action can refine one ambiguous SAM query, then replay the rules on the new evidence.
 - **Processing shows its work.** Teach and Check display the current stage, completed work and an elapsed-time-based estimate for that stage. Image requests run in bounded batches of three without reducing evidence or bypassing budgets; see [the small measured control](docs/meta_api_notes.md#image-concurrency-and-progress--october-31-2026).
@@ -103,7 +92,7 @@ Implementation details: [architecture](docs/ARCHITECTURE.md) · [observed API be
 
 ## Quick start
 
-### Public replay: no keys or backend
+### Frontend development
 
 Requires **Node 22.9+**. From a fresh clone:
 
@@ -111,10 +100,10 @@ Requires **Node 22.9+**. From a fresh clone:
 git clone https://github.com/ryanfer123/Meta-Hackathon.git
 cd Meta-Hackathon/frontend
 npm ci
-VITE_STATIC_REPLAY=true npm run dev
+VITE_STATIC_REPLAY=false npm run dev
 ```
 
-Open the URL printed by Vite, then choose **See it catch a mistake**. The checked-in samples already include events, display contours, reports and chain roots.
+Open the URL printed by Vite. The homepage renders without model keys; signed-in uploads require the private analysis configuration below. The ordinary workspace starts with your recordings.
 
 ### Python service and full application
 
@@ -124,11 +113,11 @@ Requires **Python 3.11–3.14**, [uv](https://docs.astral.sh/uv/), Node and **FF
 uv sync --frozen
 uv run python scripts/export_samples.py
 npm --prefix frontend ci
-VITE_STATIC_REPLAY=true npm --prefix frontend run build
+VITE_STATIC_REPLAY=false npm --prefix frontend run build
 uv run uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 ```
 
-Open `http://127.0.0.1:8000`. This build serves public replay; live analysis needs the configuration below and a frontend rebuild with static replay disabled.
+Open `http://127.0.0.1:8000`. The service serves the frontend and API together. Live analysis needs the configuration below.
 
 ### Enable private analysis
 
@@ -164,18 +153,18 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-At the T6.1 checkpoint, **281 Python tests** and **136 desktop/mobile browser checks** passed, together with lint, formatting, strict typing and the production build. The [Checks workflow](https://github.com/ryanfer123/Meta-Hackathon/actions/workflows/checks.yml) is the source for current CI status. Tests use synthetic masks and mocked transports, not paid provider requests. Diagnostic scripts require an explicit `--allow-paid-calls` opt-in.
+Latest local verification: **302 Python tests** and **142 desktop/mobile browser checks** passed, together with lint, formatting, strict typing and the production build. The two documentation-capture cases run only with the explicit capture flag. The [Checks workflow](https://github.com/ryanfer123/Meta-Hackathon/actions/workflows/checks.yml) is the source for current CI status. Tests use synthetic masks and mocked transports, not paid provider requests. Diagnostic scripts require an explicit `--allow-paid-calls` opt-in.
 
 | Area | What is checked |
 | --- | --- |
 | Rules and tracking | Windowed geometry, flicker/occlusion, ordering, compact mask storage and unknown evidence. |
 | Access and budgets | Private job ownership, public sample boundaries, reservation refusal and cached responses. |
 | Review and integrity | Advisory routing, shadow escalation, bounded recovery and event-chain tampering. |
-| Browser flows | Signed-out static replay, intended headline alerts, guided Teach, auth boundaries and integrity verification on desktop/mobile. |
+| Browser flows | Account-first uploads, empty real-workflow states, guided Teach, auth boundaries and legacy replay/integrity compatibility on desktop/mobile. |
 
 ## Scope and limitations
 
-Apprentice currently targets **one procedure per protocol, viewed from a single camera on a tabletop**. The colored-water example checks visible handling. Geometry cannot establish liquid concentration, volume, sterility or cap tightness, and identical or occluded props can remain ambiguous.
+Apprentice currently targets **one procedure per protocol, viewed from a single camera on a tabletop**. Geometry checks visible handling; it cannot establish hidden properties such as transferred volume or fastening tightness. Identical or occluded props can remain ambiguous.
 
 Real expert A/B recordings, a labelled dev/test set, frozen-test metrics, a consented public recording and the submission video are still pending. Synthetic test success and short provider probes are not an accuracy or generalization claim. See [evaluation status](eval/results.md) and [limitations](docs/LIMITATIONS.md).
 

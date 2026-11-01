@@ -12,7 +12,7 @@ interface Props {
   readOnly?: boolean;
   source?: File | null;
   onTeach: () => void;
-  onSample: () => void;
+  onSample?: () => void;
   onSignIn: () => void;
   onRun: (run: Run) => void;
 }
@@ -45,13 +45,16 @@ export function CheckRecording({
           <button className="button primary" onClick={onTeach}>
             Go to Teach
           </button>
-          <button className="button" onClick={onSample}>
-            Use the sample steps
-          </button>
+          {onSample && (
+            <button className="button" onClick={onSample}>
+              Use the sample steps
+            </button>
+          )}
         </div>
         <p className="field-help">
-          Example steps are for exploring the animated sample. Your own recordings need a procedure
-          you have taught.
+          {onSample
+            ? 'Example steps are for exploring the animated sample. Your own recordings need a procedure you have taught.'
+            : 'Once you have reviewed the teaching steps, return here with another recording of the same procedure.'}
         </p>
       </section>
     );
@@ -61,7 +64,9 @@ export function CheckRecording({
     : busy
       ? busy
       : !live
-        ? "Analysis isn't connected here — try the sample."
+        ? onSample
+          ? "Analysis isn't connected here — try the sample."
+          : 'Analysis is unavailable. Check the service connection and try again.'
         : !file
           ? 'Add a recording to continue.'
           : '';
