@@ -17,6 +17,7 @@ from app.learn.frames import extract_audio, file_hash, keyframes, sample
 from app.learn.transcribe import transcribe
 from app.learn.validate import StepRange, replay, validate_protocol
 from app.meta_client import MetaClient
+from app.processing_plan import plan_long_recording
 from app.progress import JobProgress
 from app.replay_cache import atomic_json
 from app.samples import wire_frame
@@ -91,10 +92,17 @@ def process_learn(
 
 
 def evidence_overlays(
-    frames: list[FrameState], paths: list[tuple[float, Path]], folder: Path
+    frames: list[FrameState],
+    paths: list[tuple[float, Path]],
+    folder: Path,
+    *,
+    overlay_refs: set[str] | None = None,
+    evidence_refs: set[str] | None = None,
 ) -> dict[str, bytes]:
     evidence: dict[str, bytes] = {}
     for frame, (_, path) in zip(frames, paths, strict=True):
+        if overlay_refs is not None and str(path) not in overlay_refs:
+            continue
         image = cv2.imread(str(path))
         if image is None:
             raise ValueError("Cannot read evidence frame")
@@ -118,7 +126,8 @@ def evidence_overlays(
                 )
         output = folder / ("evidence_" + path.name)
         cv2.imwrite(str(output), image)
-        evidence[str(path)] = output.read_bytes()
+        if evidence_refs is None or str(path) in evidence_refs:
+            evidence[str(path)] = output.read_bytes()
     return evidence
 
 
@@ -180,7 +189,14 @@ def run_recording(
     try:
         progress = JobProgress(folder)
         progress.update("Preparing your recording")
-        paths = sample(video, folder / "frames")
+        paths = (
+            sample(video, folder / "frames", 2, settings.max_run_duration_s * 2)
+            if settings.sam_mode == "video"
+            else sample(video, folder / "frames")
+        )
+        plan = plan_long_recording(settings, protocol, video, paths, color_fallback)
+        if plan:
+            atomic_json(folder / "processing_plan.json", plan)
         client.tracking_progress = lambda done, total, unit: progress.update(
             "Finding objects in your recording", done, total, unit
         )
@@ -198,7 +214,20 @@ def run_recording(
             frames = recovery.frames
             supervisor = replay(protocol, frames)
         glimmer = GlimmerClient(settings, job)
-        evidence = evidence_overlays(frames, paths, folder)
+        event_refs = {e.evidence_frame for e in supervisor.events if e.evidence_frame is not None}
+        review_refs = {
+            str(path)
+            for event in supervisor.events
+            if event.kind in ("step_completed", "uncertain")
+            for _, path in review_window(paths, supervisor.events, event)
+        }
+        evidence = evidence_overlays(
+            frames,
+            paths,
+            folder,
+            overlay_refs=event_refs | review_refs,
+            evidence_refs=event_refs,
+        )
         review_full: list[Path] = []
         budget_blocked: list[BudgetExceeded] = []
 
@@ -275,9 +304,12 @@ def run_recording(
             "status": "ready",
             "provenance": "live-recording",
             "tracking_mode": settings.sam_mode,
+            "processing_plan": plan,
             "video_sha256": file_hash(video),
             "protocol": protocol.model_dump(by_alias=True),
-            "frames": [wire_frame(f) for f in frames],
+            "frames": [
+                wire_frame(f, max_contour_points=64 if len(paths) > 180 else 256) for f in frames
+            ],
             "duration": frames[-1].t,
             "events": [e.model_dump() for e in events],
             "states": {k: s.status for k, s in supervisor.states.items()},

@@ -271,6 +271,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "live_configured": bool(config.model_api_key.get_secret_value())
             and not config.replay_mode,
             "glimmer_configured": bool(config.glimmer_base_url),
+            "max_run_duration_s": config.max_run_duration_s,
             "real_evaluation": "pending",
             "provenance": "synthetic samples",
         }

@@ -189,8 +189,8 @@ def prepare_video(video: Path, cache_dir: Path, max_bytes: int) -> PreparedVideo
     if target.exists():
         return prepared_info(target, source_sha256, max_bytes)
     source = probe_video(video)
-    if source["duration_s"] > 90:
-        raise ValueError("Recording must be at most 90 seconds for native tracking")
+    if source["duration_s"] > 300:
+        raise ValueError("Recording must be at most 300 seconds for native tracking")
     temporary = cache_dir / (key + "." + uuid.uuid4().hex + ".mp4")
     try:
         result = subprocess.run(
@@ -250,13 +250,20 @@ def prepare_video(video: Path, cache_dir: Path, max_bytes: int) -> PreparedVideo
         temporary.unlink(missing_ok=True)
 
 
-def parse_video_masks(text: str, video: PreparedVideo) -> ParsedVideo:
+def parse_video_masks(
+    text: str, video: PreparedVideo, max_packed_bytes: int = 64 * 1024 * 1024
+) -> ParsedVideo:
     parser = video_segmentation_format().create_parser()
     try:
         parser.push(text)
         result = parser.finish(CompletedOutcome()).result
         if result.diagnostics:
             return ParsedVideo({}, False, "SAM video parser diagnostics; masks remain unknown")
+        packed_bytes = sum(record.kind == "mask" for record in result.records) * (
+            (video.width * video.height + 7) // 8
+        )
+        if packed_bytes > max_packed_bytes:
+            return ParsedVideo({}, False, "SAM video geometry exceeds the safe memory limit")
         frames: dict[int, dict[str, Detection]] = {}
         for record in result.records:
             if record.kind != "mask":

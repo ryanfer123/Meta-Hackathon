@@ -138,7 +138,14 @@ class MetaClient:
         usage: dict[str, Any] = {}
         status = "error"
         try:
-            response = self.http.post(endpoint, json=body if files is None else None, files=files)
+            response = self.http.post(
+                endpoint,
+                json=body if files is None else None,
+                files=files,
+                timeout=httpx.Timeout(
+                    120, read=self.settings.sam_video_timeout_s if sam_frames else 120
+                ),
+            )
             response.raise_for_status()
             raw: dict[str, Any] = response.json()
             usage = raw.get("usage", {})

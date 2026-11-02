@@ -32,6 +32,7 @@ export function CheckRecording({
   const [progress, setProgress] = useState<JobProgress>();
   const [error, setError] = useState<unknown>('');
   const [trackingMode, setTrackingMode] = useState<TrackingMode>('image');
+  const nativeLimit = health.max_run_duration_s ?? 90;
   useEffect(() => {
     if (source) setFile(source);
   }, [source]);
@@ -105,6 +106,9 @@ export function CheckRecording({
         Compare it with <strong>{procedure.protocol.name}</strong> (
         {procedure.protocol.steps.length} steps).
       </p>
+      <p className="field-help">
+        Use one procedure per recording. Check repeated attempts as separate runs.
+      </p>
       {readOnly ? (
         <button className="button" onClick={onSignIn}>
           Sign in to upload a recording
@@ -114,7 +118,10 @@ export function CheckRecording({
           <Upload size={20} />
           <span>
             <strong>New recording</strong>
-            <small>{file?.name ?? 'Choose MP4 / MOV · up to 90 seconds'}</small>
+            <small>
+              {file?.name ??
+                `Choose MP4 / MOV · up to ${trackingMode === 'video' ? nativeLimit : 90} seconds`}
+            </small>
           </span>
           <input
             aria-label="New recording"
@@ -126,7 +133,12 @@ export function CheckRecording({
         </label>
       )}
       {!readOnly && (
-        <TrackingChoice value={trackingMode} onChange={setTrackingMode} disabled={!!busy} />
+        <TrackingChoice
+          value={trackingMode}
+          onChange={setTrackingMode}
+          disabled={!!busy}
+          maxSeconds={nativeLimit}
+        />
       )}
       <button
         className="button primary"

@@ -142,7 +142,11 @@ MAX_CONTOUR_POINTS = 256
 CONTOUR_TOLERANCE_PX = 1.5
 
 
-def wire_frame(frame: FrameState) -> dict[str, Any]:
+def wire_frame(
+    frame: FrameState, *, max_contour_points: int = MAX_CONTOUR_POINTS
+) -> dict[str, Any]:
+    if not 4 <= max_contour_points <= MAX_CONTOUR_POINTS:
+        raise ValueError("Display contour limit must be between 4 and 256 points")
     objects: dict[str, Any] = {}
     for name, d in frame.objects.items():
         mask = d.mask if d is not None else None
@@ -154,18 +158,18 @@ def wire_frame(frame: FrameState) -> dict[str, Any]:
         )
         display = list(contours)
         display_metadata: dict[str, Any] = {}
-        if sum(len(c) for c in display) > MAX_CONTOUR_POINTS:
+        if sum(len(c) for c in display) > max_contour_points:
             tolerance = CONTOUR_TOLERANCE_PX
             while True:
                 simplified = [cv2.approxPolyDP(c, tolerance, True) for c in contours]
-                if max((len(c) for c in simplified), default=0) <= MAX_CONTOUR_POINTS:
+                if max((len(c) for c in simplified), default=0) <= max_contour_points:
                     break
                 tolerance *= 2
             # Prefer the main silhouettes over segmentation speckle. Omitted display
             # components are disclosed; exact packed masks retain every original bit.
             simplified.sort(key=cv2.contourArea, reverse=True)
             display = []
-            remaining = MAX_CONTOUR_POINTS
+            remaining = max_contour_points
             for contour in simplified:
                 if len(contour) <= remaining:
                     display.append(contour)

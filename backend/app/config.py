@@ -25,7 +25,10 @@ class Settings(BaseSettings):
     data_dir: Path = Path("data")
     sam_mode: Literal["video", "image"] = "image"
     sam_image_workers: int = Field(default=3, ge=1, le=4)
+    max_run_duration_s: int = Field(default=300, ge=90, le=300)
+    max_run_mask_mb: int = Field(default=128, ge=16, le=256)
     sam_video_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1, le=50_000_000)
+    sam_video_timeout_s: int = Field(default=300, ge=30, le=600)
     max_sam_video_frames: int = Field(default=6000, ge=1)
     hosted_max_sam_video_frames: int = Field(default=6000, ge=1)
     max_sam_calls: int = Field(default=3000, ge=0)

@@ -20,7 +20,7 @@ async function mountCheck(page: Page, enabled = true) {
       (dom.default ?? dom).createRoot(target).render(
         (react.default ?? react).createElement(component.CheckRecording, {
           procedure: { id: 'mock-procedure', protocol: run.protocol },
-          health: { replay_mode: !enabled, live_configured: enabled },
+          health: { replay_mode: !enabled, live_configured: enabled, max_run_duration_s: 300 },
           onTeach: () => {},
           onSample: () => {},
           onSignIn: () => {},
@@ -61,10 +61,17 @@ test('Check exposes a disabled reason and sends the per-run faster tracking choi
   const button = target.getByRole('button', { name: 'Check this recording' });
   await expect(button).toBeDisabled();
   await expect(button).toHaveAccessibleDescription('Add a recording to continue.');
+  await expect(
+    target.getByText('Choose MP4 / MOV · up to 90 seconds', { exact: true }),
+  ).toBeVisible();
   const faster = target.getByRole('checkbox', { name: 'Faster video tracking (preview)' });
   await expect(faster).not.toBeChecked();
   await expect(faster).toHaveAccessibleDescription(/same spending limit/);
   await faster.check();
+  await expect(
+    target.getByText('Choose MP4 / MOV · up to 300 seconds', { exact: true }),
+  ).toBeVisible();
+  await expect(faster).toHaveAccessibleDescription(/up to 300 seconds/);
   await target.getByLabel('New recording', { exact: true }).setInputFiles({
     name: 'new.mp4',
     mimeType: 'video/mp4',
@@ -74,9 +81,10 @@ test('Check exposes a disabled reason and sends the per-run faster tracking choi
   await expect(target).toHaveAttribute('data-finished', 'yes');
   await expect(faster).toBeChecked();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBeFalsy();
-  await page.screenshot({
-    path: `/tmp/apprentice-tracking-choice-${test.info().project.name}.png`,
-  });
+  if (process.env.APPRENTICE_UI_CAPTURE)
+    await page.screenshot({
+      path: `/tmp/apprentice-tracking-choice-${test.info().project.name}.png`,
+    });
   expect(uploaded).toBeTruthy();
 });
 

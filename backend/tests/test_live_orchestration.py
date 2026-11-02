@@ -85,6 +85,11 @@ def test_recorded_run_orchestration_shadows_every_completion(tmp_path, monkeypat
     assert len(seen) == 4
     assert len(run["shadow"]) == 4
     assert run["metrics"]["shadow_agreement"] == 1
-    evidence = {str(p): (folder / ("evidence_" + p.name)).read_bytes() for _, p in paths}
+    refs = {e["evidence_frame"] for e in run["events"] if e["evidence_frame"] is not None}
+    evidence = {
+        str(p): (folder / ("evidence_" + p.name)).read_bytes() for _, p in paths if str(p) in refs
+    }
+    assert set(evidence) == refs
+    assert len(evidence) < len(paths)
     assert verify_entries(run["chain"], run["chain_root"], evidence)
     assert "mocked" in (folder / "run.json").read_text()

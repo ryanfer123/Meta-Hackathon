@@ -18,9 +18,6 @@ test('capture current product screens without example recordings', async ({ page
   const shots: [string, string][] = [
     ['Teach', 'learn'],
     ['Check', 'check'],
-    ['Results', 'supervise'],
-    ['Results&tab=Integrity', 'audit'],
-    ['Home', 'workspace'],
   ];
   for (const theme of ['light', 'dark']) {
     await page.goto('/');

@@ -1,4 +1,5 @@
 import hashlib
+import math
 import subprocess
 from pathlib import Path
 
@@ -24,7 +25,9 @@ def sample(
         )
     frames: list[tuple[float, Path]] = []
     try:
-        for i in range(min(max_frames, int(total / native_fps * fps))):
+        # Include the last sampling point before a fractional-second end. Flooring
+        # the count silently dropped up to one evidence interval from every clip.
+        for i in range(min(max_frames, math.ceil(total / native_fps * fps))):
             t = i / fps
             cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
             ok, image = cap.read()

@@ -6,10 +6,12 @@ export function TrackingChoice({
   value,
   onChange,
   disabled = false,
+  maxSeconds = 90,
 }: {
   value: TrackingMode;
   onChange: (value: TrackingMode) => void;
   disabled?: boolean;
+  maxSeconds?: number;
 }) {
   const help = useId();
   return (
@@ -27,7 +29,8 @@ export function TrackingChoice({
       <p id={help} className="field-help">
         Sends one video request per object description instead of one per sampled frame. If no
         objects are found, it tries image tracking within the same spending limit. Unclear objects
-        stay unconfirmed. Speed varies; recordings are limited to 90 seconds in either mode.
+        stay unconfirmed. Speed varies; video tracking accepts up to {maxSeconds} seconds, subject
+        to memory and spending limits.
       </p>
     </div>
   );
