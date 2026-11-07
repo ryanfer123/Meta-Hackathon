@@ -83,6 +83,7 @@ export type Health = {
   live_configured: boolean;
   glimmer_configured: boolean;
   max_run_duration_s?: number;
+  max_teaching_duration_s?: number;
 };
 export type View =
   | 'Home'

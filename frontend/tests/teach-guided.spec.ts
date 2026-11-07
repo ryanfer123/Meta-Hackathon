@@ -329,6 +329,7 @@ test('processing replaces disabled forms with measured stage progress and an hon
   await expect(panel.getByRole('heading')).toHaveText(stage);
   updated = Date.now() / 1000 - 60;
   await expect(panel).toContainText('Waiting for a fresh update');
+  await expect(panel.locator('.analysis-live')).toHaveText('No recent update');
 });
 
 test('Teach sends the faster tracking choice for both validation videos', async ({ page }) => {
@@ -361,4 +362,25 @@ test('Teach sends the faster tracking choice for both validation videos', async 
   expect(
     (await request).postDataBuffer()?.includes(Buffer.from('name="tracking_mode"\r\n\r\nvideo')),
   ).toBeTruthy();
+});
+
+test('five-minute teaching timings select required native validation and keep the full range', async ({
+  page,
+}) => {
+  await mountTeach(page, true);
+  await page.locator('.teaching-player').evaluate((video) => {
+    Object.defineProperty(video, 'duration', { value: 300, configurable: true });
+    video.dispatchEvent(new Event('loadedmetadata'));
+  });
+  await expect(page.getByLabel('Place the label end in seconds')).toHaveValue('300');
+  await expect(page.getByLabel('Place the label end in seconds')).toHaveAttribute('max', '300');
+  const faster = page.getByRole('checkbox', { name: 'Faster video tracking (preview)' });
+  await expect(faster).toBeChecked();
+  await expect(faster).toBeDisabled();
+  await expect(faster).toHaveAccessibleDescription(/up to 300 seconds/);
+  await expect(
+    page.getByLabel('Second video (same procedure, different take)', { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('.validation-checks')).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBeFalsy();
 });

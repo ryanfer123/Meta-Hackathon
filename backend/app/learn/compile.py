@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 
 from app.meta_client import MetaClient
@@ -23,7 +24,11 @@ def compile_protocol(
 ) -> Protocol:
     prompt = PROMPT + "\nFrame timestamps in filenames: " + str([p.name for p in frames])
     prompt += "\nNarration: " + str([t.model_dump() for t in turns])
-    result = client.structured(prompt, Protocol, frames)
+    result = (
+        client.structured(prompt, Protocol, frames, reserve_usd=0.25 * math.ceil(len(frames) / 12))
+        if len(frames) > 12
+        else client.structured(prompt, Protocol, frames)
+    )
     result.verified = False
     return result
 

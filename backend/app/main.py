@@ -34,6 +34,7 @@ from app.sample_access import SampleRateLimiter, is_public_sample
 from app.samples import SAMPLES, sample_run
 from app.schemas import Protocol, TranscriptTurn
 from app.service import finalize_run, process_learn, process_run, process_validation
+from app.track.codec_status import codec_compiled
 from app.track.native_video import probe_video
 
 
@@ -134,18 +135,31 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 active_jobs.discard(job)
 
     def begin_job(request: Request, job: str, kind: str, existing: bool = False) -> None:
-        if config.cloud_jobs:
-            db = cloud(request)
-            try:
-                db.begin(job, kind, existing)
-            except RuntimeError as exc:
+        with active_lock:
+            if len(active_jobs) >= config.max_active_jobs:
                 if not existing:
                     shutil.rmtree(config.data_dir / "jobs" / job, ignore_errors=True)
-                raise HTTPException(409, str(exc)) from exc
-            finally:
-                db.close()
-        with active_lock:
+                raise HTTPException(
+                    503,
+                    "The server is checking another recording. Try again shortly; no analysis was started.",
+                    headers={"Retry-After": "30"},
+                )
             active_jobs.add(job)
+        try:
+            if config.cloud_jobs:
+                db = cloud(request)
+                try:
+                    db.begin(job, kind, existing)
+                except RuntimeError as exc:
+                    if not existing:
+                        shutil.rmtree(config.data_dir / "jobs" / job, ignore_errors=True)
+                    raise HTTPException(409, str(exc)) from exc
+                finally:
+                    db.close()
+        except Exception:
+            with active_lock:
+                active_jobs.discard(job)
+            raise
 
     async def save_job_upload(
         request: Request,
@@ -272,6 +286,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             and not config.replay_mode,
             "glimmer_configured": bool(config.glimmer_base_url),
             "max_run_duration_s": config.max_run_duration_s,
+            "max_teaching_duration_s": config.max_teaching_duration_s,
+            "sam_codec_compiled": codec_compiled(),
             "real_evaluation": "pending",
             "provenance": "synthetic samples",
         }

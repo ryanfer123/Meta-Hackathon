@@ -19,3 +19,8 @@ October 31 presentation revision: replaced the generated test-tube hero and mole
 November 1: restored the warm beige palette and implemented a persistent near-black alternative across the homepage, auth and workspace. Added Motion-based hero/reveal/hover/navigation transitions with reduced-motion handling, and refreshed the website/README captures in both themes. No third-party template artwork or footage was added; product images show current empty interface states.
 
 November 1 processing revision: added per-job native tracking selection, bounded decoded-mask reuse with the measured short-clip controls in API notes, and completed-empty query caching. Extended native Check to five minutes with unchanged 2 fps evidence and local memory/base-budget preflight; teaching/validation and image mode remain at 90 seconds. Added generated-video/mocked-network coverage, event-only report evidence, bounded display contours, final fractional sampling and a native read-timeout setting. Removed 134 temporary reference images, temporary probe artifacts and three unused product previews; six website/README images remain. This does not add consented public footage, a held-out real protocol or frozen-test accuracy results.
+
+
+## November 7: post-submission maintenance
+
+Five-minute teaching completion and free-worker performance maintenance: compiled installed SAM codec build with exact-pixel/error parity checks, bounded decoding reuse and progress, consistent per-protocol coordinates, combined two-video preflight, and an atomic single-analysis capacity guard. Added reproducible generated-mask benchmarking and regression coverage. This work is dated after the stated hackathon building window and must not be represented as work completed during that window.

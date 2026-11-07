@@ -77,3 +77,16 @@ A job client shares the last decoded native concept between response validation 
 ### Longer Check input
 
 Native Check samples up to 600 frames over five minutes; teaching and image workflows keep their original limits. `processing_plan.py` checks packed-mask memory and base native frame/cost caps before tracking, records its scope separately from measured metrics, and never mutates the budget ledger. No chunk boundaries or ID rebindings are introduced. Native raster accumulation is separately capped at 64 MiB per concept. Long-run display contours are limited to 64 points; rules always read exact masks. Report evidence is selected by actual event references, with extra overlay files only for model review windows, so report generation no longer copies every sampled frame.
+
+
+### Five-minute Teach and free-worker decoding (supersedes earlier teaching limits)
+
+New teaching protocols sample the complete timeline at 2 fps and a maximum long side of 512 px. The actual sampled size is saved as `Protocol.frame_max_side`; both validation and subsequent recordings use this coordinate system so pixel-distance conditions remain consistent. Legacy protocols default to their original 1024-px coordinate system. Long teaching selects up to 50 time-stratified keyframes (the model input limit), including the first and last sample. This can miss brief actions and does not prove that every action was observed.
+
+Validation preflights both videos together: 192 MiB packed geometry by default, 18,000 native processed frames and the configured job cost cap. A generated pair of 300-second, 512×288, seven-object timelines fits: 16,800 reserved native frames, $3.36 base tracking reservation, and roughly 148 MiB packed masks. These are planning quantities, not observed billing or accuracy. Image fallback, compile, reviews and repairs reserve separately.
+
+The deployment builds the unmodified installed meta-sam-parser 0.1.0 codec with mypyc in a separate compiler stage. The final image retains the original source/license and needs no compiler, mypy or setuptools. Build-time parity checks cover exact pixels and malformed-input outcomes; CI repeats the full Python suite using the compiled codec. No parser validation, confidence threshold or identity rule is removed. `/api/health` exposes only the Boolean `sam_codec_compiled`. Native parsing reports actual completed text parts and masks, rather than a heartbeat that pretends work has advanced. The tracker takes ownership of the decoded result instead of decoding large uncached concepts again.
+
+Reproduce the local CPU-only benchmark with `uv run python scripts/build_sam_codec.py --install` and `uv run python scripts/benchmark_sam_codec.py`. Three repeats on generated rectangular masks measured median reference/compiled decoding of 8.50/2.96 ms at 64×64 and 467.27/156.01 ms at 640×360 (2.87× and 3.00× respectively). Pixels matched exactly. This measures local decoding only; hosted end-to-end improvement remains unmeasured.
+
+`MAX_ACTIVE_JOBS=1` atomically limits expensive work across accounts in the single worker. A full worker returns HTTP 503 with Retry-After before a model request. Failure to persist or execute releases the slot. Auth and ownership checks still apply; this is a capacity guard, not a public queue.

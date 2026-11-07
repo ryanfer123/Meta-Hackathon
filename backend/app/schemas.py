@@ -96,6 +96,7 @@ class Protocol(StrictModel):
     steps: list[Step] = Field(min_length=1, max_length=30)
     order_strict: bool = True
     verified: bool = False
+    frame_max_side: int = Field(default=1024, ge=64, le=1024)
 
     @model_validator(mode="after")
     def references(self) -> "Protocol":

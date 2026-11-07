@@ -638,6 +638,7 @@ def test_native_geometry_disk_cache_preserves_masks_without_decoding_again(tmp_p
         first = client.parse_video_result(text, source)
     finally:
         client.close()
+
     monkeypatch.setattr(
         meta_client, "parse_video_masks", lambda *_: pytest.fail("must reuse geometry")
     )
@@ -651,6 +652,63 @@ def test_native_geometry_disk_cache_preserves_masks_without_decoding_again(tmp_p
                 assert restored.score == detection.score
                 assert restored.packed_mask == detection.packed_mask
                 assert restored.mask_shape == detection.mask_shape
+    finally:
+        client.close()
+
+
+def test_native_decode_reports_real_work_without_changing_pixels(tmp_path, monkeypatch):
+    from app.track import native_video
+
+    now = iter(range(100, 200))
+    monkeypatch.setattr(native_video.time, "monotonic", lambda: float(next(now)))
+    updates = []
+    video = prepared(tmp_path)
+    text = wire({0: [(1, 5)], 1: [(1, 6)]})
+    expected = parse_video_masks(text, video)
+    actual = parse_video_masks(text, video, progress=lambda *args: updates.append(args))
+    assert actual.valid and expected.valid
+    assert updates[0] == ("Checking mask data", 0, 2)
+    assert ("Checking mask data", 2, 2) in updates
+    assert ("Preparing object outlines", 0, 2) in updates
+    assert updates[-1] == ("Preparing object outlines", 2, 2)
+    for index in expected.frames:
+        assert actual.frames[index]["1"].packed_mask == expected.frames[index]["1"].packed_mask
+    invalid = parse_video_masks("<0f>bad", video, progress=lambda *args: updates.append(args))
+    assert not invalid.valid and invalid.frames == {}
+
+
+def test_large_video_result_is_decoded_once_for_direct_tracking(tmp_path, monkeypatch):
+    source = tmp_path / "original.mp4"
+    source.write_bytes(b"generated-test-video")
+    video = prepared(tmp_path, file_hash(source))
+    monkeypatch.setattr(meta_client, "prepare_video", lambda *args: video)
+    detection = Detection(np.ones((4096, 4096), dtype=np.bool_), 0.5)
+    parsed = ParsedVideo({0: {str(i): detection for i in range(5)}}, True)
+    decodes = []
+
+    def decode_once(*args):
+        decodes.append(args)
+        return parsed
+
+    monkeypatch.setattr(meta_client, "parse_video_masks", decode_once)
+    client = MetaClient(
+        settings(tmp_path),
+        "large-direct",
+        httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json={
+                    "status": "completed",
+                    "output": [{"content": [{"type": "output_text", "text": "test-wire"}]}],
+                    "usage": {"video_frames_processed": 50},
+                },
+            )
+        ),
+    )
+    try:
+        assert client.segment_video_decoded(source, "tube", file_hash(source)) is parsed
+        assert len(decodes) == 1
+        assert client._decoded_video is None
     finally:
         client.close()
 

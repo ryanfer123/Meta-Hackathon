@@ -18,6 +18,8 @@ jobs:
       - run: uv run ruff check backend scripts eval
       - run: uv run ruff format --check backend scripts eval
       - run: uv run mypy --strict backend/app
+      - run: uv run python scripts/build_sam_codec.py --install
+      - run: uv run pytest -q
       - run: uv run python scripts/export_samples.py
       - run: git diff --exit-code -- frontend/public/samples
   frontend:

@@ -243,7 +243,12 @@ def track_video(
             )
             continue
         try:
-            text = client.segment_video(video, prompt, video_hash)
+            decoded = getattr(client, "segment_video_decoded", None)
+            parsed = (
+                decoded(video, prompt, video_hash)
+                if decoded
+                else parse_video_masks(client.segment_video(video, prompt, video_hash), prepared)
+            )
         except (httpx.HTTPStatusError, NativeVideoTooLarge, NativeVideoNoMatches) as exc:
             if not isinstance(
                 exc, NativeVideoTooLarge | NativeVideoNoMatches
@@ -268,10 +273,6 @@ def track_video(
             for state, source in zip(states, fallback, strict=True):
                 state.objects.update(source.objects)
             continue
-        # The API adapter already decoded this concept to validate the response.
-        # Reuse its bounded per-client result instead of rasterizing every mask twice.
-        parse = getattr(client, "parse_video_result", parse_video_masks)
-        parsed = parse(text, prepared)
         if not parsed.valid:
             client.tracking_notice("native_video_unknown", parsed.reason)
         _map_native_group(parsed, objects, prepared, states)

@@ -3,7 +3,9 @@
 import json
 import math
 import subprocess
+import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
@@ -251,11 +253,27 @@ def prepare_video(video: Path, cache_dir: Path, max_bytes: int) -> PreparedVideo
 
 
 def parse_video_masks(
-    text: str, video: PreparedVideo, max_packed_bytes: int = 64 * 1024 * 1024
+    text: str,
+    video: PreparedVideo,
+    max_packed_bytes: int = 64 * 1024 * 1024,
+    progress: Callable[[str, int, int], None] | None = None,
 ) -> ParsedVideo:
     parser = video_segmentation_format().create_parser()
+    last_update = 0.0
+
+    def update(stage: str, done: int, total: int) -> None:
+        nonlocal last_update
+        now = time.monotonic()
+        if progress and (done == 0 or done == total or now - last_update >= 1):
+            progress(stage, done, total)
+            last_update = now
+
     try:
-        parser.push(text)
+        parts = text.splitlines(keepends=True)
+        update("Checking mask data", 0, len(parts))
+        for index, part in enumerate(parts):
+            parser.push(part)
+            update("Checking mask data", index + 1, len(parts))
         result = parser.finish(CompletedOutcome()).result
         if result.diagnostics:
             return ParsedVideo({}, False, "SAM video parser diagnostics; masks remain unknown")
@@ -265,6 +283,9 @@ def parse_video_masks(
         if packed_bytes > max_packed_bytes:
             return ParsedVideo({}, False, "SAM video geometry exceeds the safe memory limit")
         frames: dict[int, dict[str, Detection]] = {}
+        total_masks = sum(record.kind == "mask" for record in result.records)
+        processed_masks = 0
+        update("Preparing object outlines", 0, total_masks)
         for record in result.records:
             if record.kind != "mask":
                 continue
@@ -302,6 +323,8 @@ def parse_video_masks(
             frame[record.object_id] = Detection(
                 full, record.confidence if record.confidence is not None else 0.5
             )
+            processed_masks += 1
+            update("Preparing object outlines", processed_masks, total_masks)
         return ParsedVideo(frames, True)
     except (ValueError, TypeError, IndexError) as exc:
         return ParsedVideo({}, False, "SAM video mask could not be decoded: " + type(exc).__name__)

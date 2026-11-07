@@ -8,10 +8,17 @@ import numpy as np
 
 
 def sample(
-    video: Path, output: Path, fps: float = 2, max_frames: int = 180
+    video: Path,
+    output: Path,
+    fps: float = 2,
+    max_frames: int = 180,
+    max_side: int = 1024,
+    upscale: bool = False,
 ) -> list[tuple[float, Path]]:
     if not 0 < fps <= 4:
         raise ValueError("sampling fps must be 0-4")
+    if not 64 <= max_side <= 1024:
+        raise ValueError("Sampled frame side must be between 64 and 1024 pixels")
     output.mkdir(parents=True, exist_ok=True)
     cap = cv2.VideoCapture(str(video))
     if not cap.isOpened():
@@ -34,12 +41,12 @@ def sample(
             if not ok:
                 break
             height, width = image.shape[:2]
-            if max(width, height) > 1024:
+            if max(width, height) > max_side or (upscale and max(width, height) != max_side):
                 image = cv2.resize(
                     image,
                     (
-                        int(width * 1024 / max(width, height)),
-                        int(height * 1024 / max(width, height)),
+                        int(width * max_side / max(width, height)),
+                        int(height * max_side / max(width, height)),
                     ),
                 )
             path = output / f"frame_{i:04d}_{t:07.3f}.jpg"
@@ -68,6 +75,29 @@ def keyframes(frames: list[tuple[float, Path]], limit: int = 12) -> list[Path]:
     if len(selected) > limit:
         selected = [selected[int(i)] for i in np.linspace(0, len(selected) - 1, limit)]
     return selected
+
+
+def teaching_keyframes(frames: list[tuple[float, Path]]) -> list[Path]:
+    """Cover longer teaching clips with at most 50 time-stratified images.
+
+    Keep both endpoints and the largest observed visual change in each interior
+    time bin. This is frame selection, not proof that every brief action is visible.
+    """
+    if len(frames) <= 180:
+        return keyframes(frames)
+    changes: list[float] = []
+    previous = None
+    for _, path in frames:
+        raw = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+        if raw is None:
+            raise ValueError("Cannot read teaching frame")
+        image = cv2.resize(raw, (64, 64))
+        changes.append(0.0 if previous is None else float(cv2.absdiff(image, previous).mean()))
+        previous = image
+    bins = np.array_split(np.arange(len(frames)), min(50, len(frames)))
+    selected = [int(bucket[int(np.argmax([changes[int(i)] for i in bucket]))]) for bucket in bins]
+    selected[0], selected[-1] = 0, len(frames) - 1
+    return [frames[index][1] for index in selected]
 
 
 def extract_audio(video: Path, target: Path) -> None:

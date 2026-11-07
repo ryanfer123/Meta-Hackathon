@@ -63,3 +63,12 @@ The signed-in Check and validation forms send `tracking_mode=image|video`. The c
 Long-recording preflight is local and makes no model requests. It uses full sampled dimensions and the number of distinct prompt descriptions; a five-minute, five-concept clip estimates 6,000 processed frames and a $1.20 base reservation at the existing configured rate. Fallbacks/reviews add to that cost. Do not increase limits on a small worker without memory measurements. Generated local video/mocked-network tests cover longer recordings; real long-video performance remains unmeasured.
 
 `SAM_VIDEO_TIMEOUT_S=300` bounds native HTTP reads (30–600 configurable). Other model requests retain the 120-second timeout. This adds no automatic retry and does not change reservations.
+
+
+### Free-tier performance build
+
+Keep the existing free hosting plan. `Dockerfile.api` now has a compiler stage for the installed SAM codec; the final Python 3.13 image contains only the generated extensions and original licensed parser package. A failed compilation stops the deployment. Check `sam_codec_compiled: true` in backend health after deployment; do not infer installation from a passing local build. CI verifies both reference and compiled execution.
+
+Current source defaults supersede the earlier limits: `MAX_TEACHING_DURATION_S=300`, `MAX_RUN_DURATION_S=300`, `MAX_VALIDATION_MASK_MB=192`, `MAX_RUN_MASK_MB=128`, `MAX_ACTIVE_JOBS=1`, `MAX_SAM_VIDEO_FRAMES=18000`, `HOSTED_MAX_SAM_VIDEO_FRAMES=18000`, per-job reservation cap $8 and daily reservation cap $15. Existing service environment overrides take precedence until deliberately changed. Keep image tracking as the default; choose native tracking for long recordings. New protocols use 512-px evidence frames and retain that coordinate system for subsequent checks. Do not raise concurrency or memory limits to spend the available API credits.
+
+A free worker can sleep or restart; it cannot guarantee uninterrupted long jobs or persistent local caches. Completed archives remain owner-scoped in Supabase. Existing orphan-job detection reports an interrupted worker rather than silently presenting a completed result. The documented local codec benchmark is not a promise of hosted turnaround time.

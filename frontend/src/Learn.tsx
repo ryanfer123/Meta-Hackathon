@@ -83,6 +83,10 @@ export function Learn({
   const [error, setError] = useState<unknown>(null);
   const [repair, setRepair] = useState(false);
   const [trackingMode, setTrackingMode] = useState<TrackingMode>('image');
+  const teachingLimit = health.max_teaching_duration_s ?? 300;
+  useEffect(() => {
+    if (duration > 90) setTrackingMode('video');
+  }, [duration]);
   const player = useRef<HTMLVideoElement>(null);
   const taskGeneration = useRef(0);
 
@@ -355,9 +359,12 @@ export function Learn({
           </p>
         ) : (
           <>
-            <p>Upload a video showing the right way to do one hands-on procedure.</p>
+            <p>
+              Upload a video showing the right way to do one hands-on procedure, up to five minutes.
+            </p>
             <FileInput
               label="Teaching video"
+              maxSeconds={teachingLimit}
               file={teaching}
               onFile={(file) => {
                 invalidateTeaching();
@@ -485,9 +492,12 @@ export function Learn({
                       aria-label="Teaching video timing editor"
                       onLoadedMetadata={(event) => {
                         const value = event.currentTarget.duration;
-                        if (Number.isFinite(value) && value > 0 && value <= 90) setDuration(value);
+                        if (Number.isFinite(value) && value > 0 && value <= teachingLimit)
+                          setDuration(value);
                         else
-                          setVideoError('Use a video with a valid duration of up to 90 seconds.');
+                          setVideoError(
+                            `Use a video with a valid duration of up to ${teachingLimit} seconds.`,
+                          );
                       }}
                     />
                   )}
@@ -506,7 +516,7 @@ export function Learn({
                               <input
                                 type="number"
                                 min={0}
-                                max={duration || 90}
+                                max={duration || teachingLimit}
                                 step="0.1"
                                 value={ranges[step.id]?.[edge] ?? ''}
                                 aria-label={`${step.title} ${edge} in seconds`}
@@ -544,6 +554,7 @@ export function Learn({
                   </label>
                   <FileInput
                     label="Second video (same procedure, different take)"
+                    maxSeconds={teachingLimit}
                     file={second}
                     onFile={replaceSecond}
                     disabled={!!busy}
@@ -551,8 +562,12 @@ export function Learn({
                   <TrackingChoice
                     value={trackingMode}
                     onChange={setTrackingMode}
-                    disabled={!!busy}
+                    disabled={!!busy || duration > 90}
+                    maxSeconds={teachingLimit}
                   />
+                  <p className="field-help">
+                    Use faster video tracking when either expert take is longer than 90 seconds.
+                  </p>
                   <button
                     className="button primary"
                     disabled={!!checkReason}
@@ -679,18 +694,20 @@ function FileInput({
   file,
   onFile,
   disabled = false,
+  maxSeconds = 300,
 }: {
   label: string;
   file: File | null;
   onFile: (file: File | null) => void;
   disabled?: boolean;
+  maxSeconds?: number;
 }) {
   return (
     <label className="file-input">
       <Upload size={20} />
       <span>
         <strong>{label}</strong>
-        <small>{file ? file.name : 'Choose MP4 / MOV · up to 90 seconds'}</small>
+        <small>{file ? file.name : `Choose MP4 / MOV · up to ${maxSeconds} seconds`}</small>
       </span>
       <input
         type="file"

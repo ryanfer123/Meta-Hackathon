@@ -42,7 +42,7 @@ export function AnalysisProgress({
           <h2>{progress?.stage ?? message}</h2>
         </div>
         <span className="analysis-live">
-          <span /> Working
+          <span /> {stale ? 'No recent update' : 'Working'}
         </span>
       </div>
       <div className="analysis-meter">

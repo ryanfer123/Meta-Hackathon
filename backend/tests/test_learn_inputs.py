@@ -38,6 +38,11 @@ def test_learn_narration_precedence_and_actual_full_duration(tmp_path, monkeypat
     folder.mkdir(parents=True)
     calls = []
     frames = [(0.0, folder / "first.jpg"), (9.5, folder / "last.jpg")]
+    import cv2
+    import numpy as np
+
+    for _, path in frames:
+        cv2.imwrite(str(path), np.zeros((64, 64, 3), dtype=np.uint8))
     monkeypatch.setattr(service, "sample", lambda *_: frames)
     monkeypatch.setattr(service, "keyframes", lambda *_: [])
 

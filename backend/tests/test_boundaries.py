@@ -65,6 +65,11 @@ def test_learn_saves_original_narration_and_proposals(tmp_path, monkeypatch):
     folder = tmp_path / "jobs" / job
     folder.mkdir(parents=True)
     frames = [(0.0, folder / "0.jpg"), (10.0, folder / "10.jpg")]
+    import cv2
+    import numpy as np
+
+    for _, path in frames:
+        cv2.imwrite(str(path), np.zeros((64, 64, 3), dtype=np.uint8))
     monkeypatch.setattr(service, "sample", lambda *_: frames)
     monkeypatch.setattr(service, "keyframes", lambda *_: [])
     monkeypatch.setattr(service, "compile_protocol", lambda *_: sample_protocol())

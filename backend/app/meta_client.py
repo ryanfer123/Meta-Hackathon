@@ -12,6 +12,7 @@ from pydantic import BaseModel, ValidationError
 
 from app.budget import Budget
 from app.config import Settings
+from app.learn.frames import file_hash
 from app.model_output import ModelOutputIncomplete, ensure_complete, json_object_text
 from app.replay_cache import ReplayCache, canonical, digest
 from app.schemas import TranscriptTurn
@@ -56,6 +57,7 @@ class MetaClient:
     ) -> None:
         self.settings, self.run_id = settings, run_id
         self.tracking_progress: Callable[[int, int, str], None] | None = None
+        self.mask_progress: Callable[[str, int, int], None] | None = None
         self._decoded_video: tuple[str, PreparedVideo, ParsedVideo] | None = None
         self.log_lock = Lock()
         self.budget = Budget(settings)
@@ -98,7 +100,11 @@ class MetaClient:
         parsed = (
             unpack_video_result(cached["payload"], prepared)
             if cached is not None
-            else parse_video_masks(text, prepared)
+            else (
+                parse_video_masks(text, prepared, progress=self.mask_progress)
+                if self.mask_progress
+                else parse_video_masks(text, prepared)
+            )
         )
         stored = sum(
             len(detection.packed_mask or b"")
@@ -201,7 +207,16 @@ class MetaClient:
             return float(usage["input_tokens"]) * 1.25e-6 + float(usage["output_tokens"]) * 4.25e-6
         return None
 
-    def structured(self, prompt: str, schema: type[T], images: list[Path] | None = None) -> T:
+    def structured(
+        self,
+        prompt: str,
+        schema: type[T],
+        images: list[Path] | None = None,
+        *,
+        reserve_usd: float = 0.25,
+    ) -> T:
+        if len(images or []) > 50:
+            raise ValueError("A model request can contain at most 50 images")
         feedback = ""
         for attempt in range(3):
             content: list[dict[str, Any]] = [
@@ -224,6 +239,7 @@ class MetaClient:
                     "input": [{"role": "user", "content": content}],
                 },
                 len(images or []),
+                reserve_usd=reserve_usd,
             )
             try:
                 return schema.model_validate_json(json_object_text(response_text(raw)))
@@ -234,7 +250,7 @@ class MetaClient:
         raise RuntimeError("unreachable")
 
     def segment(self, frame: Path, prompt: str, video_hash: str, frame_index: int) -> str:
-        key = digest([video_hash, prompt, frame_index, "sam-3.1", "one_bit"])
+        key = digest([video_hash, prompt, frame_index, "sam-3.1", "one_bit", file_hash(frame)])
         cached = self.cache.get("sam", key)
         if cached is not None:
             return str(cached["payload"])
@@ -284,6 +300,16 @@ class MetaClient:
         return target
 
     def segment_video(self, video_path: Path, prompt: str, video_hash: str) -> str:
+        return self._segment_video(video_path, prompt, video_hash)[0]
+
+    def segment_video_decoded(self, video_path: Path, prompt: str, video_hash: str) -> ParsedVideo:
+        # Pass ownership of the already validated result to the tracker. Large
+        # concepts need not be retained in the small cache or decoded a second time.
+        return self._segment_video(video_path, prompt, video_hash)[1]
+
+    def _segment_video(
+        self, video_path: Path, prompt: str, video_hash: str
+    ) -> tuple[str, ParsedVideo]:
         prepared = prepare_video(
             video_path,
             self.settings.data_dir / "cache" / "native-video",
@@ -298,7 +324,7 @@ class MetaClient:
             parsed = self.parse_video_result(text, prepared)
             if parsed.valid and not any(parsed.frames.values()):
                 raise NativeVideoNoMatches("Cached completed video has zero masks")
-            return text
+            return text, parsed
         reserved_frames = prepared.billed_frame_reservation
         body = {
             "model": "sam-3.1",
@@ -334,7 +360,7 @@ class MetaClient:
                 "native_video_unknown",
                 "SAM video response was not completed; no mask evidence accepted or cached",
             )
-            return ""
+            return "", ParsedVideo({}, False, "SAM response was incomplete; masks remain unknown")
         text = response_text(raw)
         parsed = self.parse_video_result(text, prepared)
         if parsed.valid and not any(parsed.frames.values()):
@@ -347,7 +373,7 @@ class MetaClient:
             )
         if parsed.valid:
             self.cache.put("sam-video", key, text, "live-meta-sam-3.1-video")
-        return text
+        return text, parsed
 
     def transcribe(self, audio: Path) -> list[TranscriptTurn]:
         with audio.open("rb") as file:

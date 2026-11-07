@@ -45,6 +45,9 @@ def test_progress_is_returned_on_private_job_status_routes(tmp_path):
     JobProgress(folder).update("Finding objects", 3, 10, "frames")
     settings = Settings(_env_file=None, data_dir=tmp_path, auth_required=False)
     with TestClient(create_app(settings)) as api:
+        health = api.get("/api/health").json()
+        assert isinstance(health["sam_codec_compiled"], bool)
+        assert health["max_teaching_duration_s"] == 300
         for path in (f"/api/protocols/{job}", f"/api/runs/{job}"):
             response = api.get(path)
             assert response.status_code == 200

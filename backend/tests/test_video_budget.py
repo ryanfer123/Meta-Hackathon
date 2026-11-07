@@ -42,13 +42,13 @@ def test_video_defaults_fit_two_ninety_second_experts_with_implicit_hand(tmp_pat
     # Six visible props plus the implicit hand, for both expert takes under one run ID.
     object_count = len(protocol.objects)
     assert settings.sam_mode == "image"
-    assert settings.max_sam_video_frames == 6000
-    assert settings.hosted_max_sam_video_frames == 6000
+    assert settings.max_sam_video_frames == 18000
+    assert settings.hosted_max_sam_video_frames == 18000
     assert settings.max_spark_calls == 40
     assert settings.max_run_cost_usd == 8
-    assert settings.max_daily_cost_usd == 10
+    assert settings.max_daily_cost_usd == 15
     assert settings.hosted_max_run_cost_usd == 8
-    assert settings.hosted_max_daily_cost_usd == 10
+    assert settings.hosted_max_daily_cost_usd == 15
     assert len(protocol.objects) == 7
     assert "hand" in {o.name for o in protocol.objects}
     budget = Budget(settings)
@@ -172,8 +172,8 @@ def test_hosted_reservations_send_configured_caps_without_local_defaults(tmp_pat
         "reserved_usd": 0.072,
         "processed_frames": 360,
         "max_run_usd": 8,
-        "max_day_usd": 10,
-        "max_sam_frames": 6000,
+        "max_day_usd": 15,
+        "max_sam_frames": 18000,
         "max_sam_calls": 800,
         "max_spark_calls": 40,
         "max_spark_day": 60,
@@ -261,6 +261,6 @@ def test_image_defaults_fit_two_experts_and_three_spark_reservations(tmp_path):
     assert usd == pytest.approx(7.05)
     assert frames == 0
     assert usd < settings.hosted_max_run_cost_usd == settings.max_run_cost_usd == 8
-    assert usd < settings.hosted_max_daily_cost_usd == settings.max_daily_cost_usd == 10
+    assert usd < settings.hosted_max_daily_cost_usd == settings.max_daily_cost_usd == 15
     with pytest.raises(BudgetExceeded, match="run cost"):
         budget.reserve("expert-pair-image", "spark", 1.0)

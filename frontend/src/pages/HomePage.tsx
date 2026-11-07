@@ -147,7 +147,7 @@ export function HomePage({ onOpen }: Props) {
               <span>Workspace</span>
             </div>
             <img
-              src={`${import.meta.env.BASE_URL}images/product-learn${suffix}.png?v=themes-20261101`}
+              src={`${import.meta.env.BASE_URL}images/product-learn${suffix}.png?v=teaching-20261107`}
               width="1505"
               height="1045"
               alt="Current Apprentice Teach workspace with a teaching-video upload and optional description"
@@ -211,7 +211,7 @@ export function HomePage({ onOpen }: Props) {
               aria-label="Open Teach"
             >
               <img
-                src={`${import.meta.env.BASE_URL}images/product-learn${suffix}.png?v=themes-20261101`}
+                src={`${import.meta.env.BASE_URL}images/product-learn${suffix}.png?v=teaching-20261107`}
                 width="1505"
                 height="1045"
                 alt="Current teaching-video upload screen"
@@ -228,7 +228,7 @@ export function HomePage({ onOpen }: Props) {
               aria-label="Open Check"
             >
               <img
-                src={`${import.meta.env.BASE_URL}images/product-check${suffix}.png?v=themes-20261101`}
+                src={`${import.meta.env.BASE_URL}images/product-check${suffix}.png?v=teaching-20261107`}
                 width="1505"
                 height="1045"
                 alt="Current Check screen guiding users to teach a procedure before checking another recording"

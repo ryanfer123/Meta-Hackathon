@@ -1,9 +1,19 @@
+FROM python:3.13-slim AS sam-codec-build
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
+COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /usr/local/bin/uv
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen
+COPY scripts/build_sam_codec.py scripts/build_sam_codec.py
+RUN uv run --no-sync python scripts/build_sam_codec.py --install
+
 FROM python:3.13-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg libglib2.0-0 && rm -rf /var/lib/apt/lists/*
 COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /usr/local/bin/uv
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
+COPY --from=sam-codec-build /app/.venv/lib/python3.13/site-packages/meta_sam_parser/ /app/.venv/lib/python3.13/site-packages/meta_sam_parser/
 COPY backend/ backend/
 ENV AUTH_REQUIRED=true DATA_DIR=/app/data
 EXPOSE 10000

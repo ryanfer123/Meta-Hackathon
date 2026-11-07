@@ -13,11 +13,11 @@ from app.config import Settings
 from app.glimmer_client import GlimmerClient
 from app.learn.boundaries import suggest_boundaries, validate_step_ranges
 from app.learn.compile import compile_protocol, repair_step
-from app.learn.frames import extract_audio, file_hash, keyframes, sample
+from app.learn.frames import extract_audio, file_hash, keyframes, sample, teaching_keyframes
 from app.learn.transcribe import transcribe
 from app.learn.validate import StepRange, replay, validate_protocol
 from app.meta_client import MetaClient
-from app.processing_plan import plan_long_recording
+from app.processing_plan import plan_long_recording, plan_validation
 from app.progress import JobProgress
 from app.replay_cache import atomic_json
 from app.samples import wire_frame
@@ -53,7 +53,15 @@ def process_learn(
         video = folder / "original.mp4"
         if len(narration_text) > 4000:
             raise ValueError("Narration text must be at most 4000 characters")
-        frames = sample(video, folder / "frames")
+        # Persist this resolution in the protocol so later pixel thresholds use
+        # the same coordinate system. Leave headroom on the 512 MiB free worker.
+        frames = sample(video, folder / "frames", 2, settings.max_teaching_duration_s * 2, 512)
+        first_image = cv2.imread(str(frames[0][1]))
+        if first_image is None or max(first_image.shape[:2]) < 64:
+            raise ValueError(
+                "Teaching frames must be readable and at least 64 pixels on the long side."
+            )
+        frame_side = max(first_image.shape[:2])
         if not turns and narration_text.strip():
             duration = float(probe_video(video)["duration_s"])
             turns = [TranscriptTurn(start=0, end=duration, text=narration_text.strip())]
@@ -63,7 +71,9 @@ def process_learn(
             extract_audio(video, audio)
             turns = transcribe(client, audio)
         progress.update("Writing the steps")
-        protocol = compile_protocol(client, keyframes(frames), turns)
+        selected = teaching_keyframes(frames) if len(frames) > 180 else keyframes(frames)
+        protocol = compile_protocol(client, selected, turns)
+        protocol.frame_max_side = frame_side
         atomic_json(folder / "protocol.json", protocol.model_dump(by_alias=True))
         atomic_json(folder / "narration.json", [turn.model_dump() for turn in turns])
         suggestions = {
@@ -190,15 +200,35 @@ def run_recording(
         progress = JobProgress(folder)
         progress.update("Preparing your recording")
         paths = (
-            sample(video, folder / "frames", 2, settings.max_run_duration_s * 2)
+            sample(
+                video,
+                folder / "frames",
+                2,
+                settings.max_run_duration_s * 2,
+                protocol.frame_max_side,
+                protocol.frame_max_side < 1024,
+            )
             if settings.sam_mode == "video"
-            else sample(video, folder / "frames")
+            else sample(
+                video,
+                folder / "frames",
+                2,
+                180,
+                protocol.frame_max_side,
+                protocol.frame_max_side < 1024,
+            )
         )
         plan = plan_long_recording(settings, protocol, video, paths, color_fallback)
         if plan:
             atomic_json(folder / "processing_plan.json", plan)
         client.tracking_progress = lambda done, total, unit: progress.update(
             "Finding objects in your recording", done, total, unit
+        )
+        client.mask_progress = lambda stage, done, total: progress.update(
+            stage + " in your recording",
+            done,
+            total,
+            "parts" if stage == "Checking mask data" else "masks",
         )
         frames = (
             track_video(client, protocol, video, paths, file_hash(video), color_fallback)
@@ -368,15 +398,46 @@ def process_validation(
         validate_step_ranges(protocol, ranges)
         duration = float(probe_video(folder / "original.mp4")["duration_s"])
         validate_step_ranges(protocol, ranges, duration)
-        a_paths = sample(folder / "original.mp4", folder / "frames")
-        b_paths = sample(folder / "heldout.mp4", folder / "heldout-frames")
+        a_paths = sample(
+            folder / "original.mp4",
+            folder / "frames",
+            2,
+            settings.max_teaching_duration_s * 2,
+            protocol.frame_max_side,
+            protocol.frame_max_side < 1024,
+        )
+        b_paths = sample(
+            folder / "heldout.mp4",
+            folder / "heldout-frames",
+            2,
+            settings.max_teaching_duration_s * 2,
+            protocol.frame_max_side,
+            protocol.frame_max_side < 1024,
+        )
+        plan = plan_validation(
+            settings, protocol, folder / "original.mp4", a_paths, folder / "heldout.mp4", b_paths
+        )
+        if plan:
+            atomic_json(folder / "validation_plan.json", plan)
         client.tracking_progress = lambda done, total, unit: progress.update(
             "Finding objects in the teaching video", done, total, unit
+        )
+        client.mask_progress = lambda stage, done, total: progress.update(
+            stage + " in the teaching video",
+            done,
+            total,
+            "parts" if stage == "Checking mask data" else "masks",
         )
         if settings.sam_mode == "video":
             a = track_video(client, protocol, folder / "original.mp4", a_paths, a_hash)
             client.tracking_progress = lambda done, total, unit: progress.update(
                 "Finding objects in the second video", done, total, unit
+            )
+            client.mask_progress = lambda stage, done, total: progress.update(
+                stage + " in the second video",
+                done,
+                total,
+                "parts" if stage == "Checking mask data" else "masks",
             )
             b = track_video(client, protocol, folder / "heldout.mp4", b_paths, b_hash)
         else:
@@ -437,6 +498,7 @@ def process_validation(
         result["compile_video_sha256"] = a_hash
         result["held_out_video_sha256"] = b_hash
         result["tracking_mode"] = settings.sam_mode
+        result["processing_plan"] = plan
         atomic_json(folder / "self_check.json", result)
         atomic_json(folder / "protocol.json", protocol.model_dump(by_alias=True))
         atomic_json(
