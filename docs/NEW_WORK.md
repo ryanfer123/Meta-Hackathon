@@ -24,3 +24,5 @@ November 1 processing revision: added per-job native tracking selection, bounded
 ## November 7: post-submission maintenance
 
 Five-minute teaching completion and free-worker performance maintenance: compiled installed SAM codec build with exact-pixel/error parity checks, bounded decoding reuse and progress, consistent per-protocol coordinates, combined two-video preflight, and an atomic single-analysis capacity guard. Added reproducible generated-mask benchmarking and regression coverage. This work is dated after the stated hackathon building window and must not be represented as work completed during that window.
+
+Follow-up: added exact scalar area/centroid caching with regression coverage for immutable geometry, visibility boundaries and raster release. Movement semantics and temporal smoothing remain unchanged. This is also post-submission maintenance.

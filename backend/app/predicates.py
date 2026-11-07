@@ -1,13 +1,13 @@
 from math import dist, hypot
 
 from app.schemas import Absent, Count, Inside, Moved, Near, Order, Predicate, Present, Touching
-from app.track.geometry import Detection, FrameState, centroid, containment, distance
+from app.track.geometry import Detection, FrameState, containment, distance
 
 Result = tuple[bool, float, str]
 
 
 def visible(d: Detection | None) -> bool:
-    return d is not None and d.mask is not None and d.score >= 0.5 and int(d.mask.sum()) >= 4
+    return d is not None and d.score >= 0.5 and d.area >= 4
 
 
 def evaluate(pred: Predicate, window: list[FrameState], t: float) -> Result:
@@ -46,16 +46,12 @@ def evaluate(pred: Predicate, window: list[FrameState], t: float) -> Result:
             if visible(d):
                 return False, d.score if d else 0, "object visible"
             return False, 0, "missing mask is not evidence of absence"
-        if not visible(d) or d is None or d.mask is None:
+        if not visible(d) or d is None:
             return False, 0, "object occluded or not detected"
         if isinstance(pred, Present):
             return True, d.score, "object visible"
         candidates = [f.objects.get(pred.obj) for f in history if t - pred.within_s <= f.t]
-        points = [
-            centroid(x.mask)
-            for x in candidates
-            if visible(x) and x is not None and x.mask is not None
-        ]
+        points = [x.center for x in candidates if visible(x) and x is not None]
         if len(points) < 2:
             return False, 0, "insufficient movement history"
         displacement = dist(points[0], points[-1]) / hypot(frame.width, frame.height)
@@ -78,7 +74,7 @@ def evaluate(pred: Predicate, window: list[FrameState], t: float) -> Result:
         gap = distance(a.mask, b.mask)
         return gap <= pred.max_gap_px, confidence, f"mask gap={gap:.1f}px"
     assert isinstance(pred, Near)
-    gap_norm = dist(centroid(a.mask), centroid(b.mask)) / hypot(frame.width, frame.height)
+    gap_norm = dist(a.center, b.center) / hypot(frame.width, frame.height)
     return gap_norm <= pred.max_dist_norm, confidence, f"centroid distance={gap_norm:.3f}"
 
 

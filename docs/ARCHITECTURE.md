@@ -90,3 +90,9 @@ The deployment builds the unmodified installed meta-sam-parser 0.1.0 codec with 
 Reproduce the local CPU-only benchmark with `uv run python scripts/build_sam_codec.py --install` and `uv run python scripts/benchmark_sam_codec.py`. Three repeats on generated rectangular masks measured median reference/compiled decoding of 8.50/2.96 ms at 64×64 and 467.27/156.01 ms at 640×360 (2.87× and 3.00× respectively). Pixels matched exactly. This measures local decoding only; hosted end-to-end improvement remains unmeasured.
 
 `MAX_ACTIVE_JOBS=1` atomically limits expensive work across accounts in the single worker. A full worker returns HTTP 503 with Retry-After before a model request. Failure to persist or execute releases the slot. Auth and ownership checks still apply; this is a capacity guard, not a public queue.
+
+### Scalar geometry reuse
+
+Immutable detections lazily cache only their exact scalar area and centroid. Packed bits remain authoritative and full masks remain under the existing 8 MiB LRU. Repeated visibility and centroid checks reuse these values instead of rescanning historical masks. This does not retain per-history full rasters.
+
+Movement semantics and temporal smoothing are unchanged: `moved` compares the first and last visible centroid in its window. A short excursion followed by a return can remain unconfirmed. Caching preserves this conservative behavior rather than turning one noisy excursion into repeated evidence. Tests cover scalar equivalence, confidence boundaries, immutable packed geometry and raster release.

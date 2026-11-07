@@ -161,7 +161,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Latest local verification: **344 Python tests** and **153 desktop/mobile browser checks** passed, together with lint, formatting, strict typing and the production build. The two documentation-capture cases run only with the explicit capture flag; pointer tilt is intentionally disabled for touch devices. The [Checks workflow](https://github.com/ryanfer123/Meta-Hackathon/actions/workflows/checks.yml) is the source for current CI status. Tests use synthetic masks and mocked transports, not paid provider requests. Diagnostic scripts require an explicit `--allow-paid-calls` opt-in.
+Latest local verification: **350 Python tests** and **153 desktop/mobile browser checks** passed, together with lint, formatting, strict typing and the production build. The two documentation-capture cases run only with the explicit capture flag; pointer tilt is intentionally disabled for touch devices. The [Checks workflow](https://github.com/ryanfer123/Meta-Hackathon/actions/workflows/checks.yml) is the source for current CI status. Tests use synthetic masks and mocked transports, not paid provider requests. Diagnostic scripts require an explicit `--allow-paid-calls` opt-in.
 
 | Area | What is checked |
 | --- | --- |

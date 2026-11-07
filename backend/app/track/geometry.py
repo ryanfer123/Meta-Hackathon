@@ -48,6 +48,8 @@ class Detection:
     obj_class: str
     known_absent: bool
     _mask_cache: ReferenceType[Mask] | None = field(repr=False, compare=False)
+    _area_cache: int | None = field(repr=False, compare=False)
+    _center_cache: tuple[float, float] | None = field(repr=False, compare=False)
 
     def __init__(
         self,
@@ -70,6 +72,28 @@ class Detection:
         object.__setattr__(self, "obj_class", obj_class)
         object.__setattr__(self, "known_absent", known_absent)
         object.__setattr__(self, "_mask_cache", None)
+        object.__setattr__(self, "_area_cache", None)
+        object.__setattr__(self, "_center_cache", None)
+
+    @property
+    def area(self) -> int:
+        if self._area_cache is None:
+            mask = self.mask
+            object.__setattr__(
+                self, "_area_cache", 0 if mask is None else int(np.count_nonzero(mask))
+            )
+        assert self._area_cache is not None
+        return self._area_cache
+
+    @property
+    def center(self) -> tuple[float, float]:
+        if self._center_cache is None:
+            mask = self.mask
+            if mask is None:
+                raise ValueError("unobserved mask has no centroid")
+            object.__setattr__(self, "_center_cache", centroid(mask))
+        assert self._center_cache is not None
+        return self._center_cache
 
     @property
     def mask(self) -> Mask | None:
