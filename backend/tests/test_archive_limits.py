@@ -143,7 +143,7 @@ def test_replacement_preflight_preserves_previous_video_and_confirmation(
     assert result.status_code == status, result.text
     assert not list(folder.glob("*.upload"))
     if status == 202:
-        assert calls == ["begin", "process", "archive"]
+        assert calls == ["begin", "archive", "process", "archive"]
         assert (folder / "heldout.mp4").read_bytes() == content
     else:
         assert not calls

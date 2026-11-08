@@ -115,6 +115,11 @@ class Budget:
             day_cost = db.execute(
                 "SELECT COALESCE(SUM(reserved),0) FROM calls WHERE day=?", (day,)
             ).fetchone()[0]
+            month_cost = db.execute(
+                "SELECT COALESCE(SUM(reserved),0) FROM calls WHERE substr(day,1,7)=?", (day[:7],)
+            ).fetchone()[0]
+            if month_cost + max_cost > self.settings.max_monthly_cost_usd + 1e-9:
+                raise BudgetExceeded("monthly cost reservation cap reached")
             video_frames = db.execute(
                 "SELECT COALESCE(SUM(processed_frames),0) FROM calls WHERE run=? AND kind='sam'",
                 (run,),

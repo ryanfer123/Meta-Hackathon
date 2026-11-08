@@ -19,7 +19,7 @@ import './styles/results.css';
 import { headlineAlert, earlierAlertContext } from './lib/alerts';
 
 export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
-  const [time, setTime] = useState(() => headlineAlert(run)?.t ?? 0),
+  const [time, setTime] = useState(() => headlineAlert(run)?.t ?? run.analysis_range?.start ?? 0),
     [playing, setPlaying] = useState(false),
     [masks, setMasks] = useState(true),
     [sound, setSound] = useState(false),
@@ -53,7 +53,7 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
   }, [run.id, synthetic]);
   useEffect(() => {
     const initial = headlineAlert(run);
-    setTime(initial?.t ?? 0);
+    setTime(initial?.t ?? run.analysis_range?.start ?? 0);
     setPlaying(false);
     setSelected(initial?.step_id ?? null);
     setSelectedEvent(initial ?? null);
@@ -125,13 +125,23 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
     if (e.step_id && e.kind === 'skipped') states[e.step_id] = 'SKIPPED';
   }
   function seek(t: number) {
+    t = Math.max(
+      run.analysis_range?.start ?? 0,
+      Math.min(run.analysis_range?.end ?? run.duration, t),
+    );
     setTime(t);
     if (video.current) video.current.currentTime = t;
   }
   function toggle() {
     if (video.current) {
       if (playing) video.current.pause();
-      else void video.current.play();
+      else {
+        if (time >= (run.analysis_range?.end ?? run.duration)) {
+          video.current.currentTime = run.analysis_range?.start ?? 0;
+          setTime(run.analysis_range?.start ?? 0);
+        }
+        void video.current.play();
+      }
     }
     setPlaying(!playing);
   }
@@ -191,7 +201,14 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
               <video
                 ref={video}
                 src={mediaUrl || undefined}
-                onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+                onTimeUpdate={(e) => {
+                  const end = run.analysis_range?.end;
+                  if (end !== undefined && e.currentTarget.currentTime >= end) {
+                    e.currentTarget.pause();
+                    setPlaying(false);
+                    setTime(end);
+                  } else setTime(e.currentTarget.currentTime);
+                }}
                 onLoadedMetadata={(e) => {
                   e.currentTarget.currentTime = time;
                 }}
@@ -234,8 +251,8 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
               <input
                 aria-label="Replay position"
                 type="range"
-                min="0"
-                max={run.duration}
+                min={run.analysis_range?.start ?? 0}
+                max={run.analysis_range?.end ?? run.duration}
                 step="0.1"
                 value={time}
                 onChange={(e) => seek(Number(e.target.value))}
@@ -246,14 +263,16 @@ export function Supervise({ run, onAudit }: { run: Run; onAudit: () => void }) {
                     key={i}
                     aria-description={`${e.kind} at ${timecode(e.t)}`}
                     aria-label={`Seek to ${friendlyEventLabel(e.kind)}`}
-                    style={{ left: `${(100 * e.t) / run.duration}%` }}
+                    style={{
+                      left: `${(100 * (e.t - (run.analysis_range?.start ?? 0))) / ((run.analysis_range?.end ?? run.duration) - (run.analysis_range?.start ?? 0))}%`,
+                    }}
                     onClick={() => inspect(e)}
                   />
                 ))}
               </div>
             </div>
             <span className="timecode">
-              {timecode(time)} <span>/ {timecode(run.duration)}</span>
+              {timecode(time)} <span>/ {timecode(run.analysis_range?.end ?? run.duration)}</span>
             </span>
             <button
               className="icon-button"

@@ -184,8 +184,11 @@ def test_hosted_progress_requires_owner_and_an_active_worker(tmp_path, monkeypat
             return rows.get(job) if rows.get(job, {}).get("owner") == self.owner else None
 
         def archive(self, job, folder, kind):
-            rows[job]["status"] = "ready"
-            rows[job]["result"] = {"status": "ready"}
+            result = json.loads(
+                (folder / ("run.json" if kind == "run" else "status.json")).read_text()
+            )
+            rows[job]["status"] = result["status"]
+            rows[job]["result"] = result
 
         def close(self):
             pass

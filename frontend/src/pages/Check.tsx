@@ -1,6 +1,8 @@
+import { ClipSelector, appendClip, clipReason, type ClipRange } from '../components/ClipSelector';
 import { useEffect, useState } from 'react';
 import { ArrowRight, Upload } from 'lucide-react';
 import { json } from '../api';
+import { ObjectPreview, type ObjectPreviewData } from '../components/ObjectPreview';
 import { uploadLimitReason } from '../lib/upload-limits';
 import { pollJob } from '../lib/analysis';
 import { ErrorNotice } from '../components/ErrorNotice';
@@ -13,6 +15,7 @@ interface Props {
   health: Health;
   readOnly?: boolean;
   source?: File | null;
+  initialPreview?: ObjectPreviewData | null;
   onTeach: () => void;
   onSample?: () => void;
   onSignIn: () => void;
@@ -23,19 +26,33 @@ export function CheckRecording({
   health,
   readOnly = false,
   source,
+  initialPreview,
   onTeach,
   onSample,
   onSignIn,
   onRun,
 }: Props) {
+  const [clip, setClip] = useState<ClipRange | null>(null);
   const [file, setFile] = useState<File | null>(source ?? null);
+  const [preview, setPreview] = useState<ObjectPreviewData | null>(initialPreview ?? null);
+  const [prompts, setPrompts] = useState<Record<string, string>>({});
+  useEffect(() => {
+    setPreview(initialPreview ?? null);
+    setPrompts({});
+    if(initialPreview?.next_tracking_mode) setTrackingMode(initialPreview.next_tracking_mode);
+  }, [initialPreview]);
   const [busy, setBusy] = useState('');
   const [progress, setProgress] = useState<JobProgress>();
   const [error, setError] = useState<unknown>('');
   const [trackingMode, setTrackingMode] = useState<TrackingMode>('image');
   const nativeLimit = health.max_run_duration_s ?? 90;
   useEffect(() => {
-    if (source) setFile(source);
+    if (source) {
+      setFile(source);
+      setClip(null);
+      setPreview(null);
+      setPrompts({});
+    }
   }, [source]);
   if (!procedure?.id)
     return (
@@ -71,29 +88,48 @@ export function CheckRecording({
         ? onSample
           ? "Analysis isn't connected here — try the sample."
           : 'Analysis is unavailable. Check the service connection and try again.'
-        : !file
+        : !file && !preview
           ? 'Add a recording to continue.'
-          : uploadLimitReason(health, [file]);
-  async function check() {
+          : trackingMode === 'image' && (preview?.duration_s ?? 0) > 90
+            ? 'Choose faster video tracking for this recording, or upload a shorter section.'
+          : clipReason(clip, trackingMode === 'video' ? nativeLimit : 90) ||
+            uploadLimitReason(health, [file]);
+  async function check(previewOnly = false) {
     if (readOnly) {
       onSignIn();
       return;
     }
-    if (!file || !procedure?.id || reason) return;
+    if ((!file && !preview) || !procedure?.id || reason) return;
     setError('');
     setBusy('Uploading the recording…');
     setProgress(undefined);
     try {
       const form = new FormData();
-      form.set('video', file);
+      if (file && !preview) form.set('video', file);
+      appendClip(form, clip);
+      if (previewOnly) form.set('preview_only', 'true');
+      if (preview)
+        form.set(
+          'prompts',
+          JSON.stringify({
+            ...Object.fromEntries(preview.protocol.objects.map((o) => [o.name, o.sam_prompt])),
+            ...prompts,
+          }),
+        );
       form.set('protocol_id', procedure.id);
       form.set('tracking_mode', trackingMode);
-      const started = await json<{ run_id: string }>('/api/runs', { method: 'POST', body: form });
+      const started = await json<{ run_id: string }>(
+        preview ? `/api/runs/${preview.id}/analyse` : '/api/runs',
+        { method: 'POST', body: form },
+      );
       setBusy('Checking the objects and steps…');
       const result = await pollJob<
         Run & { status?: string; error?: string; progress?: JobProgress }
       >(`/api/runs/${started.run_id}`, (update) => setProgress(update.progress));
-      onRun(result);
+      if ((result as unknown as ObjectPreviewData).phase === 'object-preview') {
+        setPreview(result as unknown as ObjectPreviewData);
+        setPrompts({});
+      } else onRun(result);
     } catch (e) {
       setError(e);
     } finally {
@@ -129,9 +165,24 @@ export function CheckRecording({
             type="file"
             accept="video/mp4,video/quicktime"
             disabled={!!busy}
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              setFile(e.target.files?.[0] ?? null);
+              setClip(null);
+              setPreview(null);
+              setPrompts({});
+            }}
           />
         </label>
+      )}
+      {!readOnly && !preview && (
+        <ClipSelector
+          file={file}
+          label="New recording"
+          value={clip}
+          onChange={setClip}
+          maximum={trackingMode === 'video' ? nativeLimit : 90}
+          disabled={!!busy}
+        />
       )}
       {!readOnly && (
         <TrackingChoice
@@ -140,6 +191,30 @@ export function CheckRecording({
           disabled={!!busy}
           maxSeconds={nativeLimit}
         />
+      )}
+      {preview && (
+        <ObjectPreview
+          preview={preview}
+          disabled={!!busy}
+          prompts={prompts}
+          onPrompt={(name, value) => setPrompts((p) => ({ ...p, [name]: value }))}
+        />
+      )}
+      {!readOnly && (
+        <>
+          <button
+            className="button"
+            disabled={!!reason}
+            aria-describedby="check-disabled-reason"
+            onClick={() => void check(true)}
+          >
+            {preview ? 'Preview objects again (paid)' : 'Preview objects (paid)'}
+          </button>
+          <p className="field-help">
+            Up to {3 * procedure.protocol.objects.length} image segmentation requests for three
+            frames, subject to the same job budget. Full analysis is a separate action.
+          </p>
+        </>
       )}
       <button
         className="button primary"

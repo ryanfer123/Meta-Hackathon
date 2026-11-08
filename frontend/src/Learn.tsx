@@ -1,3 +1,4 @@
+import { ClipSelector, appendClip, clipReason, type ClipRange } from './components/ClipSelector';
 import { useState, useEffect, useRef } from 'react';
 import { ArrowRight, ArrowUpRight, CheckCircle2, Upload } from 'lucide-react';
 import { download, json, privateMedia } from './api';
@@ -29,6 +30,7 @@ type ProtocolStatus = {
   validation?: Validation | null;
   boundary_suggestions?: Record<string, Range>;
   confirmed_ranges?: Record<string, Range>;
+  analysis_range?: ClipRange | null;
 };
 export type TeachingProcedure = { id: string; protocol: Protocol };
 export function Learn({
@@ -56,6 +58,8 @@ export function Learn({
   const [stage, setStage] = useState<1 | 2 | 3>(1);
   const [teaching, setTeaching] = useState<File | null>(null);
   const [second, setSecond] = useState<File | null>(null);
+  const [teachingClip, setTeachingClip] = useState<ClipRange | null>(null);
+  const [secondClip, setSecondClip] = useState<ClipRange | null>(null);
   const [description, setDescription] = useState('');
   const emptyProtocol: Protocol = {
     name: 'Your procedure',
@@ -86,8 +90,12 @@ export function Learn({
   const [trackingMode, setTrackingMode] = useState<TrackingMode>('image');
   const teachingLimit = health.max_teaching_duration_s ?? 300;
   useEffect(() => {
-    if (duration > 90) setTrackingMode('video');
-  }, [duration]);
+    if (
+      (teachingClip ? teachingClip.end - teachingClip.start : duration) > 90 ||
+      (secondClip && secondClip.end - secondClip.start > 90)
+    )
+      setTrackingMode('video');
+  }, [duration, teachingClip, secondClip]);
   const player = useRef<HTMLVideoElement>(null);
   const taskGeneration = useRef(0);
 
@@ -102,6 +110,7 @@ export function Learn({
     if (source?.kind === 'expert') {
       invalidateTeaching();
       setTeaching(source.file);
+      setTeachingClip(null);
     } else if (source?.kind === 'held_out') {
       replaceSecond(source.file);
       setStage(2);
@@ -110,6 +119,7 @@ export function Learn({
   useEffect(() => {
     if (!initialJob?.result.protocol) return;
     const result = initialJob.result as ProtocolStatus;
+    setTeachingClip(result.analysis_range ?? null);
     const loaded = result.protocol!;
     invalidateTask();
     setTeaching(null);
@@ -161,17 +171,23 @@ export function Learn({
           current[step.id]?.start !== null && current[step.id]?.end !== null && current[step.id]
             ? current[step.id]
             : {
-                start: (duration * index) / protocol.steps.length,
+                start:
+                  (teachingClip?.start ?? 0) +
+                  ((teachingClip ? teachingClip.end - teachingClip.start : duration) * index) /
+                    protocol.steps.length,
                 end:
                   index === protocol.steps.length - 1
-                    ? duration
-                    : (duration * (index + 1)) / protocol.steps.length,
+                    ? (teachingClip?.end ?? duration)
+                    : (teachingClip?.start ?? 0) +
+                      ((teachingClip ? teachingClip.end - teachingClip.start : duration) *
+                        (index + 1)) /
+                        protocol.steps.length,
               },
         ]),
       ),
     );
     setConfirmed(false);
-  }, [duration, protocol, example, id]);
+  }, [duration, protocol, example, id, teachingClip]);
 
   const live = health.live_configured && !health.replay_mode && !readOnly;
   const createReason = busy
@@ -184,7 +200,7 @@ export function Learn({
           : 'Analysis is unavailable. Check the service connection and try again.'
         : !teaching
           ? 'Add a video to continue.'
-          : uploadLimitReason(health, [teaching]);
+          : clipReason(teachingClip, teachingLimit) || uploadLimitReason(health, [teaching]);
   const invalidStep = protocol.steps.find((step) => {
     const range = ranges[step.id];
     return (
@@ -193,9 +209,9 @@ export function Learn({
       range.end === null ||
       !Number.isFinite(range.start) ||
       !Number.isFinite(range.end) ||
-      range.start < 0 ||
+      range.start < (teachingClip?.start ?? 0) ||
       range.start >= range.end ||
-      range.end > duration
+      range.end > (teachingClip?.end ?? duration)
     );
   });
   const placeholders =
@@ -213,17 +229,19 @@ export function Learn({
           ? 'Create the steps first.'
           : !second
             ? 'Add a second video of the same procedure.'
-            : uploadLimitReason(health, [teaching, second])
-              ? uploadLimitReason(health, [teaching, second])
-              : !duration
-                ? 'Load the teaching video to check its duration.'
-                : invalidStep
-                  ? `Adjust the start and end for “${invalidStep.title}”.`
-                  : placeholders
-                    ? 'Adjust the suggested timings to match the video.'
-                    : !confirmed
-                      ? 'Review every timing, then confirm below.'
-                      : '';
+            : clipReason(secondClip, teachingLimit)
+              ? clipReason(secondClip, teachingLimit)
+              : uploadLimitReason(health, [teaching, second])
+                ? uploadLimitReason(health, [teaching, second])
+                : !duration
+                  ? 'Load the teaching video to check its duration.'
+                  : invalidStep
+                    ? `Adjust the start and end for “${invalidStep.title}”.`
+                    : placeholders
+                      ? 'Adjust the suggested timings to match the video.'
+                      : !confirmed
+                        ? 'Review every timing, then confirm below.'
+                        : '';
   async function task(message: string, action: (generation: number) => Promise<void>) {
     if (readOnly) {
       onSignIn?.();
@@ -246,6 +264,7 @@ export function Learn({
     await task('Reading the video and writing the steps…', async (generation) => {
       const form = new FormData();
       form.set('video', teaching);
+      appendClip(form, teachingClip);
       form.set('narration_text', description.trim());
       const created = await json<{ protocol_id: string }>('/api/protocols', {
         method: 'POST',
@@ -276,6 +295,7 @@ export function Learn({
     await task('Checking both videos and deliberate mistakes…', async (generation) => {
       const form = new FormData();
       form.set('heldout', second);
+      appendClip(form, secondClip);
       form.set('ranges', JSON.stringify(ranges));
       form.set('ranges_confirmed', String(confirmed));
       form.set('repair', String(repair));
@@ -301,6 +321,7 @@ export function Learn({
   function replaceSecond(file: File | null) {
     invalidateTask();
     setSecond(file);
+    setSecondClip(null);
     setValidation(undefined);
   }
   function invalidateTeaching() {
@@ -372,9 +393,23 @@ export function Learn({
               onFile={(file) => {
                 invalidateTeaching();
                 setTeaching(file);
+                setTeachingClip(null);
               }}
               disabled={readOnly || !!busy}
             />
+            {!readOnly && (
+              <ClipSelector
+                file={teaching}
+                label="Teaching video"
+                value={teachingClip}
+                onChange={(value) => {
+                  invalidateTeaching();
+                  setTeachingClip(value);
+                }}
+                maximum={teachingLimit}
+                disabled={!!busy}
+              />
+            )}
             {readOnly && (
               <button className="text-button" onClick={onSignIn}>
                 Sign in to upload a recording
@@ -563,10 +598,26 @@ export function Learn({
                     onFile={replaceSecond}
                     disabled={!!busy}
                   />
+                  <ClipSelector
+                    file={second}
+                    label="Second video"
+                    value={secondClip}
+                    onChange={(value) => {
+                      invalidateTask();
+                      setValidation(undefined);
+                      setSecondClip(value);
+                    }}
+                    maximum={teachingLimit}
+                    disabled={!!busy}
+                  />
                   <TrackingChoice
                     value={trackingMode}
                     onChange={setTrackingMode}
-                    disabled={!!busy || duration > 90}
+                    disabled={
+                      !!busy ||
+                      (teachingClip ? teachingClip.end - teachingClip.start : duration) > 90 ||
+                      !!(secondClip && secondClip.end - secondClip.start > 90)
+                    }
                     maxSeconds={teachingLimit}
                   />
                   <p className="field-help">

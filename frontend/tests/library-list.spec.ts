@@ -196,3 +196,31 @@ test('upload starts collapsed, uses clear roles and preserves recording/run dele
     .click();
   await expect(page.getByRole('button', { name: 'Open tabletop.mp4', exact: true })).toHaveCount(0);
 });
+
+test('an interrupted job resumes the same private analysis after warning about unfinished stages', async ({
+  page,
+}) => {
+  const state = await setup(page);
+  state.jobs.find((job) => job.id === 'failed')!.result = {
+    error: 'Worker interrupted',
+    resumable: true,
+  } as any;
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await page.route('**/api/media/failed/original.mp4', (route) =>
+    route.fulfill({ contentType: 'video/mp4', body: 'mock-media' }),
+  );
+  let resumed = false;
+  await page.route('**/api/jobs/failed/resume', (route) => {
+    resumed = route.request().method() === 'POST';
+    return route.fulfill({ json: { id: 'failed', kind: 'learn', status: 'processing' } });
+  });
+  await page.route('**/api/protocols/failed', (route) =>
+    route.fulfill({ json: { status: 'ready', protocol: sample.protocol } }),
+  );
+  await expect(
+    page.getByText('Unfinished stages may make new paid calls.', { exact: false }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Resume saved stages' }).click();
+  await expect(page.getByRole('heading', { name: '2 Check the steps' })).toBeVisible();
+  expect(resumed).toBe(true);
+});

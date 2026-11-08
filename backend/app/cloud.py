@@ -26,6 +26,14 @@ def source_bytes(folder: Path, replacing: Path) -> int:
 
 
 FILES = {
+    "resume.json",
+    "selection.json",
+    "tracking_stats.json",
+    "calls.jsonl",
+    "validation-calls.jsonl",
+    "tracking.npz",
+    "teaching-tracking.npz",
+    "second-tracking.npz",
     "original.mp4",
     "heldout.mp4",
     "protocol.json",
@@ -92,6 +100,8 @@ class CloudJobs:
     def archive(self, job: str, folder: Path, kind: str) -> None:
         target = "status.json" if kind == "learn" else "run.json"
         result = json.loads((folder / target).read_text())
+        if (folder / "resume.json").exists():
+            result["resumable"] = True
         files = [folder / name for name in sorted(FILES) if (folder / name).is_file()]
         if sum(path.stat().st_size for path in files) > ARCHIVE_MAX_BYTES:
             raise RuntimeError("Analysis archive exceeds private storage limit")
@@ -121,12 +131,15 @@ class CloudJobs:
             json={"status": result["status"], "result": result, "artifact_path": path},
         )
 
-    def fail(self, job: str, message: str) -> None:
+    def fail(self, job: str, message: str, *, resumable: bool = False) -> None:
         self.request(
             "PATCH",
             "rest/v1/analysis_jobs",
             params={"id": "eq." + job},
-            json={"status": "error", "result": {"id": job, "status": "error", "error": message}},
+            json={
+                "status": "error",
+                "result": {"id": job, "status": "error", "error": message, "resumable": resumable},
+            },
         )
 
     def restore(self, job: str, folder: Path) -> bool:

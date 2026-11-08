@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; media-src blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'">
+<title>Blind recording labels</title><style>body{font:18px/1.5 system-ui;max-width:900px;margin:auto;padding:24px;background:#f4eee2;color:#183247}video{width:100%;max-height:450px}button,select,input{font:inherit;padding:10px;margin:8px}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #163d9d}li{margin:12px}small{display:block}</style>
+<h1>Label recordings before viewing predictions</h1><p>Keep this page and recordings private. It works offline and never opens predictions.</p>
+<label>Recording <select id="run"></select></label><label>Choose its local video <input id="file" type="file" accept="video/*"></label><p id="status" role="status">Choose a recording.</p>
+<video id="video" controls></video><p>For skipped/out-of-order steps, label the moment the later step completes. Evaluation allows ±2 seconds around that moment.</p>
+<label>Finding <select id="kind"><option value="skipped">Step skipped</option><option value="out_of_order">Done out of order</option><option value="wrong_object">Wrong item used</option><option value="dwell_exceeded">Took too long</option><option value="dwell_too_short">Done too quickly</option></select></label>
+<label>Affected step <select id="step"></select></label><button id="add" disabled>Add finding at current time</button><ol id="events"></ol>
+<label><input id="confirm" type="checkbox" disabled>I watched the full recording and checked all findings (an empty list means a clean run).</label>
+<p id="count"></p><button id="download" disabled>Download confirmed labels</button>
+<script>
+const input=PAYLOAD; const data=input.manifest; const $=id=>document.getElementById(id); let index=0, url='', loaded=false, loadGeneration=0;
+const current=()=>data.runs[index];
+for(const [i,r] of data.runs.entries()){const o=document.createElement('option');o.value=i;o.textContent=r.id+' · '+r.split;$('run').append(o);}
+for(const s of input.steps){const o=document.createElement('option');o.value=s.id;o.textContent=s.title;$('step').append(o);}
+function draw(){ $('events').replaceChildren();current().events.forEach((e,i)=>{const li=document.createElement('li');li.textContent=e.t.toFixed(2)+'s · '+e.kind+' · '+e.step_id;const b=document.createElement('button');b.textContent='Remove';b.onclick=()=>{current().events.splice(i,1);current().labels_confirmed=false;draw()};li.append(b);$('events').append(li)});$('confirm').checked=current().labels_confirmed;const n=data.runs.filter(r=>r.labels_confirmed).length;$('count').textContent=n+' / '+data.runs.length+' recordings confirmed';$('download').disabled=n!==data.runs.length;}
+$('run').onchange=()=>{index=Number($('run').value);loaded=false;loadGeneration++;if(url)URL.revokeObjectURL(url);url='';$('file').value='';$('video').removeAttribute('src');$('add').disabled=$('confirm').disabled=true;$('status').textContent='Choose '+current().filename;draw()};
+$('file').onchange=async()=>{const generation=++loadGeneration;loaded=false;$('add').disabled=$('confirm').disabled=true;const f=$('file').files[0];if(!f)return;const expected=current();$('status').textContent='Checking the recording hash…';try{const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',await f.arrayBuffer()))].map(b=>b.toString(16).padStart(2,'0')).join('');if(expected!==current()||generation!==loadGeneration)return;if(hash!==expected.video_sha256)throw new Error('This file does not match the manifest.');if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(f);$('video').src=url;loaded=true;$('status').textContent='Matched '+f.name; }catch(e){$('status').textContent=e.message}};
+$('video').onloadedmetadata=()=>{$('add').disabled=$('confirm').disabled=!loaded||!Number.isFinite($('video').duration)||$('video').duration<=0};
+$('add').onclick=()=>{if(!loaded)return;current().events.push({kind:$('kind').value,step_id:$('step').value,t:$('video').currentTime});current().events.sort((a,b)=>a.t-b.t);current().labels_confirmed=false;draw()};
+$('confirm').onchange=()=>{if(loaded)current().labels_confirmed=$('confirm').checked;draw()};
+$('download').onclick=()=>{if(data.runs.some(r=>!r.labels_confirmed))return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download='labels.confirmed.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000)};draw();
+</script></html>

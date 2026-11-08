@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Audit } from './Audit';
 import { Supervise } from './Supervise';
+import { runSummary } from './lib/run-summary';
 import type { Run } from './types';
 import './styles/results.css';
 
@@ -117,6 +118,30 @@ export function Results({
           Real-world accuracy hasn’t been measured on this example.
         </p>
       )}
+      {run.analysis_range && (
+        <p className="results-provenance">
+          Only {run.analysis_range.start.toFixed(1)}–{run.analysis_range.end.toFixed(1)} seconds was
+          checked. Findings use the original recording’s timestamps.
+        </p>
+      )}
+      <section className="run-summary" aria-label="Recording summary">
+        {Object.entries(runSummary(run)).map(([key, count]) => (
+          <div key={key}>
+            <strong>{count}</strong>
+            <span>
+              {key === 'confirmed'
+                ? 'Confirmed steps'
+                : key === 'flagged'
+                  ? 'Flagged steps'
+                  : 'Not verified'}
+            </span>
+          </div>
+        ))}
+        <p>
+          Based on the configured rules. Not verified means insufficient evidence, not a proven
+          mistake. Model opinions do not change these counts.
+        </p>
+      </section>
       <div className="results-tabs" role="tablist" aria-label="Results views">
         {(['Replay', 'Integrity'] as const).map((name) => (
           <button

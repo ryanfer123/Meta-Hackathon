@@ -182,6 +182,7 @@ def test_api_allows_reviewed_end_exactly_at_actual_duration(tmp_path, monkeypatc
     folder = tmp_path / "jobs" / job
     folder.mkdir(parents=True)
     (folder / "protocol.json").write_text(sample_protocol().model_dump_json(by_alias=True))
+    (folder / "original.mp4").write_bytes(b"mock-original")
     monkeypatch.setattr(main, "probe_video", lambda *_: {"duration_s": 11.0})
     observed = []
     monkeypatch.setattr(main, "process_validation", lambda *args: observed.append(args))

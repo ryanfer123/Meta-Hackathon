@@ -1,11 +1,13 @@
+from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, PrivateAttr, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    _checkpoint_callback: Callable[[], None] | None = PrivateAttr(default=None)
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     replay_mode: bool = True
     auth_required: bool = True
@@ -27,6 +29,7 @@ class Settings(BaseSettings):
     sam_image_workers: int = Field(default=3, ge=1, le=4)
     max_run_duration_s: int = Field(default=300, ge=90, le=300)
     max_teaching_duration_s: int = Field(default=300, ge=90, le=300)
+    max_monthly_cost_usd: float = Field(default=150, gt=0, allow_inf_nan=False)
     max_run_mask_mb: int = Field(default=128, ge=16, le=256)
     max_validation_mask_mb: int = Field(default=192, ge=32, le=256)
     max_active_jobs: int = Field(default=1, ge=1, le=4)
