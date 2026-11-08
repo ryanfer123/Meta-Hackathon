@@ -30,3 +30,10 @@ A local three-second excerpt of [OpenCV samples/data/vtest.avi](https://github.c
 The October30,2026 private website diagnostic uses [Trefoil knot](https://commons.wikimedia.org/wiki/File:Trefoil_knot.webm), credited as **Matemateca (IME/USP)/Rodrigo Tetsuo Argenton**, under [CC BY-SA4.0](https://creativecommons.org/licenses/by-sa/4.0/). The exhibit is credited to Estes Objethos Atelier on the source page. For this test, the13.35-second recording was transcoded to H.264 at640px long side and its audio removed. These are changes to the source recording. No endorsement is implied.
 
 The clip, extracted frames and generated artifacts remain private and ignored by Git; no public sample is exported. This is third-party footage, not Apprentice-owned teaching/evaluation data. Replaying the same clip used for compilation is a pipeline diagnostic, not a held-out test or an accuracy result.
+
+
+## Media inventory: November 8, 2026
+
+No MP4, MOV, WEBM, M4V, AVI, WAV or MP3 files were found in tracked files or the Git object history reviewed across local refs. Personal recordings and run data stay under ignored `data/` or outside the checkout. Product screenshots show the actual interface and are not procedure evidence. Science Buddies remains an external reference only; attribution does not authorize redistribution.
+
+The separate local demo adaptation using the licensed Trefoil knot clip has its own `VIDEO-LICENSE.txt`: creator credit, source, CC BY-SA 4.0 URL, listed edits and share-alike notice. That adaptation and its source recordings are not bundled with this repository. Its saved-output replay is not an independent test or accuracy result.

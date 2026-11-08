@@ -56,4 +56,3 @@ begin
 end $$;
 revoke all on function public.reserve_model_budget(text,text,text,numeric,integer,numeric,numeric,integer,integer,integer,integer) from public,anon;
 grant execute on function public.reserve_model_budget(text,text,text,numeric,integer,numeric,numeric,integer,integer,integer,integer) to authenticated;
-
