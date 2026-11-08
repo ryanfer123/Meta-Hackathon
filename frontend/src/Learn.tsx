@@ -5,6 +5,7 @@ import { pollJob as poll } from './lib/analysis';
 import type { AnalysisJob } from './lib/workspace';
 import type { Health, Protocol, Run, Validation } from './types';
 import './styles/teach.css';
+import { uploadLimitReason, cloudUploadHelp } from './lib/upload-limits';
 import { ErrorNotice } from './components/ErrorNotice';
 import { AnalysisProgress, type JobProgress } from './components/AnalysisProgress';
 import { TrackingChoice, type TrackingMode } from './components/TrackingChoice';
@@ -183,7 +184,7 @@ export function Learn({
           : 'Analysis is unavailable. Check the service connection and try again.'
         : !teaching
           ? 'Add a video to continue.'
-          : '';
+          : uploadLimitReason(health, [teaching]);
   const invalidStep = protocol.steps.find((step) => {
     const range = ranges[step.id];
     return (
@@ -212,15 +213,17 @@ export function Learn({
           ? 'Create the steps first.'
           : !second
             ? 'Add a second video of the same procedure.'
-            : !duration
-              ? 'Load the teaching video to check its duration.'
-              : invalidStep
-                ? `Adjust the start and end for “${invalidStep.title}”.`
-                : placeholders
-                  ? 'Adjust the suggested timings to match the video.'
-                  : !confirmed
-                    ? 'Review every timing, then confirm below.'
-                    : '';
+            : uploadLimitReason(health, [teaching, second])
+              ? uploadLimitReason(health, [teaching, second])
+              : !duration
+                ? 'Load the teaching video to check its duration.'
+                : invalidStep
+                  ? `Adjust the start and end for “${invalidStep.title}”.`
+                  : placeholders
+                    ? 'Adjust the suggested timings to match the video.'
+                    : !confirmed
+                      ? 'Review every timing, then confirm below.'
+                      : '';
   async function task(message: string, action: (generation: number) => Promise<void>) {
     if (readOnly) {
       onSignIn?.();
@@ -431,6 +434,7 @@ export function Learn({
             <p id="create-steps-reason" className="field-help">
               {createReason || 'Ready to create a checklist from your video.'}
             </p>
+            {cloudUploadHelp(health) && <p className="field-help">{cloudUploadHelp(health)}</p>}
             {allowExamples && run && (
               <button className="button" onClick={chooseExample} disabled={!!busy}>
                 Use the sample steps
@@ -579,6 +583,9 @@ export function Learn({
                   <p id="check-steps-reason" className="field-help">
                     {checkReason || 'Ready to check both videos and deliberate mistakes.'}
                   </p>
+                  {cloudUploadHelp(health) && (
+                    <p className="field-help">{cloudUploadHelp(health)}</p>
+                  )}
                 </>
               )}
               {validation && (

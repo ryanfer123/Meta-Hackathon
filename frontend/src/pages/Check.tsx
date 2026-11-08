@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Upload } from 'lucide-react';
 import { json } from '../api';
+import { uploadLimitReason } from '../lib/upload-limits';
 import { pollJob } from '../lib/analysis';
 import { ErrorNotice } from '../components/ErrorNotice';
 import { AnalysisProgress, type JobProgress } from '../components/AnalysisProgress';
@@ -72,13 +73,13 @@ export function CheckRecording({
           : 'Analysis is unavailable. Check the service connection and try again.'
         : !file
           ? 'Add a recording to continue.'
-          : '';
+          : uploadLimitReason(health, [file]);
   async function check() {
     if (readOnly) {
       onSignIn();
       return;
     }
-    if (!file || !procedure?.id || !live || busy) return;
+    if (!file || !procedure?.id || reason) return;
     setError('');
     setBusy('Uploading the recording…');
     setProgress(undefined);

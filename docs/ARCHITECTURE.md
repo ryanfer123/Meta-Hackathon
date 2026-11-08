@@ -96,3 +96,10 @@ Reproduce the local CPU-only benchmark with `uv run python scripts/build_sam_cod
 Immutable detections lazily cache only their exact scalar area and centroid. Packed bits remain authoritative and full masks remain under the existing 8 MiB LRU. Repeated visibility and centroid checks reuse these values instead of rescanning historical masks. This does not retain per-history full rasters.
 
 Movement semantics and temporal smoothing are unchanged: `moved` compares the first and last visible centroid in its window. A short excursion followed by a return can remain unconfirmed. Caching preserves this conservative behavior rather than turning one noisy excursion into repeated evidence. Tests cover scalar equivalence, confidence boundaries, immutable packed geometry and raster release.
+
+
+### Cloud archive memory and input preservation
+
+Cloud jobs preflight a 90 MiB combined source-video limit before starting analysis or changing saved job status. A replacement excludes the old file from the calculation, is staged separately, and replaces it only after upload checks and job admission succeed. Rejected uploads retain previous inputs and boundary confirmations. Local-only jobs retain the configured per-file limit. Health exposes byte limits for client-side feedback; server checks remain authoritative.
+
+Archives use disk-backed temporary ZIP files and 64 KiB upload chunks, with a 110 MiB final cap and a file whitelist. The 20 MiB difference is artifact headroom, not a guarantee that every report fits. Restore still receives a buffered HTTP response, but stages it on disk and extracts members in bounded chunks rather than creating another full-video byte string. All member names, duplicates and expanded size are checked before extraction; files are installed only after the entire archive passes CRC decoding. This reduces copies without claiming fully streaming downloads or crash-atomic multi-file restoration.

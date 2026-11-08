@@ -1,7 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
 import { mockAccount } from './account';
 
-async function mountTeach(page: Page, withProcedure = false, replayMode = false) {
+async function mountTeach(
+  page: Page,
+  withProcedure = false,
+  replayMode = false,
+  cloudLimit?: number,
+) {
   await mockAccount(page);
   await page.route('**/__teach-test', (route) =>
     route.fulfill({
@@ -21,7 +26,7 @@ async function mountTeach(page: Page, withProcedure = false, replayMode = false)
     function Harness() {
       const [source,setSource]=React.useState(null);
       window.__setTeachSource=setSource;
-      return React.createElement(Learn,{run,health:{replay_mode:${String(replayMode)},live_configured:true,glimmer_configured:false},onRun:()=>{},initialJob,source,onNavigateCheck:()=>{},onProtocolReady:(value)=>{document.documentElement.dataset.procedureId=value.id}});
+      return React.createElement(Learn,{run,health:{replay_mode:${String(replayMode)},live_configured:true,glimmer_configured:false,max_upload_bytes:1048576,max_cloud_source_bytes:${cloudLimit ?? 'null'}},onRun:()=>{},initialJob,source,onNavigateCheck:()=>{},onProtocolReady:(value)=>{document.documentElement.dataset.procedureId=value.id}});
     }
     client.createRoot(document.getElementById('root')).render(React.createElement(Harness));
   </script></body></html>`,
@@ -383,4 +388,56 @@ test('five-minute teaching timings select required native validation and keep th
   ).toBeVisible();
   await expect(page.locator('.validation-checks')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBeFalsy();
+});
+
+test('Teach rejects oversized selections before upload and explains cloud storage headroom', async ({
+  page,
+}) => {
+  await mountTeach(page, false, false, 1048576);
+  let uploads = 0;
+  await page.route('**/api/protocols', (route) => {
+    uploads++;
+    return route.abort();
+  });
+  await page.getByLabel('Teaching video', { exact: true }).setInputFiles({
+    name: 'too-large.mp4',
+    mimeType: 'video/mp4',
+    buffer: Buffer.alloc(1048577),
+  });
+  const create = page.getByRole('button', { name: 'Create the steps' });
+  await expect(create).toBeDisabled();
+  await expect(create).toHaveAccessibleDescription('Choose a recording of 1 MiB or less.');
+  await expect(page.getByText('Cloud saves allow 1 MiB total', { exact: false })).toBeVisible();
+  await page.getByLabel('Teaching video', { exact: true }).setInputFiles({
+    name: 'fits.mp4',
+    mimeType: 'video/mp4',
+    buffer: Buffer.alloc(1048576),
+  });
+  await expect(create).toBeEnabled();
+  expect(uploads).toBe(0);
+});
+
+test('upload limits use exact bytes, include both takes, and tolerate unknown server limits', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const { uploadLimitReason } = await new Function(
+      'return import("/src/lib/upload-limits.ts")',
+    )();
+    const health = { max_upload_bytes: 10, max_cloud_source_bytes: 12 };
+    const file = (size: number) => new File([new Uint8Array(size)], 'video.mp4');
+    return {
+      exact: uploadLimitReason(health, [file(6), file(6)]),
+      combined: uploadLimitReason(health, [file(6), file(7)]),
+      single: uploadLimitReason(health, [file(11)]),
+      unknown: uploadLimitReason({}, [file(100)]),
+      restored: uploadLimitReason(health, [null, file(10)]),
+    };
+  });
+  expect(result.exact).toBe('');
+  expect(result.combined).toContain('combined cloud limit');
+  expect(result.single).toContain('Choose a recording');
+  expect(result.unknown).toBe('');
+  expect(result.restored).toBe('');
 });

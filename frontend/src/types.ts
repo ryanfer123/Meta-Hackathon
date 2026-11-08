@@ -82,6 +82,8 @@ export type Health = {
   replay_mode: boolean;
   live_configured: boolean;
   glimmer_configured: boolean;
+  max_upload_bytes?: number;
+  max_cloud_source_bytes?: number | null;
   max_run_duration_s?: number;
   max_teaching_duration_s?: number;
 };

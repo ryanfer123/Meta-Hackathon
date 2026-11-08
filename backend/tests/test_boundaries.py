@@ -135,7 +135,7 @@ def test_private_archive_roundtrips_narration_and_boundary_review(tmp_path, monk
     def request(method, path, **kwargs):
         nonlocal archive
         if method == "POST" and "storage/" in path:
-            archive = kwargs["content"]
+            archive = b"".join(kwargs["content"])
         return httpx.Response(200, content=archive if method == "GET" else b"{}")
 
     monkeypatch.setattr(store, "request", request)

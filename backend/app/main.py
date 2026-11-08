@@ -24,7 +24,7 @@ from pydantic import SecretStr, TypeAdapter, ValidationError
 
 from app.audit.chain import verify_entries
 from app.auth import authenticate
-from app.cloud import CloudJobs
+from app.cloud import CLOUD_SOURCE_MAX_BYTES, CloudJobs, source_bytes
 from app.config import Settings
 from app.learn.boundaries import validate_step_ranges
 from app.learn.validate import StepRange
@@ -169,21 +169,37 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         target: Path,
         existing: bool = False,
     ) -> None:
-        begin_job(request, job, kind, existing)
+        staging = target.with_name(target.name + "." + uuid.uuid4().hex + ".upload")
+        begun = False
         try:
-            await save(file, target)
-        except Exception:
+            maximum = config.max_upload_mb * 1024 * 1024
+            message = "Recording exceeds configured upload limit"
             if config.cloud_jobs:
+                remaining = CLOUD_SOURCE_MAX_BYTES - source_bytes(target.parent, target)
+                if remaining < maximum:
+                    maximum = remaining
+                    message = "Recordings for this job must total at most 90 MiB. Compress the videos or choose smaller files. No analysis was started."
+            if maximum <= 0 or (file.size is not None and file.size > maximum):
+                raise HTTPException(413, message)
+            await save(file, staging, maximum, message)
+            begin_job(request, job, kind, existing)
+            begun = True
+            staging.replace(target)
+        except Exception:
+            if begun and config.cloud_jobs:
                 db = cloud(request)
                 try:
                     db.fail(job, "Upload failed. Choose a valid recording and retry.")
                 finally:
                     db.close()
-            with active_lock:
-                active_jobs.discard(job)
+            if begun:
+                with active_lock:
+                    active_jobs.discard(job)
             if not existing:
                 shutil.rmtree(target.parent, ignore_errors=True)
             raise
+        finally:
+            staging.unlink(missing_ok=True)
 
     def cloud_status(request: Request, job: str) -> Any:
         db = cloud(request)
@@ -257,7 +273,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except RuntimeError as exc:
             raise HTTPException(409, str(exc)) from exc
 
-    async def save(file: UploadFile, target: Path) -> None:
+    async def save(file: UploadFile, target: Path, maximum: int, message: str) -> None:
         if file.content_type not in {"video/mp4", "video/quicktime", "application/octet-stream"}:
             raise HTTPException(415, "Choose an MP4 or MOV recording")
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -266,8 +282,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             with target.open("wb") as out:
                 while chunk := await file.read(1024 * 1024):
                     total += len(chunk)
-                    if total > config.max_upload_mb * 1024 * 1024:
-                        raise HTTPException(413, "Recording exceeds configured upload limit")
+                    if total > maximum:
+                        raise HTTPException(413, message)
                     out.write(chunk)
             if total == 0:
                 raise HTTPException(422, "Recording is empty")
@@ -287,6 +303,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "glimmer_configured": bool(config.glimmer_base_url),
             "max_run_duration_s": config.max_run_duration_s,
             "max_teaching_duration_s": config.max_teaching_duration_s,
+            "max_upload_bytes": config.max_upload_mb * 1024 * 1024,
+            "max_cloud_source_bytes": CLOUD_SOURCE_MAX_BYTES if config.cloud_jobs else None,
             "sam_codec_compiled": codec_compiled(),
             "real_evaluation": "pending",
             "provenance": "synthetic samples",
@@ -359,6 +377,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             validate_step_ranges(protocol, parsed, duration)
         except (ValueError, RuntimeError) as exc:
             raise HTTPException(422, str(exc)) from exc
+        await save_job_upload(request, job, "learn", heldout, folder / "heldout.mp4", existing=True)
         atomic_json(
             folder / "boundary_confirmation.json",
             {
@@ -366,7 +385,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "ranges": {key: value.model_dump() for key, value in parsed.items()},
             },
         )
-        await save_job_upload(request, job, "learn", heldout, folder / "heldout.mp4", existing=True)
         atomic_json(folder / "status.json", {"id": job, "status": "validating"})
         tasks.add_task(
             execute_job,

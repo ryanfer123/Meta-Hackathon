@@ -16,14 +16,14 @@ and review each finding alongside its visible evidence.
 </div>
 
 <a href="https://apprentice-meta.onrender.com">
-  <img src="frontend/public/images/product-home.png?rev=teaching-20261107" alt="Current Apprentice homepage introducing the teaching-video workflow and private workspace" width="100%" />
+  <img src="frontend/public/images/product-home.png?rev=uploads-20261108" alt="Current Apprentice homepage introducing the teaching-video workflow and private workspace" width="100%" />
 </a>
 
 Beige is the default. Use the theme switch to choose a near-black workspace; the preference stays in your browser. Motion respects the device's reduced-motion setting.
 
 <details>
 <summary>View dark mode</summary>
-<img src="frontend/public/images/product-home-dark.png?rev=teaching-20261107" alt="Current Apprentice homepage in near-black mode with warm beige controls" width="100%" />
+<img src="frontend/public/images/product-home-dark.png?rev=uploads-20261108" alt="Current Apprentice homepage in near-black mode with warm beige controls" width="100%" />
 </details>
 
 ## Start with your procedure
@@ -40,11 +40,11 @@ Your recordings, checklists and results belong to your account. A new workspace 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="frontend/public/images/product-learn.png?rev=teaching-20261107" alt="Current Teach screen with a teaching-video upload, recording tips and an optional plain-language description" width="100%" />
+      <img src="frontend/public/images/product-learn.png?rev=uploads-20261108" alt="Current Teach screen with a teaching-video upload, recording tips and an optional plain-language description" width="100%" />
       <br /><strong>Teach</strong><br />Start with a recording of the right way.
     </td>
     <td width="50%" valign="top">
-      <img src="frontend/public/images/product-check.png?rev=teaching-20261107" alt="Current Check screen guiding a new workspace to teach its first procedure" width="100%" />
+      <img src="frontend/public/images/product-check.png?rev=uploads-20261108" alt="Current Check screen guiding a new workspace to teach its first procedure" width="100%" />
       <br /><strong>Check</strong><br />Compare the next take with the reviewed checklist.
     </td>
   </tr>
@@ -93,6 +93,7 @@ flowchart TB
 - **Processing shows its work.** Teach and Check display the current stage, completed work and an elapsed-time-based estimate for that stage. Image requests run in bounded batches of three without reducing evidence or bypassing budgets; see [the small measured control](docs/meta_api_notes.md#image-concurrency-and-progress--october-31-2026).
 - **Choose faster tracking per analysis.** Enable **Faster video tracking (preview)** in Check or when validating two teaching videos. It requests the video once per object description; image tracking remains the default. Completed zero-mask responses trigger a logged, separately budgeted image fallback and are cached so repeating the same inputs does not pay for that failed video query again. Missing or ambiguous geometry stays unknown. Check accepts one procedure recording up to **five minutes** in native video mode, subject to memory, frame and spending caps checked before paid tracking. Teach accepts up to **five minutes**; validation of either take beyond 90 seconds requires native video tracking. Image tracking stays limited to **90 seconds**. New teaching protocols use evidence frames up to 512 px on the long side, preserving that resolution for later checks. Both validation timelines are checked together against a 192 MiB packed-mask cap before tracking; native input remains at 4 fps/up to 640 px. The full timeline is sampled at 2 fps; recordings are not silently shortened, and repeated procedure cycles need separate runs. A bounded decoded-mask cache also avoids repeating the Python mask codec; see the [tracking-only measurements and limits](docs/meta_api_notes.md#per-job-native-tracking-and-decoded-cache-control--november-1-2026).
 - **The free worker processes one analysis at a time.** Overlapping submissions receive a retryable busy response before processing. The Docker build compiles the installed SAM codec with mypyc, retains its original source/license and verifies pixel/error parity. Local generated-mask decoding measured about 3× faster; this is not a hosted end-to-end speed claim. Native tracking also consumes the already-decoded result directly, including concepts too large for the small cache.
+- **Uploads are checked before analysis.** Private cloud jobs allow **90 MiB combined** for the teaching and second videos (or one Check recording), within the configured per-file limit. Rejected replacements preserve the previous recording and confirmed timings. Archives are built on disk and uploaded in bounded chunks; the final 110 MiB archive limit still applies.
 - **Calls have limits and provenance.** Clients reserve budgets before requests, cache SAM outputs, and record usage and latency. Cloud jobs use durable Supabase reservations; local work uses SQLite. The optional open-model tier uses the configured provider label rather than calling every reply “Glimmer”.
 - **Reports expose the evidence.** A hash chain links events and evidence digests. Detecting a rewritten chain requires a root kept somewhere separate; it does not authenticate the camera or prove physical correctness.
 
@@ -161,7 +162,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Latest local verification: **350 Python tests** and **153 desktop/mobile browser checks** passed, together with lint, formatting, strict typing and the production build. The two documentation-capture cases run only with the explicit capture flag; pointer tilt is intentionally disabled for touch devices. The [Checks workflow](https://github.com/ryanfer123/Meta-Hackathon/actions/workflows/checks.yml) is the source for current CI status. Tests use synthetic masks and mocked transports, not paid provider requests. Diagnostic scripts require an explicit `--allow-paid-calls` opt-in.
+Latest local verification: **360 Python tests** and **157 desktop/mobile browser checks** passed, together with lint, formatting, strict typing and the production build. The two documentation-capture cases run only with the explicit capture flag; pointer tilt is intentionally disabled for touch devices. The [Checks workflow](https://github.com/ryanfer123/Meta-Hackathon/actions/workflows/checks.yml) is the source for current CI status. Tests use synthetic masks and mocked transports, not paid provider requests. Diagnostic scripts require an explicit `--allow-paid-calls` opt-in.
 
 | Area | What is checked |
 | --- | --- |

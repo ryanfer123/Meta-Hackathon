@@ -11,7 +11,13 @@ test('capture current product screens without example recordings', async ({ page
   await page.setViewportSize({ width: 1505, height: 1045 });
   await page.route('**/api/health', (route) =>
     route.fulfill({
-      json: { replay_mode: false, live_configured: true, glimmer_configured: false },
+      json: {
+        replay_mode: false,
+        live_configured: true,
+        glimmer_configured: false,
+        max_upload_bytes: 104857600,
+        max_cloud_source_bytes: 94371840,
+      },
     }),
   );
   await page.route('**/rest/v1/**', (route) => route.fulfill({ json: [] }));

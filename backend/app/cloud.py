@@ -1,14 +1,29 @@
 """Owner-scoped Supabase persistence using the user's JWT, never a service-role key."""
 
-import io
 import json
+import shutil
 import zipfile
 from pathlib import Path
+from tempfile import TemporaryDirectory, TemporaryFile
 from typing import Any
 
 import httpx
 
 from app.config import Settings
+
+ARCHIVE_MAX_BYTES = 110 * 1024 * 1024
+# Leave room for the protocol, event data and standalone report.
+CLOUD_SOURCE_MAX_BYTES = 90 * 1024 * 1024
+STREAM_CHUNK_BYTES = 64 * 1024
+
+
+def source_bytes(folder: Path, replacing: Path) -> int:
+    return sum(
+        path.stat().st_size
+        for name in ("original.mp4", "heldout.mp4")
+        if (path := folder / name) != replacing and path.is_file()
+    )
+
 
 FILES = {
     "original.mp4",
@@ -77,22 +92,28 @@ class CloudJobs:
     def archive(self, job: str, folder: Path, kind: str) -> None:
         target = "status.json" if kind == "learn" else "run.json"
         result = json.loads((folder / target).read_text())
-        output = io.BytesIO()
-        with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED) as archive:
-            for name in sorted(FILES):
-                file_path = folder / name
-                if file_path.exists():
-                    archive.write(file_path, name)
-        data = output.getvalue()
-        if len(data) > 110 * 1024 * 1024:
+        files = [folder / name for name in sorted(FILES) if (folder / name).is_file()]
+        if sum(path.stat().st_size for path in files) > ARCHIVE_MAX_BYTES:
             raise RuntimeError("Analysis archive exceeds private storage limit")
         path = self.owner + "/" + job + ".zip"
-        self.request(
-            "POST",
-            "storage/v1/object/analysis-artifacts/" + path,
-            content=data,
-            headers={"Content-Type": "application/zip", "x-upsert": "true"},
-        )
+        with TemporaryFile() as output:
+            with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED) as archive:
+                for file_path in files:
+                    archive.write(file_path, file_path.name)
+            size = output.tell()
+            if size > ARCHIVE_MAX_BYTES:
+                raise RuntimeError("Analysis archive exceeds private storage limit")
+            output.seek(0)
+            self.request(
+                "POST",
+                "storage/v1/object/analysis-artifacts/" + path,
+                content=iter(lambda: output.read(STREAM_CHUNK_BYTES), b""),
+                headers={
+                    "Content-Type": "application/zip",
+                    "Content-Length": str(size),
+                    "x-upsert": "true",
+                },
+            )
         self.request(
             "PATCH",
             "rest/v1/analysis_jobs",
@@ -118,16 +139,30 @@ class CloudJobs:
         response = self.request(
             "GET", "storage/v1/object/authenticated/analysis-artifacts/" + expected
         )
-        if len(response.content) > 110 * 1024 * 1024:
+        if len(response.content) > ARCHIVE_MAX_BYTES:
             raise ValueError("Private archive too large")
-        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
-            total = sum(info.file_size for info in archive.infolist())
-            if total > 110 * 1024 * 1024:
-                raise ValueError("Expanded archive too large")
-            folder.mkdir(parents=True, exist_ok=True)
-            for info in archive.infolist():
-                if info.filename not in FILES:
+        folder.parent.mkdir(parents=True, exist_ok=True)
+        with TemporaryFile() as saved:
+            saved.write(response.content)
+            del response
+            saved.seek(0)
+            with zipfile.ZipFile(saved) as archive:
+                members = archive.infolist()
+                if sum(info.file_size for info in members) > ARCHIVE_MAX_BYTES:
+                    raise ValueError("Expanded archive too large")
+                names = [info.filename for info in members]
+                if any(name not in FILES for name in names) or len(names) != len(set(names)):
                     raise ValueError("Unexpected private artifact")
-                (folder / info.filename).write_bytes(archive.read(info))
+                with TemporaryDirectory(prefix=".restore-", dir=folder.parent) as staging:
+                    for info in members:
+                        with (
+                            archive.open(info) as src,
+                            (Path(staging) / info.filename).open("wb") as dst,
+                        ):
+                            shutil.copyfileobj(src, dst, STREAM_CHUNK_BYTES)
+                    # Do not overwrite an existing input until every member decoded successfully.
+                    folder.mkdir(parents=True, exist_ok=True)
+                    for name in names:
+                        (Path(staging) / name).replace(folder / name)
         (folder / "owner.txt").write_text(self.owner)
         return True
