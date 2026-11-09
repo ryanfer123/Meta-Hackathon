@@ -102,6 +102,9 @@ class CloudJobs:
         result = json.loads((folder / target).read_text())
         if (folder / "resume.json").exists():
             result["resumable"] = True
+        if result.get("status") not in {"processing", "validating", "ready", "error"}:
+            raise ValueError("Unsupported analysis status")
+        row_status = "processing" if result["status"] == "validating" else result["status"]
         files = [folder / name for name in sorted(FILES) if (folder / name).is_file()]
         if sum(path.stat().st_size for path in files) > ARCHIVE_MAX_BYTES:
             raise RuntimeError("Analysis archive exceeds private storage limit")
@@ -128,7 +131,7 @@ class CloudJobs:
             "PATCH",
             "rest/v1/analysis_jobs",
             params={"id": "eq." + job},
-            json={"status": result["status"], "result": result, "artifact_path": path},
+            json={"status": row_status, "result": result, "artifact_path": path},
         )
 
     def fail(self, job: str, message: str, *, resumable: bool = False) -> None:

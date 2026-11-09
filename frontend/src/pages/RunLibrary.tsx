@@ -133,6 +133,16 @@ export function RunLibrary({ userId, onSignIn, onOpen, refreshKey, onUse, onResu
       Date.parse(b.record.created_at) - Date.parse(a.record.created_at) ||
       a.record.id.localeCompare(b.record.id),
   );
+  async function checkStatus(job: AnalysisJob) {
+    const result = await json<Record<string, unknown>>(
+      `/api/${job.kind === 'run' ? 'runs' : 'protocols'}/${job.id}`,
+    );
+    const status =
+      result.status === 'ready' ? 'ready' : result.status === 'error' ? 'error' : 'processing';
+    setJobs((current) =>
+      current.map((item) => (item.id === job.id ? { ...item, status, result } : item)),
+    );
+  }
   async function resume(job: AnalysisJob) {
     await json(`/api/jobs/${job.id}/resume`, { method: 'POST' });
     const result = await pollJob<Run & { status?: string; error?: string }>(
@@ -296,6 +306,15 @@ export function RunLibrary({ userId, onSignIn, onOpen, refreshKey, onUse, onResu
                       >
                         Open <ArrowRight size={15} />
                       </button>
+                      {item.type === 'job' && item.record.status === 'processing' && (
+                        <button
+                          className="button"
+                          disabled={busy}
+                          onClick={() => void task(() => checkStatus(item.record))}
+                        >
+                          Check analysis status
+                        </button>
+                      )}
                       {item.type === 'job' &&
                         item.record.status === 'error' &&
                         item.record.result.resumable === true && (

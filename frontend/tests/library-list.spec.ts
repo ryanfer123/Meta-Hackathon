@@ -224,3 +224,23 @@ test('an interrupted job resumes the same private analysis after warning about u
   await expect(page.getByRole('heading', { name: '2 Check the steps' })).toBeVisible();
   expect(resumed).toBe(true);
 });
+
+test('My runs checks an interrupted processing job before offering explicit resume', async ({
+  page,
+}) => {
+  await setup(page);
+  await page.route('**/api/runs/working', (route) =>
+    route.fulfill({
+      json: { id: 'working', status: 'error', resumable: true, error: 'Worker restarted' },
+    }),
+  );
+  await page.getByRole('button', { name: 'Check analysis status' }).click();
+  const row = page
+    .locator('.saved-run')
+    .filter({ has: page.getByRole('button', { name: 'Resume saved stages' }) });
+  await expect(row.getByText('Interrupted. Saved stages can be resumed.')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+  await expect(
+    row.getByText('Unfinished stages may make new paid calls.', { exact: false }),
+  ).toBeVisible();
+});

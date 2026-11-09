@@ -178,3 +178,26 @@ def test_cloud_limit_refuses_before_paid_work_and_local_limit_stays_configurable
         )
         assert api.get("/api/health").json()["max_cloud_source_bytes"] is None
     assert calls == ["process"]
+
+
+def test_validation_checkpoint_uses_database_processing_state(tmp_path, monkeypatch):
+    (tmp_path / "status.json").write_text('{"status":"validating"}')
+    (tmp_path / "resume.json").write_text('{"operation":"validate"}')
+    client = store(monkeypatch)
+    patched = []
+
+    def request(method, path, **kwargs):
+        if method == "POST":
+            b"".join(kwargs["content"])
+        if method == "PATCH":
+            value = kwargs["json"]
+            assert value["status"] in {"processing", "ready", "error"}
+            patched.append(value)
+        return httpx.Response(200)
+
+    monkeypatch.setattr(client, "request", request)
+    client.archive("job", tmp_path, "learn")
+    assert patched[0]["status"] == "processing"
+    assert patched[0]["result"]["status"] == "validating"
+    assert patched[0]["result"]["resumable"] is True
+    client.close()
