@@ -14,6 +14,12 @@ jobs:
         with:
           python-version: '3.13'
       - run: uv sync --frozen
+      - name: Install media tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          ffmpeg -version
+          ffprobe -version
       - run: uv run pytest -q
       - run: uv run ruff check backend scripts eval
       - run: uv run ruff format --check backend scripts eval
