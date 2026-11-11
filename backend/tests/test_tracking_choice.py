@@ -16,6 +16,7 @@ def test_tracking_choice_scoped_to_job(tmp_path, monkeypatch, route, mode):
     job = "a" * 32
     folder = tmp_path / "jobs" / job
     folder.mkdir(parents=True)
+    (folder / "original.mp4").write_bytes(b"mock-original")
     protocol = sample_protocol()
     (folder / "protocol.json").write_text(protocol.model_dump_json(by_alias=True))
     config = Settings(

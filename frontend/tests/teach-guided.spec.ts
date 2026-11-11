@@ -441,3 +441,51 @@ test('upload limits use exact bytes, include both takes, and tolerate unknown se
   expect(result.unknown).toBe('');
   expect(result.restored).toBe('');
 });
+
+test('Teach trims keep suggested step ranges in the original recording timeline', async ({
+  page,
+}) => {
+  await mountTeach(page);
+  await page.getByLabel('Teaching video', { exact: true }).setInputFiles({
+    name: 'teaching.mp4',
+    mimeType: 'video/mp4',
+    buffer: Buffer.from('test only'),
+  });
+  await page.getByText('Trim teaching video to the procedure (optional)', { exact: true }).click();
+  await page.getByLabel('Teaching video section preview').evaluate((v) => {
+    Object.defineProperty(v, 'duration', { value: 100, configurable: true });
+    v.dispatchEvent(new Event('loadedmetadata'));
+  });
+  await page.getByRole('checkbox', { name: 'Choose a section of teaching video' }).check();
+  await page.getByLabel('Teaching video section start', { exact: true }).fill('20');
+  await page.getByLabel('Teaching video section end', { exact: true }).fill('30');
+  const run = await page.request.get('/samples/skipped-cap.json').then((r) => r.json());
+  await page.route('**/api/protocols', (route) => {
+    expect(route.request().postDataBuffer()?.toString()).toContain('name="trim_start_s"\r\n\r\n20');
+    return route.fulfill({ json: { protocol_id: 'mock-procedure' } });
+  });
+  await page.route('**/api/protocols/mock-procedure', (route) =>
+    route.fulfill({
+      json: {
+        status: 'ready',
+        protocol: run.protocol,
+        boundary_suggestions: {},
+        analysis_range: { start: 20, end: 30, source_duration: 100 },
+      },
+    }),
+  );
+  await page.getByRole('button', { name: 'Create the steps' }).click();
+  await expect(page.getByRole('heading', { name: '2 Check the steps' })).toBeVisible();
+  await page.locator('.teaching-player').evaluate((v) => {
+    Object.defineProperty(v, 'duration', { value: 100, configurable: true });
+    v.dispatchEvent(new Event('loadedmetadata'));
+  });
+  await expect(page.getByLabel('Approach tube 1 start in seconds')).toHaveValue('20');
+  await expect(page.getByLabel(`${run.protocol.steps.at(-1).title} end in seconds`)).toHaveValue(
+    '30',
+  );
+  const mode = page.getByRole('checkbox', { name: 'Faster video tracking (preview)' });
+  await expect(mode).toBeEnabled();
+  await mode.uncheck();
+  await expect(mode).not.toBeChecked();
+});

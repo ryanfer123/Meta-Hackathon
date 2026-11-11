@@ -3,11 +3,14 @@ import html
 import json
 from typing import Any
 
+from app.run_summary import summarize
+
 
 def render_report(run: dict[str, Any], root: str, evidence: dict[str, bytes] | None = None) -> str:
     def esc(value: object) -> str:
         return html.escape(str(value))
 
+    summary = summarize(run)
     open_label = run.get("metrics", {}).get("open_tier_label", "glimmer")
 
     def detail(event: dict[str, Any]) -> str:
@@ -46,6 +49,7 @@ h1{{font-size:40px}} table{{width:100%;border-collapse:collapse}}td,th{{padding:
 code{{overflow-wrap:anywhere;color:#d5fa65}}img{{max-width:480px;width:100%}}pre{{white-space:pre-wrap}}figure{{display:inline-block}}
 </style><h1>Apprentice / evidence audit</h1><p>{esc(run["name"])} · Provenance: {esc(run["provenance"])}</p>
 <p>Observable handling only. Contact does not prove liquid transfer, volume or concentration.</p>
+<h2>At a glance</h2><p>{summary["confirmed"]} confirmed steps · {summary["flagged"]} flagged steps · {summary["unconfirmed"]} unconfirmed steps</p><p>{esc(summary["scope"])}</p>
 <h2>Steps</h2><table>{steps}</table><h2>Evidence ledger</h2><table><tr><th>Time</th><th>Step</th><th>Decision</th><th>Tier</th><th>Detail</th></tr>{rows}</table>
 <h2>Bounded recovery</h2><p>One missing-object re-query may add pixel evidence; only replayed rules decide completion. Recovery notes are diagnostic and are not covered by the event-chain root.</p><pre>{esc(json.dumps(run.get("recovery_actions", []), indent=2))}</pre>
 <h2>Metrics</h2><pre>{esc(json.dumps(run["metrics"], indent=2))}</pre><h2>Evidence</h2>{images or "<p>No real evidence images in this synthetic run.</p>"}

@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 from app.audit.chain import build_chain  # noqa: E402
 from app.audit.report import render_report  # noqa: E402
 from app.replay_cache import atomic_json  # noqa: E402
+from app.run_summary import summarize  # noqa: E402
 from app.samples import SAMPLES, sample_run  # noqa: E402
 
 
@@ -15,6 +16,7 @@ def main() -> None:
     target.mkdir(parents=True, exist_ok=True)
     for name in SAMPLES:
         run = sample_run(name)
+        run["summary"] = summarize(run)
         chain, root = build_chain(run["events"], {})
         run["chain"], run["chain_root"] = chain, root
         atomic_json(target / f"{name}.json", run)

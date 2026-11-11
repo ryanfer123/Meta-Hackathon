@@ -77,3 +77,11 @@ A free worker can sleep or restart; it cannot guarantee uninterrupted long jobs 
 ### Private archive limits
 
 The cloud workspace accepts at most 90 MiB total source footage per analysis job: teaching plus second video, or one Check recording. Both duration and per-file limits still apply. This leaves 20 MiB within the 110 MiB archive cap for generated artifacts; an unusually large report can still exceed that final cap. Compress large recordings before submission. Client help uses the byte limits returned by `/api/health`; direct API uploads enforce the same checks before analysis begins. Local-only mode retains `MAX_UPLOAD_MB`. No hosting plan change is required. Temporary archive construction and staged restores use ephemeral disk; free-worker restarts can still interrupt active work.
+
+### Monthly reservations and the development branch
+
+`20261108090000_monthly_budget.sql` adds a shared $150 calendar-month ceiling in the private reservation ledger, under the existing serialization/auth checks. Its private configuration cannot be changed by authenticated browser clients. This additive migration has been applied to the connected project; it protects the current server without changing its API signature. Local work uses `MAX_MONTHLY_COST_USD=150`. These are application reservation controls, not guaranteed provider invoice ceilings or account-wide controls for keys used elsewhere.
+
+Meta's [spend-limit setting](https://dev.meta.ai/help/billing/spend-limit-alert) sends an alert and does not stop usage. Provider dashboard settings were not changed: connected browser access was unavailable. No hosting tier or recurring service was added.
+
+The checkpoint, preview, trim and pilot changes live on `post-hackathon/reliability-and-pilot`. Main and its hosted app remain on their existing revision until deliberately promoted. Do not describe branch-only features as live. Free worker restarts can lose an unfinished stage; resume can incur additional calls within the same caps.

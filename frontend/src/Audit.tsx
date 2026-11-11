@@ -102,7 +102,8 @@ export function Audit({
         </p>
         <p>
           This checks the event log against the report’s saved root. It does not prove that the
-          recording is authentic or that the physical procedure was correct.
+          recording is authentic or that the physical procedure was correct. Summaries are not
+          covered by this check.
         </p>
         <p className="integrity-note">
           A local report can be rewritten together with its root. Keep the root somewhere separate.

@@ -166,3 +166,25 @@
 .why-flagged {
   margin: 0 0 18px;
 }
+
+.run-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+  padding: 20px;
+  border: 1px solid var(--line, #b8ac96);
+  border-radius: 16px;
+}
+.run-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.run-summary strong {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+}
+.run-summary p {
+  grid-column: 1/-1;
+  margin: 4px 0 0;
+}

@@ -1,4 +1,5 @@
 import json
+import time
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,7 @@ import httpx
 from app.audit.chain import build_chain
 from app.audit.report import render_report
 from app.budget import BudgetExceeded
+from app.checkpoints import checkpoint_key, load_frames, persist, save_frames
 from app.config import Settings
 from app.glimmer_client import GlimmerClient
 from app.learn.boundaries import suggest_boundaries, validate_step_ranges
@@ -19,15 +21,76 @@ from app.learn.validate import StepRange, replay, validate_protocol
 from app.meta_client import MetaClient
 from app.processing_plan import plan_long_recording, plan_validation
 from app.progress import JobProgress
+from app.providers import OpinionProvider, TrackingProvider
 from app.replay_cache import atomic_json
+from app.run_summary import summarize
 from app.samples import wire_frame
 from app.schemas import Opinion, Protocol, TranscriptTurn
+from app.selection import selected_video
 from app.supervise.review_context import review_prompt, review_window
 from app.supervise.verifier import Verifier
 from app.track.geometry import FrameState
 from app.track.native_video import probe_video
 from app.track.recovery import recover_once
 from app.track.sam import track, track_video
+
+
+def tracked_stage(
+    settings: Settings,
+    folder: Path,
+    name: str,
+    client: MetaClient,
+    protocol: Protocol,
+    video: Path,
+    paths: list[tuple[float, Path]],
+    video_hash: str,
+    color: bool = False,
+    provider: TrackingProvider | None = None,
+) -> list[FrameState]:
+    enabled = (folder / "resume.json").exists()
+    key = checkpoint_key(settings, protocol, video, color) if enabled else ""
+    if provider is not None:
+        from app.replay_cache import digest
+
+        key = digest([key, provider.provider_id])
+    checkpoint = folder / (name + ".npz")
+    if enabled:
+        saved = load_frames(
+            checkpoint,
+            key,
+            paths,
+            (settings.max_run_mask_mb if name == "tracking" else settings.max_validation_mask_mb)
+            * 1024
+            * 1024,
+        )
+        if saved is not None:
+            return saved
+    started = time.perf_counter()
+    result = (
+        provider.track(protocol, video, paths, video_hash, color)
+        if provider is not None
+        else (
+            track_video(client, protocol, video, paths, video_hash, *([True] if color else []))
+            if settings.sam_mode == "video"
+            else track(client, protocol, paths, video_hash, *([True] if color else []))
+        )
+    )
+    stats_path = folder / "tracking_stats.json"
+    stats = json.loads(stats_path.read_text()) if stats_path.exists() else {}
+    stats[name] = {
+        "wall_ms": (time.perf_counter() - started) * 1000,
+        "provider": provider.provider_id if provider else "meta-sam-3.1-v1",
+        "sampled_frames": len(result),
+        "unknown_frames_by_object": {
+            obj.name: sum(f.objects.get(obj.name) is None for f in result)
+            for obj in protocol.objects
+        },
+    }
+    atomic_json(stats_path, stats)
+    if enabled:
+        save_frames(checkpoint, key, result)
+        persist(settings)
+    return result
 
 
 def error_name(exc: Exception) -> str:
@@ -50,7 +113,17 @@ def process_learn(
     progress = JobProgress(folder)
     progress.update("Preparing your teaching video")
     try:
-        video = folder / "original.mp4"
+        video, source_offset, chosen = selected_video(folder / "original.mp4")
+        if chosen and turns:
+            turns = [
+                TranscriptTurn(
+                    start=max(0, t.start - source_offset),
+                    end=min(chosen["end"] - source_offset, t.end - source_offset),
+                    text=t.text,
+                )
+                for t in turns
+                if t.end > source_offset and t.start < chosen["end"]
+            ]
         if len(narration_text) > 4000:
             raise ValueError("Narration text must be at most 4000 characters")
         # Persist this resolution in the protocol so later pixel thresholds use
@@ -65,21 +138,39 @@ def process_learn(
         if not turns and narration_text.strip():
             duration = float(probe_video(video)["duration_s"])
             turns = [TranscriptTurn(start=0, end=duration, text=narration_text.strip())]
+        resumable = (folder / "resume.json").exists()
+        if not turns and resumable and (folder / "narration.json").exists():
+            turns = [
+                TranscriptTurn.model_validate(t)
+                for t in json.loads((folder / "narration.json").read_text())
+            ]
         if not turns:
             progress.update("Reading the narration")
             audio = folder / "audio.wav"
             extract_audio(video, audio)
             turns = transcribe(client, audio)
+        atomic_json(folder / "narration.json", [turn.model_dump() for turn in turns])
+        persist(settings)
         progress.update("Writing the steps")
         selected = teaching_keyframes(frames) if len(frames) > 180 else keyframes(frames)
-        protocol = compile_protocol(client, selected, turns)
+        protocol = (
+            Protocol.model_validate_json((folder / "protocol.json").read_text())
+            if resumable and (folder / "protocol.json").exists()
+            else compile_protocol(client, selected, turns)
+        )
         protocol.frame_max_side = frame_side
         atomic_json(folder / "protocol.json", protocol.model_dump(by_alias=True))
+        persist(settings)
         atomic_json(folder / "narration.json", [turn.model_dump() for turn in turns])
         suggestions = {
             key: value.model_dump()
             for key, value in suggest_boundaries(protocol, turns, frames[-1][0]).items()
         }
+        if source_offset:
+            suggestions = {
+                key: {"start": value["start"] + source_offset, "end": value["end"] + source_offset}
+                for key, value in suggestions.items()
+            }
         atomic_json(folder / "boundary_suggestions.json", suggestions)
         atomic_json(
             folder / "status.json",
@@ -89,6 +180,7 @@ def process_learn(
                 "protocol": protocol.model_dump(by_alias=True),
                 "validation": None,
                 "boundary_suggestions": suggestions,
+                "analysis_range": chosen,
                 "boundary_suggestions_scope": "Narration timing proposals only. Check the video, fill missing steps and confirm every range before validation.",
                 "provenance": "live-meta-compiled-unverified",
             },
@@ -142,6 +234,7 @@ def evidence_overlays(
 
 
 def finalize_run(folder: Path, run: dict[str, Any], evidence: dict[str, bytes]) -> None:
+    run["summary"] = summarize(run)
     chain, root = build_chain(run["events"], evidence)
     run["chain_root"] = root
     run["chain"] = chain
@@ -187,6 +280,8 @@ def run_recording(
     color_fallback: bool = False,
     *,
     fail_on_budget_exhaustion: bool = False,
+    tracking_provider: TrackingProvider | None = None,
+    spark_opinion: OpinionProvider | None = None,
 ) -> dict[str, Any]:
     """Run one recording through the same deterministic pipeline used by the API.
 
@@ -199,6 +294,8 @@ def run_recording(
     try:
         progress = JobProgress(folder)
         progress.update("Preparing your recording")
+        source_video = video
+        video, source_offset, chosen = selected_video(video)
         paths = (
             sample(
                 video,
@@ -230,10 +327,17 @@ def run_recording(
             total,
             "parts" if stage == "Checking mask data" else "masks",
         )
-        frames = (
-            track_video(client, protocol, video, paths, file_hash(video), color_fallback)
-            if settings.sam_mode == "video"
-            else track(client, protocol, paths, file_hash(video), color_fallback)
+        frames = tracked_stage(
+            settings,
+            folder,
+            "tracking",
+            client,
+            protocol,
+            video,
+            paths,
+            file_hash(video),
+            color_fallback,
+            provider=tracking_provider,
         )
         progress.update("Checking the observed steps")
         supervisor = replay(protocol, frames)
@@ -263,7 +367,11 @@ def run_recording(
 
         def spark_review(prompt: str, _images: list[Path]) -> Opinion:
             try:
-                return client.structured(prompt, Opinion, review_full)
+                return (
+                    spark_opinion(prompt, review_full)
+                    if spark_opinion is not None
+                    else client.structured(prompt, Opinion, review_full)
+                )
             except BudgetExceeded as exc:
                 # Verifier treats unavailable advisory models as uncertainty. The offline
                 # batch may additionally stop instead of publishing a partial prediction.
@@ -335,7 +443,8 @@ def run_recording(
             "provenance": "live-recording",
             "tracking_mode": settings.sam_mode,
             "processing_plan": plan,
-            "video_sha256": file_hash(video),
+            "video_sha256": file_hash(source_video),
+            "analysis_range": chosen,
             "protocol": protocol.model_dump(by_alias=True),
             "frames": [
                 wire_frame(f, max_contour_points=64 if len(paths) > 180 else 256) for f in frames
@@ -345,8 +454,22 @@ def run_recording(
             "states": {k: s.status for k, s in supervisor.states.items()},
             "metrics": call_metrics(settings, job, verifier.shadow),
             "shadow": verifier.shadow,
+            "tracking_stats": json.loads((folder / "tracking_stats.json").read_text())
+            if (folder / "tracking_stats.json").exists()
+            else {},
             "recovery_actions": recovery.actions,
         }
+        if source_offset:
+            for frame in run["frames"]:
+                frame["t"] += source_offset
+            for event in run["events"]:
+                event["t"] += source_offset
+            run["duration"] = (
+                chosen["source_duration"] if chosen else run["duration"] + source_offset
+            )
+            run["advisory_time_scope"] = (
+                "Model narrative times may be relative to the selected section. Event timestamps refer to the original recording."
+            )
         run["events"].sort(key=lambda e: e["t"])
         finalize_run(folder, run, evidence)
         return run
@@ -398,8 +521,17 @@ def process_validation(
         validate_step_ranges(protocol, ranges)
         duration = float(probe_video(folder / "original.mp4")["duration_s"])
         validate_step_ranges(protocol, ranges, duration)
+        a_video, a_offset, a_selection = selected_video(folder / "original.mp4")
+        b_video, _, b_selection = selected_video(folder / "heldout.mp4")
+        if a_selection and any(
+            r.start < a_selection["start"] or r.end > a_selection["end"] for r in ranges.values()
+        ):
+            raise ValueError("Step boundaries must stay inside the selected teaching section")
+        local_ranges = {
+            k: StepRange(start=v.start - a_offset, end=v.end - a_offset) for k, v in ranges.items()
+        }
         a_paths = sample(
-            folder / "original.mp4",
+            a_video,
             folder / "frames",
             2,
             settings.max_teaching_duration_s * 2,
@@ -407,16 +539,14 @@ def process_validation(
             protocol.frame_max_side < 1024,
         )
         b_paths = sample(
-            folder / "heldout.mp4",
+            b_video,
             folder / "heldout-frames",
             2,
             settings.max_teaching_duration_s * 2,
             protocol.frame_max_side,
             protocol.frame_max_side < 1024,
         )
-        plan = plan_validation(
-            settings, protocol, folder / "original.mp4", a_paths, folder / "heldout.mp4", b_paths
-        )
+        plan = plan_validation(settings, protocol, a_video, a_paths, b_video, b_paths)
         if plan:
             atomic_json(folder / "validation_plan.json", plan)
         client.tracking_progress = lambda done, total, unit: progress.update(
@@ -429,7 +559,16 @@ def process_validation(
             "parts" if stage == "Checking mask data" else "masks",
         )
         if settings.sam_mode == "video":
-            a = track_video(client, protocol, folder / "original.mp4", a_paths, a_hash)
+            a = tracked_stage(
+                settings,
+                folder,
+                "teaching-tracking",
+                client,
+                protocol,
+                a_video,
+                a_paths,
+                file_hash(a_video),
+            )
             client.tracking_progress = lambda done, total, unit: progress.update(
                 "Finding objects in the second video", done, total, unit
             )
@@ -439,15 +578,42 @@ def process_validation(
                 total,
                 "parts" if stage == "Checking mask data" else "masks",
             )
-            b = track_video(client, protocol, folder / "heldout.mp4", b_paths, b_hash)
+            b = tracked_stage(
+                settings,
+                folder,
+                "second-tracking",
+                client,
+                protocol,
+                b_video,
+                b_paths,
+                file_hash(b_video),
+            )
         else:
-            a = track(client, protocol, a_paths, a_hash)
+            a = tracked_stage(
+                settings,
+                folder,
+                "teaching-tracking",
+                client,
+                protocol,
+                a_video,
+                a_paths,
+                file_hash(a_video),
+            )
             client.tracking_progress = lambda done, total, unit: progress.update(
                 "Finding objects in the second video", done, total, unit
             )
-            b = track(client, protocol, b_paths, b_hash)
+            b = tracked_stage(
+                settings,
+                folder,
+                "second-tracking",
+                client,
+                protocol,
+                b_video,
+                b_paths,
+                file_hash(b_video),
+            )
         progress.update("Testing the steps and deliberate mistakes")
-        result = validate_protocol(protocol, a, b, ranges)
+        result = validate_protocol(protocol, a, b, local_ranges)
         history: list[dict[str, object]] = [
             {
                 "round": 0,
@@ -480,7 +646,7 @@ def process_validation(
                 progress.update(repair_stage, repaired_count, len(failed), "steps")
             if changed:
                 protocol = Protocol.model_validate(protocol.model_dump(by_alias=True))
-                result = validate_protocol(protocol, a, b, ranges)
+                result = validate_protocol(protocol, a, b, local_ranges)
             result["repair_rounds"] = round_idx
             history.append(
                 {
@@ -497,6 +663,7 @@ def process_validation(
         result["repair_history"] = history
         result["compile_video_sha256"] = a_hash
         result["held_out_video_sha256"] = b_hash
+        result["analysis_ranges"] = {"teaching": a_selection, "second": b_selection}
         result["tracking_mode"] = settings.sam_mode
         result["processing_plan"] = plan
         atomic_json(folder / "self_check.json", result)
@@ -513,6 +680,7 @@ def process_validation(
                 )
                 if (folder / "boundary_suggestions.json").exists()
                 else {},
+                "analysis_range": a_selection,
                 "confirmed_ranges": {key: value.model_dump() for key, value in ranges.items()},
                 "provenance": "live-meta-compiled",
             },

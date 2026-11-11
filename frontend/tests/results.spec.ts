@@ -246,3 +246,24 @@ test('model paragraphs are collapsed and labelled as opinions in replay history'
   if (process.env.APPRENTICE_UI_CAPTURE)
     await surface.screenshot({ path: `/tmp/apprentice-opinions-${testInfo.project.name}.png` });
 });
+
+test('summary separates rule flags from unconfirmed steps and ignores model completion claims', async ({
+  page,
+}) => {
+  const surface = await mountResults(page, { advisory: true });
+  await expect(surface.getByRole('region', { name: 'Recording summary' })).toBeVisible();
+  await expect(surface.locator('.run-summary')).toContainText('Not verified');
+  const counts = await page.evaluate(async () => {
+    const { runSummary } = await new Function('return import("/src/lib/run-summary.ts")')();
+    return runSummary({
+      protocol: { steps: ['a', 'b', 'c'].map((id) => ({ id })) },
+      states: { a: 'DONE', b: 'DONE', c: 'PENDING' },
+      events: [
+        { tier: 'rules', kind: 'wrong_object', step_id: 'b' },
+        { tier: 'spark', kind: 'skipped', step_id: 'a' },
+        { tier: 'spark', kind: 'step_completed', step_id: 'c' },
+      ],
+    });
+  });
+  expect(counts).toEqual({ confirmed: 1, flagged: 1, unconfirmed: 1 });
+});

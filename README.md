@@ -26,6 +26,14 @@ Beige is the default. Use the theme switch to choose a near-black workspace; the
 <img src="frontend/public/images/product-home-dark.png?rev=uploads-20261108" alt="Current Apprentice homepage in near-black mode with warm beige controls" width="100%" />
 </details>
 
+## Version history
+
+The [pre-November-4 snapshot](https://github.com/ryanfer123/Meta-Hackathon/tree/hackathon-pre-nov4) is frozen at `ccbed0f` (November 2). It records the last main-branch commit before November 4 in Eastern Time; it is not proof of the platform submission revision. Post-event maintenance is explicitly dated and new pilot/reliability development lives on `post-hackathon/reliability-and-pilot`.
+
+## Post-event development
+
+The development branch adds explicit stage resume, a three-frame object preview, optional procedure-only trimming, clearer rule-result counts, and injectable geometry/opinion adapters. These changes are implemented on this branch and are not yet promoted to the hosted main-branch app. They do not establish real-world accuracy. The [small pilot guide](docs/PILOT.md) describes blind labelling and a 6–8-recording evaluation; independent recordings and an actual user trial are still needed.
+
 ## Start with your procedure
 
 1. **Teach.** Sign in and upload a short video showing the right way. Add narration or a written description, then review the generated steps and timings.
@@ -162,7 +170,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Latest local verification: **360 Python tests** and **157 desktop/mobile browser checks** passed, together with lint, formatting, strict typing and the production build. The two documentation-capture cases run only with the explicit capture flag; pointer tilt is intentionally disabled for touch devices. The [Checks workflow](https://github.com/ryanfer123/Meta-Hackathon/actions/workflows/checks.yml) is the source for current CI status. Tests use synthetic masks and mocked transports, not paid provider requests. Diagnostic scripts require an explicit `--allow-paid-calls` opt-in.
+Latest local verification: **380 Python tests** and **171 desktop/mobile browser checks** passed, together with lint, formatting, strict typing and the production build. The two documentation-capture cases run only with the explicit capture flag; pointer tilt is intentionally disabled for touch devices. The [Checks workflow](https://github.com/ryanfer123/Meta-Hackathon/actions/workflows/checks.yml) is the source for current CI status. Tests use synthetic masks and mocked transports, not paid provider requests. Diagnostic scripts require an explicit `--allow-paid-calls` opt-in.
 
 | Area | What is checked |
 | --- | --- |
@@ -194,7 +202,7 @@ For recording and evaluation, start with the [recording guide](docs/RECORDING.md
 <details>
 <summary>Maintainer reference</summary>
 
-[QA notes](docs/QA.md) · [Database migrations](supabase/README.md) · [New work](docs/NEW_WORK.md) · [Submission checklist](docs/SUBMISSION.md)
+[Pilot guide](docs/PILOT.md) · [Database setup](supabase/README.md) · [Historical event files](archive/hackathon/README.md)
 
 </details>
 

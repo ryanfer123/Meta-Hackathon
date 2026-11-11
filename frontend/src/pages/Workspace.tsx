@@ -22,6 +22,7 @@ import type { AnalysisJob } from '../lib/workspace';
 import { saveRun } from '../lib/workspace';
 import { getHealth, loadSample } from '../api';
 import { Learn } from '../Learn';
+import type { ObjectPreviewData } from '../components/ObjectPreview';
 import { Results } from '../Results';
 import { Overview } from './Overview';
 import { CheckRecording, type TaughtProcedure } from './Check';
@@ -83,6 +84,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
     [scenario, setScenario] = useState(
       () => new URLSearchParams(location.hash.split('?')[1]).get('sample') || 'skipped-cap',
     );
+  const [checkPreview, setCheckPreview] = useState<ObjectPreviewData | null>(null);
   const [procedure, setProcedure] = useState<TaughtProcedure | null>(null);
   const [run, setRun] = useState<Run | null>(null),
     [health, setHealth] = useState<Health>({
@@ -397,6 +399,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
               ) : view === 'Check' ? (
                 <CheckRecording
                   procedure={procedure}
+                  initialPreview={checkPreview}
                   health={health}
                   readOnly={readOnly}
                   source={source?.kind === 'novice' ? source.file : null}
@@ -404,6 +407,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                   onSample={sampleMode ? () => chooseScenario('skipped-cap') : undefined}
                   onSignIn={() => setAuth(true)}
                   onRun={(result) => {
+                    setCheckPreview(null);
                     setRun(result);
                     setSampleMode(false);
                     goView('Supervise', false);
@@ -420,6 +424,7 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                   }}
                   refreshKey={refreshKey}
                   onUse={(file, kind) => {
+                    setCheckPreview(null);
                     if (kind === 'expert') {
                       setLearnJob(null);
                       setProcedure(null);
@@ -428,7 +433,13 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
                     goView(kind === 'novice' ? 'Check' : 'Learn');
                   }}
                   onResume={(job) => {
-                    if (job.kind === 'run') {
+                    if (job.result.phase === 'object-preview') {
+                      setSource(null);
+                      const preview = job.result as unknown as ObjectPreviewData;
+                      setCheckPreview(preview);
+                      setProcedure({ id: job.id, protocol: preview.protocol });
+                      goView('Check', false);
+                    } else if (job.kind === 'run') {
                       setRun(job.result as unknown as Run);
                       setSampleMode(false);
                       goView('Supervise', false);
@@ -479,7 +490,10 @@ export default function Workspace({ readOnly = false }: { readOnly?: boolean }) 
               transition={{ duration: 0.2 }}
             >
               <Learn
-                onProtocolReady={setProcedure}
+                onProtocolReady={(value) => {
+                  setCheckPreview(null);
+                  setProcedure(value);
+                }}
                 onNavigateCheck={() => goView('Check')}
                 readOnly={readOnly}
                 onSignIn={() => setAuth(true)}

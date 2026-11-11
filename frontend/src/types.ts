@@ -57,6 +57,7 @@ export type Run = {
   id: string;
   name: string;
   provenance: string;
+  analysis_range?: { start: number; end: number; source_duration: number } | null;
   focus?: Pick<Event, 'kind' | 't' | 'step_id'>;
   protocol: Protocol;
   frames: Frame[];

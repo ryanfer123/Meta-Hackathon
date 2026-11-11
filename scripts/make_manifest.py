@@ -1,6 +1,7 @@
 """Scaffold a real-recording manifest before inspecting model predictions."""
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -10,12 +11,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.run_batch import videos_in  # noqa: E402
 
 
-def make_manifest(videos: Path, predictions: Path, out: Path, split: str) -> None:
+def make_manifest(
+    videos: Path, predictions: Path, out: Path, split: str, references: list[Path] | None = None
+) -> None:
     if split not in {"dev", "test"}:
         raise ValueError("Split must be dev or test")
     sources = videos_in(videos)
     out.parent.mkdir(parents=True, exist_ok=True)
     existing = json.loads(out.read_text()) if out.exists() else {"runs": []}
+    if references:
+        existing["reference_video_sha256"] = sorted(
+            set(
+                existing.get("reference_video_sha256", [])
+                + [hashlib.sha256(p.read_bytes()).hexdigest() for p in references]
+            )
+        )
     runs = existing["runs"]
     ids = {run["id"] for run in runs}
     paths = {(out.parent / run["video"]).resolve() for run in runs}
@@ -52,9 +62,15 @@ def main() -> None:
     parser.add_argument("--predictions", type=Path, required=True)
     parser.add_argument("--out", type=Path, default=Path("eval/labels.json"))
     parser.add_argument("--split", choices=("dev", "test"), required=True)
+    parser.add_argument(
+        "--reference-video",
+        type=Path,
+        action="append",
+        help="Teaching and second take; excluded from pilot scoring",
+    )
     args = parser.parse_args()
     try:
-        make_manifest(args.videos, args.predictions, args.out, args.split)
+        make_manifest(args.videos, args.predictions, args.out, args.split, args.reference_video)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         parser.exit(2, str(exc) + "\n")
     print(f"Manifest: {args.out}. Verify source=real and fill labels before viewing predictions.")

@@ -22,6 +22,8 @@ import {
   type Recording,
   type SavedRun,
 } from '../lib/workspace';
+import { json } from '../api';
+import { pollJob } from '../lib/analysis';
 import { Dialog } from '../components/Dialog';
 import { ErrorNotice } from '../components/ErrorNotice';
 import type { Run } from '../types';
@@ -131,6 +133,24 @@ export function RunLibrary({ userId, onSignIn, onOpen, refreshKey, onUse, onResu
       Date.parse(b.record.created_at) - Date.parse(a.record.created_at) ||
       a.record.id.localeCompare(b.record.id),
   );
+  async function checkStatus(job: AnalysisJob) {
+    const result = await json<Record<string, unknown>>(
+      `/api/${job.kind === 'run' ? 'runs' : 'protocols'}/${job.id}`,
+    );
+    const status =
+      result.status === 'ready' ? 'ready' : result.status === 'error' ? 'error' : 'processing';
+    setJobs((current) =>
+      current.map((item) => (item.id === job.id ? { ...item, status, result } : item)),
+    );
+  }
+  async function resume(job: AnalysisJob) {
+    await json(`/api/jobs/${job.id}/resume`, { method: 'POST' });
+    const result = await pollJob<Run & { status?: string; error?: string }>(
+      `/api/${job.kind === 'run' ? 'runs' : 'protocols'}/${job.id}`,
+    );
+    onResume({ ...job, status: 'ready', result: result as unknown as AnalysisJob['result'] });
+    setVersion((v) => v + 1);
+  }
   async function open(item: LibraryItem) {
     if (item.type === 'job') onResume(item.record);
     else if (item.type === 'run') onOpen(await openSavedRun(item.record.id));
@@ -270,7 +290,9 @@ export function RunLibrary({ userId, onSignIn, onOpen, refreshKey, onUse, onResu
                             {item.record.status === 'processing'
                               ? 'Still processing. Refresh to check again.'
                               : item.record.status === 'error'
-                                ? 'Could not finish. Try uploading the recording again.'
+                                ? item.record.result.resumable
+                                  ? 'Interrupted. Saved stages can be resumed.'
+                                  : 'Could not finish. Try uploading the recording again.'
                                 : 'Ready to open'}
                           </p>
                         )}
@@ -284,6 +306,32 @@ export function RunLibrary({ userId, onSignIn, onOpen, refreshKey, onUse, onResu
                       >
                         Open <ArrowRight size={15} />
                       </button>
+                      {item.type === 'job' && item.record.status === 'processing' && (
+                        <button
+                          className="button"
+                          disabled={busy}
+                          onClick={() => void task(() => checkStatus(item.record))}
+                        >
+                          Check analysis status
+                        </button>
+                      )}
+                      {item.type === 'job' &&
+                        item.record.status === 'error' &&
+                        item.record.result.resumable === true && (
+                          <div>
+                            <button
+                              className="button"
+                              disabled={busy}
+                              onClick={() => void task(() => resume(item.record))}
+                            >
+                              Resume saved stages
+                            </button>
+                            <p className="field-help">
+                              Unfinished stages may make new paid calls. Existing budget limits
+                              still apply.
+                            </p>
+                          </div>
+                        )}
                       {item.type !== 'job' && (
                         <button
                           className="icon-button"

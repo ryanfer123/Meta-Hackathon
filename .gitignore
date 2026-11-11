@@ -25,3 +25,13 @@ supabase/.temp/
 
 # Batch inputs are private in every supported video format, not only MP4.
 eval/runs/**
+
+# Recording/audio files are private by default, wherever they are copied.
+# Publishing consented media requires an explicit reviewed force-add.
+*.[mM][pP]4
+*.[mM][oO][vV]
+*.[wW][eE][bB][mM]
+*.[aA][vV][iI]
+*.[mM]4[vV]
+*.[wW][aA][vV]
+*.[mM][pP]3

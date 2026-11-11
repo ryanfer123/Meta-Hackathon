@@ -31,3 +31,14 @@ Follow-up: added exact scalar area/centroid caching with regression coverage for
 ## November 8: post-submission reliability maintenance
 
 Added combined cloud source-size preflight, UI size feedback, staged recording replacement and preservation of prior boundary confirmations on rejected uploads. Replaced in-memory ZIP construction with disk-backed archive uploads and bounded extraction, including duplicate-member and CRC failure coverage. No provider requests or new runtime dependencies were required. This maintenance is after the stated building window.
+
+
+## November 8: frozen history and post-event branch
+
+Published annotated tag `hackathon-pre-nov4` at `ccbed0f`, the final main-branch commit before November 4 Eastern Time. It does not attest to the platform submission revision. Ongoing work is isolated on `post-hackathon/reliability-and-pilot`. Archived the existing event-planning/submission/QA documents without rewriting their historical contents. No footage is tracked by Git. Added a proposed lab-TA pilot workflow; no user trial or real accuracy result is claimed.
+
+Post-event branch: completed-stage checkpoints with explicit resume, a three-image object preview with editable descriptions, source-timestamp-preserving section selection, rule-only result summaries and small provider interfaces. Added blind annotation and an explicit 6–8-recording pilot mode while preserving the larger evaluation mode. All development checks use generated media/mocked providers. No new real procedure, held-out accuracy result, user interview or provider billing-page configuration is claimed. The shared hosted monthly reservation ceiling is $150; no hosting upgrade or additional model probe was used for this work.
+
+November 9 verification: generated-media and mocked-provider regression checks cover source timestamps, stage restoration on a fresh worker, memory-safe checkpoint parsing, object-preview separation, blind annotation and frozen-protocol pilot scoring. Local verification is software evidence, not a real procedure or user-trial result.
+
+Recovery follow-up: My runs now checks a pending job against server state before offering explicit resume. Validation snapshots preserve the UI phase while storing the database-compatible processing status. Added regression tests for both; the event freeze and hosted main branch are unchanged.
